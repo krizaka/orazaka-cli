@@ -1,0 +1,69 @@
+{
+  "name": "orazaka-cli",
+  "version": "1.0.0",
+  "description": "Orazaka AI CLI — Terminal client for the Orazaka Orchestration Engine",
+  "main": "dist/index.js",
+  "bin": {
+    "orazaka": "dist/index.js"
+  },
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "check": "ts-node src/index.ts install --check-only",
+    "setup": "ts-node src/index.ts install",
+    "status": "ts-node src/index.ts status",
+    "models:check": "ts-node src/index.ts models",
+    "infra": "ts-node src/index.ts start --mode dev",
+    "infra:start": "ts-node src/index.ts start --mode dev",
+    "infra:full": "ts-node src/index.ts start --mode full",
+    "infra:stop": "ts-node src/index.ts stop",
+    "infra:restart": "ts-node src/index.ts stop -y && ts-node src/index.ts start --mode dev",
+    "infra:purge": "ts-node src/index.ts stop -y --purge",
+    "infra:reset": "ts-node src/index.ts stop -y --purge && ts-node src/index.ts start --mode dev",
+    "dev": "ts-node src/index.ts dev",
+    "dev:web": "ts-node src/index.ts dev --only web,admin",
+    "build": "tsc --outDir dist",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --runInBand",
+    "sonar": "npx -y sonar-scanner -Dsonar.token=$SONAR_TOKEN -Dsonar.branch.name=$(git rev-parse --abbrev-ref HEAD)",
+    "lint": "eslint src",
+    "depcheck": "depcruise src --config .dependency-cruiser.cjs",
+    "test:e2e": "npx vitest run --config vitest.config.ts",
+    "validate": "npm rebuild && npm run lint && npm run depcheck && npm run build && npm run test:coverage"
+  },
+  "keywords": [
+    "orazaka",
+    "ai",
+    "cli"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "better-sqlite3": "^12.10.0",
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^13.1.0",
+    "date-fns": "^4.3.0",
+    "ora": "^5.4.1",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.8.0",
+    "dependency-cruiser": "^17.4.3",
+    "eslint": "^10.4.1",
+    "execa": "^9.5.2",
+    "jest": "^30.4.2",
+    "jest-environment-node": "^30.4.1",
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.1",
+    "vitest": "^3.2.1"
+  }
+}

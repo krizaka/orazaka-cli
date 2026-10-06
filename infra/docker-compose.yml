@@ -1,0 +1,74 @@
+version: '3.8'
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: orazaka-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-orazaka_db}
+      POSTGRES_USER: ${SPRING_DATASOURCE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?SPRING_DATASOURCE_PASSWORD must be set}
+    command: postgres -c shared_buffers=256MB -c max_connections=100
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+      - ./local-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SPRING_DATASOURCE_USERNAME:-postgres} -d ${POSTGRES_DB:-orazaka_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mcp-debug-server:
+    image: node:24.11.1-slim
+    container_name: orazaka-mcp-debug
+    working_dir: /app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      sh -c "npm init -y && 
+             npm install @modelcontextprotocol/sdk && 
+             node -e '
+               const { Server } = require(\\"@modelcontextprotocol/sdk/server/index.js\\");
+               const { StdioServerTransport } = require(\\"@modelcontextprotocol/sdk/server/stdio.js\\");
+               const { ListToolsRequestSchema } = require(\\"@modelcontextprotocol/sdk/types.js\\");
+               const server = new Server({ name: \\"debug-server\\", version: \\"1.0.0\\" }, { capabilities: { tools: {} } });
+               server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [{ name: \\"echo\\", description: \\"Echo input\\" }] }));
+               require(\\"http\\").createServer((req, res) => res.end(\\"ok\\")).listen(8080);
+               const transport = new StdioServerTransport();
+               server.connect(transport).then(() => console.log(\\"MCP Debug Server connected via Stdio\\"));
+             '"
+    ports:
+      - "8084:8080"
+
+  redis:
+    image: redis:7-alpine
+    container_name: orazaka-redis
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --save 900 1 --appendonly no
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: always
+    container_name: orazaka-rabbitmq
+    hostname: localhost
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgvector_data:
