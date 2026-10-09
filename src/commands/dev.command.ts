@@ -285,7 +285,14 @@ export const devCommand = new Command("dev")
         label: "IDENTITY",
         color: chalk.white,
         command: "./mvnw",
-        args: ["spring-boot:run", "-pl", "krizaka/krizaka-users/krizaka-users-service"],
+        // Run from the workspace root, like the e2e harness: Orazaka's onboarding schemas are
+        // file:infra/users/… paths in .env (USERS_ONBOARDING_SCHEMA).
+        args: [
+          "spring-boot:run",
+          "-pl",
+          "krizaka/krizaka-users/krizaka-users-service",
+          `-Dspring-boot.run.workingDirectory=${root}`,
+        ],
         cwd: root,
         enabled: isEnabled("identity"),
         port: PORTS.identity,
