@@ -563,7 +563,7 @@ async function applyRolePasswords(dockerComposeCmd: string): Promise<void> {
       ready =
         execSync(
           `${dockerComposeCmd} -p orazaka exec -T db-vector psql -U ${superuser} -d postgres ` +
-            `-tAc "SELECT 1 FROM pg_roles WHERE rolname = 'orazaka_identity';"`,
+            `-tAc "SELECT 1 FROM pg_roles WHERE rolname = 'krizaka_users';"`,
           { stdio: "pipe", env: process.env },
         )
           .toString()
