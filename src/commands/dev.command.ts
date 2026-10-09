@@ -325,7 +325,7 @@ export const devCommand = new Command("dev")
         label: "BILLING",
         color: chalk.green,
         command: "./mvnw",
-        args: ["spring-boot:run", "-pl", "orazaka-apps/services/orazaka-billing/orazaka-billing-service"],
+        args: ["spring-boot:run", "-pl", "krizaka/krizaka-billing/krizaka-billing-service"],
         cwd: root,
         enabled: isEnabled("billing"),
         port: PORTS.billing,
@@ -348,7 +348,7 @@ export const devCommand = new Command("dev")
         args: [
           "spring-boot:run",
           "-pl",
-          "orazaka-apps/services/orazaka-notifications/orazaka-notification-service",
+          "krizaka/krizaka-notifications/krizaka-notifications-service",
         ],
         cwd: root,
         enabled: isEnabled("notifications"),
