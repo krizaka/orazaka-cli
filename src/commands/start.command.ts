@@ -532,7 +532,20 @@ export const startCommand = new Command("start")
   });
 
 /** The bounded contexts whose database role owns its own schema (AGENTS.md §5). */
-const DB_ROLE_CONTEXTS = ["IDENTITY", "KNOWLEDGE", "AUTOMATION", "BILLING", "STUDIO"] as const;
+/**
+ * Each context's role, as its initdb file creates it. The two Krizaka building blocks name theirs
+ * after themselves (`10-identity.sql` → `krizaka_users`, `70-billing.sql` → `krizaka_billing`); a role
+ * derived as `orazaka_<ctx>` does not exist for them, so `ALTER ROLE` failed and the users service —
+ * the one every sign-in needs — could never connect on a fresh volume.
+ */
+const DB_ROLES = {
+  IDENTITY: "krizaka_users",
+  KNOWLEDGE: "orazaka_knowledge",
+  AUTOMATION: "orazaka_automation",
+  BILLING: "krizaka_billing",
+  STUDIO: "orazaka_studio",
+} as const;
+const DB_ROLE_CONTEXTS = Object.keys(DB_ROLES) as (keyof typeof DB_ROLES)[];
 
 /**
  * Sets each context role's password from the environment.
@@ -579,7 +592,7 @@ async function applyRolePasswords(dockerComposeCmd: string): Promise<void> {
   for (const ctx of DB_ROLE_CONTEXTS) {
     const password = process.env[`${ctx}_DB_PASSWORD`];
     if (!password) continue;
-    const role = `orazaka_${ctx.toLowerCase()}`;
+    const role = DB_ROLES[ctx];
     try {
       // Over stdin, not `-c`: psql only interpolates `:'pw'` for file/stdin input, so `-c` sends
       // the literal `:'pw'` to the server and fails with a syntax error. Interpolating means psql
