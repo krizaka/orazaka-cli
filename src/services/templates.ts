@@ -129,7 +129,7 @@ export function generateInterceptor(
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.orazaka</groupId>
+        <groupId>com.krizaka.orazaka</groupId>
         <artifactId>orazaka-interceptors</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -141,7 +141,7 @@ export function generateInterceptor(
 
     <dependencies>
         <dependency>
-            <groupId>com.orazaka</groupId>
+            <groupId>com.krizaka.orazaka</groupId>
             <artifactId>orazaka-core</artifactId>
         </dependency>
         <dependency>
