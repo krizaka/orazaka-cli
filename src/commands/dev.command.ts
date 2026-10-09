@@ -285,7 +285,7 @@ export const devCommand = new Command("dev")
         label: "IDENTITY",
         color: chalk.white,
         command: "./mvnw",
-        args: ["spring-boot:run", "-pl", "orazaka-apps/services/orazaka-users/orazaka-identity-service"],
+        args: ["spring-boot:run", "-pl", "krizaka/krizaka-users/krizaka-users-service"],
         cwd: root,
         enabled: isEnabled("identity"),
         port: PORTS.identity,
