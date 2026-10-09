@@ -151,13 +151,13 @@ export const stopCommand = new Command("stop")
             TRUNCATE TABLE platform_mcp_servers CASCADE;
             TRUNCATE TABLE platform_tool_configs CASCADE;
             TRUNCATE TABLE user_credentials CASCADE;
-            TRUNCATE TABLE orazaka_users CASCADE;
-            TRUNCATE TABLE orazaka_user_profiles CASCADE;
-            TRUNCATE TABLE orazaka_verification_tokens CASCADE;
-            TRUNCATE TABLE orazaka_user_interceptions CASCADE;
+            TRUNCATE TABLE users CASCADE;
+            TRUNCATE TABLE user_profiles CASCADE;
+            TRUNCATE TABLE verification_tokens CASCADE;
+            TRUNCATE TABLE user_interceptions CASCADE;
             TRUNCATE TABLE orazaka_tools_cache CASCADE;
             TRUNCATE TABLE orazaka_tools_rag_source CASCADE;
-            TRUNCATE TABLE orazaka_password_resets CASCADE;
+            TRUNCATE TABLE password_resets CASCADE;
             TRUNCATE TABLE orazaka_ai_mcp_servers CASCADE;
             TRUNCATE TABLE orazaka_ai_rag_stores CASCADE;
           `.replace(/\s+/g, " ").trim();

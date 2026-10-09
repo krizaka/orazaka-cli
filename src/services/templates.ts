@@ -129,7 +129,7 @@ export function generateInterceptor(
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.orazaka</groupId>
+        <groupId>com.krizaka.orazaka</groupId>
         <artifactId>orazaka-interceptors</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -141,7 +141,7 @@ export function generateInterceptor(
 
     <dependencies>
         <dependency>
-            <groupId>com.orazaka</groupId>
+            <groupId>com.krizaka.orazaka</groupId>
             <artifactId>orazaka-core</artifactId>
         </dependency>
         <dependency>
@@ -186,9 +186,9 @@ export function generateInterceptor(
   // Interceptor implementation
   files.push(writeFile(
     path.join(srcMain, `${name}Interceptor.java`),
-    `package com.orazaka.interceptor.${pkg};
+    `package com.krizaka.orazaka.interceptor.${pkg};
 
-import com.orazaka.core.application.interceptor.PromptContextInterceptor;
+import com.krizaka.orazaka.core.application.interceptor.PromptContextInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.advisor.api.AdvisedRequest;
@@ -238,7 +238,7 @@ public final class ${name}Interceptor implements PromptContextInterceptor {
   // Auto-configuration
   files.push(writeFile(
     path.join(srcMain, `${name}AutoConfiguration.java`),
-    `package com.orazaka.interceptor.${pkg};
+    `package com.krizaka.orazaka.interceptor.${pkg};
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -268,7 +268,7 @@ public class ${name}AutoConfiguration {
   const importsDir = path.join(moduleDir, "src", "main", "resources", "META-INF", "spring");
   files.push(writeFile(
     path.join(importsDir, "org.springframework.boot.autoconfigure.AutoConfiguration.imports"),
-    `com.orazaka.interceptor.${pkg}.${name}AutoConfiguration\n`,
+    `com.krizaka.orazaka.interceptor.${pkg}.${name}AutoConfiguration\n`,
     workspaceRoot,
     "Spring Boot auto-configuration SPI import",
   ));
@@ -276,7 +276,7 @@ public class ${name}AutoConfiguration {
   // Test
   files.push(writeFile(
     path.join(srcTest, `${name}InterceptorTest.java`),
-    `package com.orazaka.interceptor.${pkg};
+    `package com.krizaka.orazaka.interceptor.${pkg};
 
 import org.junit.jupiter.api.Test;
 
@@ -338,7 +338,7 @@ export function generateBusinessFeature(
   // Service interface (core)
   files.push(writeFile(
     path.join(coreSrc, "application", "service", `${name}Service.java`),
-    `package com.orazaka.core.application.service;
+    `package com.krizaka.orazaka.core.application.service;
 
 /**
  * ${name}Service: ${ctx.description}
@@ -364,7 +364,7 @@ public interface ${name}Service {
   // Service implementation (core)
   files.push(writeFile(
     path.join(coreSrc, "application", "service", `${name}ServiceImpl.java`),
-    `package com.orazaka.core.application.service;
+    `package com.krizaka.orazaka.core.application.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -396,9 +396,9 @@ final class ${name}ServiceImpl implements ${name}Service {
   // REST controller (gateway)
   files.push(writeFile(
     path.join(conversationSrc, "infrastructure", "adapter", "rest", `${name}Controller.java`),
-    `package com.orazaka.conversationservice.infrastructure.adapter.rest;
+    `package com.krizaka.orazaka.conversationservice.infrastructure.adapter.rest;
 
-import com.orazaka.core.application.service.${name}Service;
+import com.krizaka.orazaka.core.application.service.${name}Service;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -555,7 +555,7 @@ export function generateTechnicalFeature(
   // Properties record
   files.push(writeFile(
     path.join(coreSrc, "infrastructure", "config", `${name}Properties.java`),
-    `package com.orazaka.core.infrastructure.config;
+    `package com.krizaka.orazaka.core.infrastructure.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -590,7 +590,7 @@ public record ${name}Properties(
   // Configuration class
   files.push(writeFile(
     path.join(coreSrc, "infrastructure", "config", `${name}Configuration.java`),
-    `package com.orazaka.core.infrastructure.config;
+    `package com.krizaka.orazaka.core.infrastructure.config;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -613,7 +613,7 @@ public class ${name}Configuration {
   files.push(writeFile(
     path.join(struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
       "src", "test", "java", "com", "orazaka", "core", "infrastructure", "config", `${name}PropertiesTest.java`),
-    `package com.orazaka.core.infrastructure.config;
+    `package com.krizaka.orazaka.core.infrastructure.config;
 
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -669,7 +669,7 @@ export function generateApiConnector(
   // Client interface (port)
   files.push(writeFile(
     path.join(coreSrc, "domain", "port", `${name}Client.java`),
-    `package com.orazaka.core.domain.port;
+    `package com.krizaka.orazaka.core.domain.port;
 
 /**
  * ${name}Client: Outbound port for ${ctx.description}.
@@ -704,10 +704,10 @@ public interface ${name}Client {
   // RestClient implementation
   files.push(writeFile(
     path.join(coreSrc, "infrastructure", "adapter", "client", `${name}RestClient.java`),
-    `package com.orazaka.core.infrastructure.adapter.client;
+    `package com.krizaka.orazaka.core.infrastructure.adapter.client;
 
-import com.orazaka.core.domain.port.${name}Client;
-import com.orazaka.core.infrastructure.config.${name}ConnectorProperties;
+import com.krizaka.orazaka.core.domain.port.${name}Client;
+import com.krizaka.orazaka.core.infrastructure.config.${name}ConnectorProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -764,7 +764,7 @@ final class ${name}RestClient implements ${name}Client {
   // Properties
   files.push(writeFile(
     path.join(coreSrc, "infrastructure", "config", `${name}ConnectorProperties.java`),
-    `package com.orazaka.core.infrastructure.config;
+    `package com.krizaka.orazaka.core.infrastructure.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -795,9 +795,9 @@ public record ${name}ConnectorProperties(
   files.push(writeFile(
     path.join(struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
       "src", "test", "java", "com", "orazaka", "core", "infrastructure", "adapter", "client", `${name}RestClientTest.java`),
-    `package com.orazaka.core.infrastructure.adapter.client;
+    `package com.krizaka.orazaka.core.infrastructure.adapter.client;
 
-import com.orazaka.core.infrastructure.config.${name}ConnectorProperties;
+import com.krizaka.orazaka.core.infrastructure.config.${name}ConnectorProperties;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -909,7 +909,7 @@ export function generateJavaService(ctx: TemplateContext): { interface: string; 
   const implClassName = `${className}Impl`;
 
   return {
-    interface: `package com.orazaka.core.application.service;
+    interface: `package com.krizaka.orazaka.core.application.service;
 
 /**
  * ${className}: ${ctx.description}
@@ -921,7 +921,7 @@ public interface ${className} {
     String execute(String input);
 }
 `,
-    implementation: `package com.orazaka.core.application.service;
+    implementation: `package com.krizaka.orazaka.core.application.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -955,9 +955,9 @@ export function generateJavaController(ctx: TemplateContext): string {
   const serviceVarName = camelCase(ctx.moduleName);
   const endpoint = `/${kebabCase(ctx.moduleName)}`;
 
-  return `package com.orazaka.conversationservice.infrastructure.adapter.rest;
+  return `package com.krizaka.orazaka.conversationservice.infrastructure.adapter.rest;
 
-import com.orazaka.core.application.service.${serviceName};
+import com.krizaka.orazaka.core.application.service.${serviceName};
 import org.springframework.web.bind.annotation.*;
 
 /**

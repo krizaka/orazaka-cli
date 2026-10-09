@@ -285,7 +285,14 @@ export const devCommand = new Command("dev")
         label: "IDENTITY",
         color: chalk.white,
         command: "./mvnw",
-        args: ["spring-boot:run", "-pl", "orazaka-apps/services/orazaka-users/orazaka-identity-service"],
+        // Run from the workspace root, like the e2e harness: Orazaka's onboarding schemas are
+        // file:infra/users/… paths in .env (USERS_ONBOARDING_SCHEMA).
+        args: [
+          "spring-boot:run",
+          "-pl",
+          "krizaka/krizaka-users/krizaka-users-service",
+          `-Dspring-boot.run.workingDirectory=${root}`,
+        ],
         cwd: root,
         enabled: isEnabled("identity"),
         port: PORTS.identity,
@@ -325,7 +332,7 @@ export const devCommand = new Command("dev")
         label: "BILLING",
         color: chalk.green,
         command: "./mvnw",
-        args: ["spring-boot:run", "-pl", "orazaka-apps/services/orazaka-billing/orazaka-billing-service"],
+        args: ["spring-boot:run", "-pl", "krizaka/krizaka-billing/krizaka-billing-service"],
         cwd: root,
         enabled: isEnabled("billing"),
         port: PORTS.billing,
@@ -348,7 +355,7 @@ export const devCommand = new Command("dev")
         args: [
           "spring-boot:run",
           "-pl",
-          "orazaka-apps/services/orazaka-notifications/orazaka-notification-service",
+          "krizaka/krizaka-notifications/krizaka-notifications-service",
         ],
         cwd: root,
         enabled: isEnabled("notifications"),
