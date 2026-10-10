@@ -41,6 +41,7 @@ import { testCommand } from "./commands/test.command";
 import { docsCommand } from "./commands/docs.command";
 import { dbCommand } from "./commands/db.command";
 import { modelsCommand } from "./commands/models.command";
+import { demoCommand } from "./commands/demo.command";
 
 function getVersion(): string {
     const pkgPath = path.resolve(__dirname, "..", "package.json");
@@ -97,6 +98,7 @@ program
   .addCommand(startCommand)
   .addCommand(stopCommand)
   .addCommand(onboardCommand)
+  .addCommand(demoCommand)
   // ─── Recovery & Troubleshooting ─────────────────────────
   .addCommand(recoverCommand)
   // ─── Observability ──────────────────────────────────────
