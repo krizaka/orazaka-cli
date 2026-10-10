@@ -48,7 +48,7 @@ describe("token helpers", () => {
 
 /** A tiny in-memory platform: enough of each service for the seed to talk to. */
 function platform() {
-  const state = { registered: false, verified: false, plan: "", balance: 0, packs: new Set<string>(), studios: new Set<string>(), calls: [] as string[] };
+  const state = { sessions: ["s1", "s2"], registered: false, verified: false, plan: "", balance: 0, packs: new Set<string>(), studios: new Set<string>(), calls: [] as string[] };
   const fetch: Fetch = async (url, init) => {
     const method = init?.method ?? "GET";
     const path = url.replace(/^https?:\/\/[^/]+/, "");
@@ -81,11 +81,18 @@ function platform() {
       case `POST /api/v1/billing/wallets/${ACTOR}/adjustments`:
         state.balance += body.amount;
         return json(200, {});
+      case "GET /api/v1/chat/sessions":
+        return json(200, state.sessions.map((id) => ({ id })));
       case "GET /api/v1/studios/installations":
         return json(200, [...state.studios].map((studioKey) => ({ studioKey })));
     }
     const pack = /^\/api\/v1\/billing\/pack-subscriptions\/me\/(.+)$/.exec(path);
     if (pack) return state.packs.has(pack[1]) ? json(409) : (state.packs.add(pack[1]), json(201, {}));
+    const session = /^\/api\/v1\/chat\/sessions\/(.+)$/.exec(path);
+    if (method === "DELETE" && session) {
+      state.sessions = state.sessions.filter((id) => id !== session[1]);
+      return json(200);
+    }
     const studio = /^\/api\/v1\/studios\/([^/]+)\/installations/.exec(path);
     if (studio) {
       if (studio[1] === "image-generation") return json(409, { status: "studio_included" });
@@ -97,8 +104,9 @@ function platform() {
   return { state, fetch };
 }
 
-function seeder(fetch: Fetch, steps: string[] = []) {
+function seeder(fetch: Fetch, steps: string[] = [], fresh = false) {
   return new DemoSeeder({
+    fresh,
     baseUrl: "http://localhost:8088",
     mailUrl: "http://localhost:8025",
     password: "secret-demo",
@@ -132,6 +140,16 @@ describe("DemoSeeder", () => {
     expect(steps).toContain(`Account already exists: ${DEMO_PERSONA.email}`);
     expect(steps).toContain("Plan already premium");
     expect(steps).toContain(`Credits already at ${DEMO_CREDITS}`);
+  });
+
+  test("keeps Eric's conversations unless asked for a fresh history", async () => {
+    const { state, fetch } = platform();
+    await seeder(fetch).run();
+    expect(state.sessions).toEqual(["s1", "s2"]);
+    const steps: string[] = [];
+    await seeder(fetch, steps, true).run();
+    expect(state.sessions).toEqual([]);
+    expect(steps).toContain("Conversations cleared (2)");
   });
 
   test("never calls the platform when the target is not local", async () => {

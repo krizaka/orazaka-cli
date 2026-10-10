@@ -31,6 +31,8 @@ export interface DemoSeedOptions {
   onStep: (line: string) => void;
   /** How long to wait for the verification e-mail (ms). */
   mailTimeoutMs?: number;
+  /** Deletes Eric's conversations first, for a demo that starts from a clean history. */
+  fresh?: boolean;
 }
 
 export interface DemoSeedResult {
@@ -76,6 +78,7 @@ export class DemoSeeder {
     const token = login.token;
     const actorId = actorIdOf(token);
     await this.onboarding(token, login.activeInterceptions ?? []);
+    if (this.o.fresh) await this.clearConversations(token);
     await this.call("PUT", "/api/v1/profile/preferences", token, DEMO_PERSONA.preferences);
     this.o.onStep("Preferences set (English, Nova voice, 4:3 visuals)");
     const adminToken = await this.adminToken();
@@ -134,6 +137,13 @@ export class DemoSeeder {
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
+  }
+
+  /** Removes the conversations Eric holds, through the same endpoint the application's delete uses. */
+  private async clearConversations(token: string): Promise<void> {
+    const sessions = (await this.call("GET", "/api/v1/chat/sessions", token)) as { id: string }[];
+    for (const s of sessions) await this.call("DELETE", `/api/v1/chat/sessions/${s.id}`, token);
+    this.o.onStep(`Conversations cleared (${sessions.length})`);
   }
 
   /** Answers the onboarding form a new user meets at first sign-in, as Eric would. */

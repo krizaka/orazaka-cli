@@ -14,7 +14,7 @@ import { ROUTER_URL, strEnv } from "../utils/config";
 import { DemoSeeder } from "../services/demo/demo.seed";
 import { DEMO_PERSONA } from "../services/demo/demo.persona";
 
-async function seed(): Promise<void> {
+async function seed(opts: { fresh?: boolean }): Promise<void> {
   await intro(chalk.cyan("Orazaka demo persona"));
   const password = strEnv("DEMO_PASSWORD", DEMO_PERSONA.defaultPassword);
   try {
@@ -26,6 +26,7 @@ async function seed(): Promise<void> {
       env: process.env,
       fetch: (url, init) => fetch(url, init),
       onStep: (line) => void logSuccess(`✔ ${line}`),
+      fresh: opts.fresh,
     }).run();
     await logInfo(
       `Sign in as ${chalk.bold(result.email)} / ${chalk.bold(password)} — ${result.studios.length} Studios, ` +
@@ -43,4 +44,5 @@ export const demoCommand = new Command("demo").description("Demonstration person
 demoCommand
   .command("seed")
   .description("Create or refresh Eric, the demo persona: account, onboarding, plan, packs and Studios (replayable)")
+  .option("--fresh", "Delete Eric's conversations first, for a demo that starts from a clean history")
   .action(seed);
