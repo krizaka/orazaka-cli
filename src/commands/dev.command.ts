@@ -17,7 +17,7 @@ import chalk from "chalk";
 import { logWarning } from "../ui/prompts";
 import { spawnWithPrefix } from "../utils/process";
 import { PORTS } from "../utils/config";
-import { resolveWorkspaceFrom } from "../utils/platform";
+import { requireWorkspace } from "./workspace-guard";
 
 /** Stable service identifiers used by the `--only` filter. */
 export type ServiceKey =
@@ -152,13 +152,6 @@ interface ProcessConfig {
 }
 
 /**
- * Resolves the workspace root (orazaka.workspace.json) by walking up from the CLI.
- */
-function resolveMonorepoRoot(): string {
-  return resolveWorkspaceFrom(__dirname);
-}
-
-/**
  * Parses the `--only` value into a validated set of service keys. Accepts a
  * comma-separated list (e.g. "web,mobile"); unknown tokens are rejected so a
  * typo never silently launches nothing.
@@ -249,7 +242,7 @@ export const devCommand = new Command("dev")
   .option("--skip-web", "Skip Web client")
   .option("--skip-workers", "Skip the Python workers declared by worker.yaml")
   .action((opts: DevOptions) => {
-    const root = resolveMonorepoRoot();
+    const root = requireWorkspace("dev");
     const uiRoot = path.join(root, "orazaka-apps", "ui");
 
     const enabled = resolveEnabledServices(opts);

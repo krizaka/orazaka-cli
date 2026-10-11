@@ -1,0 +1,39 @@
+{
+  "name": "orazaka",
+  "version": "1.0.0",
+  "description": "npx orazaka — the short name of @krizaka/orazaka-cli, the CLI of the Orazaka sovereign AI platform.",
+  "bin": {
+    "orazaka": "bin/orazaka.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@krizaka/orazaka-cli": "1.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krizaka/orazaka-cli.git",
+    "directory": "alias"
+  },
+  "homepage": "https://www.krizaka.com/en/products/orazaka",
+  "bugs": {
+    "url": "https://github.com/krizaka/orazaka-cli/issues"
+  },
+  "keywords": [
+    "orazaka",
+    "krizaka",
+    "sovereign-ai",
+    "cli"
+  ],
+  "author": "Krizaka (https://www.krizaka.com)",
+  "license": "Apache-2.0"
+}

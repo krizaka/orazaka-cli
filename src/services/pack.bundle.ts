@@ -13,6 +13,7 @@ import * as path from "node:path";
 import { parse as parseYaml } from "yaml";
 import Ajv2020, { type ErrorObject } from "ajv/dist/2020";
 import addFormats from "ajv-formats";
+import { locateWorkspace } from "../utils/platform";
 
 /** One locale's strings for a pack, its shelf, or one of its Studios. */
 export interface LocalisedText {
@@ -93,9 +94,10 @@ const SCHEMA_FILE = "pack.schema.json";
  * validate against its own claim about what a manifest is.
  *
  * <p>Resolved from this CLI's own location instead: the tool doing the installing carries the
- * contract it enforces. In the local phase the CLI runs from the repository, so the walk finds
- * `orazaka-packs/pack.schema.json`; publishing the CLI as a package would mean copying the schema
- * into it at build time, which is a packaging change and not this phase's.
+ * contract it enforces. A CLI cloned in the workspace finds `orazaka-packs/pack.schema.json` by that
+ * walk. The CLI installed from npm sits outside any workspace, so it takes the schema of the workspace
+ * it operates on — the one holding `orazaka.workspace.json` around the current directory, i.e. the
+ * platform the pack is being installed into — never a file next to the bundle.
  */
 function locateSchema(): string {
   let dir = __dirname;
@@ -109,6 +111,11 @@ function locateSchema(): string {
       break;
     }
     dir = parent;
+  }
+  const workspace = locateWorkspace();
+  const fromWorkspace = workspace ? path.join(workspace, PACKS_DIR, SCHEMA_FILE) : null;
+  if (fromWorkspace && fs.existsSync(fromWorkspace)) {
+    return fromWorkspace;
   }
   throw new BundleError(
     `This CLI cannot find its own ${PACKS_DIR}/${SCHEMA_FILE}. A bundle is validated against the ` +

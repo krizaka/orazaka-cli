@@ -56,7 +56,7 @@ function getBanner(): string {
   return `
 ${chalk.cyan("  ┌──────────────────────────────────────────────┐")}
 ${chalk.cyan("  │")}                                              ${chalk.cyan("│")}
-${chalk.cyan("  │")}   ${chalk.white.bold("🥷  O R A S A K A")}   ${chalk.gray(v.padEnd(8))}              ${chalk.cyan("│")}
+${chalk.cyan("  │")}   ${chalk.white.bold("🥷  O R A Z A K A")}   ${chalk.gray(v.padEnd(8))}              ${chalk.cyan("│")}
 ${chalk.cyan("  │")}   ${chalk.gray("Sovereign AI Orchestration Engine")}         ${chalk.cyan("│")}
 ${chalk.cyan("  │")}                                              ${chalk.cyan("│")}
 ${chalk.cyan("  └──────────────────────────────────────────────┘")}
@@ -79,7 +79,7 @@ ${chalk.cyan.bold("Development:")}
   ${chalk.white("$")} npx orazaka doctor       ${chalk.gray("Full system diagnostics")}
 
 ${chalk.cyan.bold("Documentation:")}
-  ${chalk.gray("https://github.com/oussamaABID/orazaka/blob/main/docs/_generated/CLI.md")}
+  ${chalk.gray("https://github.com/krizaka/orazaka/blob/main/docs/_generated/CLI.md")}
 `;
 }
 

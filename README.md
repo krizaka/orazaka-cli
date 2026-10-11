@@ -1,7 +1,7 @@
 <!-- krizaka-header -->
 <div align="center">
 
-<img src=".github/assets/orazaka-logo.svg" alt="Orazaka" width="420">
+<img src="https://raw.githubusercontent.com/krizaka/orazaka-cli/main/.github/assets/orazaka-logo.svg" alt="Orazaka" width="420">
 
 # Orazaka CLI
 
@@ -10,6 +10,7 @@
 The `orazaka` developer CLI: install, start, dev, test, docs and pack tooling for the Orazaka workspace, with an offline SQLite queue.
 
 [![CI](https://github.com/krizaka/orazaka-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/krizaka/orazaka-cli/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@krizaka/orazaka-cli?label=%40krizaka%2Forazaka-cli)](https://www.npmjs.com/package/@krizaka/orazaka-cli)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Orazaka](https://img.shields.io/badge/part%20of-Orazaka-f59e0b)](https://github.com/krizaka/orazaka#repositories)
 [![Docs](https://img.shields.io/badge/docs-krizaka.com-6366f1)](https://www.krizaka.com/en/products/orazaka)
@@ -19,19 +20,38 @@ The `orazaka` developer CLI: install, start, dev, test, docs and pack tooling fo
 </div>
 <!-- /krizaka-header -->
 
-**Layer:** Client application · **Version:** `1.0.0-SNAPSHOT` · **License:** Apache-2.0 ·
+**Layer:** Client application · **npm:** [`@krizaka/orazaka-cli`](https://www.npmjs.com/package/@krizaka/orazaka-cli) (alias [`orazaka`](https://www.npmjs.com/package/orazaka)) · **License:** Apache-2.0 ·
 part of the [Orazaka platform](https://github.com/krizaka/orazaka) by [Krizaka](https://krizaka.com)
+
+## Quick start
+
+Requirements: git, JDK 21, Node.js 22+, Docker (Python 3.11+ for the media worker).
+
+```bash
+npx orazaka install   # no workspace here? clones the platform into ./orazaka, then configures it
+cd orazaka && ./mvnw install && (cd orazaka-apps/ui && npm install)
+npx orazaka start     # Docker infrastructure (PostgreSQL + pgvector, Redis, RabbitMQ)
+npx orazaka dev       # the whole stack: services, web, admin, mobile
+```
+
+`orazaka` on npm is the short name of the canonical package **`@krizaka/orazaka-cli`** — both run the same CLI:
+
+```bash
+npx @krizaka/orazaka-cli install      # the same as npx orazaka install
+npm install -g @krizaka/orazaka-cli   # then: orazaka <command>
+```
+
+`install` verifies the tools (and offers Homebrew installs on macOS), clones
+[krizaka/orazaka](https://github.com/krizaka/orazaka) and every component repository when it is not run inside a
+workspace (`--dir <path>`, `--depth <n>`; `--yes` accepts every default without a prompt), sets up the media worker's
+Python environment and writes `.env` and `infra/docker-compose.override.yml`. `install --check-only` only reports.
+`start`, `dev`, `test` and `docs` run inside a workspace and say how to get one when there is none.
 
 ## What it provides
 
 The single orchestrator of the platform (no shell scripts): `orazaka install`, `start` (Docker infra),
 `models pull`, `dev`, `onboard`, `test [unit|it|e2e]`, `docs [build|sync]`, `pack list|validate|install|publish`,
-`doctor`. Run it from an Orazaka workspace ([krizaka/orazaka](https://github.com/krizaka/orazaka)).
-
-```bash
-npm install && npm run build
-node dist/index.js doctor
-```
+`demo seed`, `doctor`.
 
 ## Position in the platform
 
@@ -49,11 +69,14 @@ node dist/index.js doctor
 git clone https://github.com/krizaka/orazaka.git && cd orazaka
 node scripts/workspace.mjs clone
 cd orazaka-apps/ui && npm install
+npm run validate --workspace=orazaka-cli
 ```
 
-**Standalone**: add `@krizaka:registry=https://npm.pkg.github.com` to `.npmrc`, then `npm install`.
+**Standalone**: `npm install && npm run build && node dist/index.js --help`.
 
-Requirements: Node.js 22+.
+`npm run test:pack` packs `@krizaka/orazaka-cli` and its `orazaka` alias (`alias/`), installs them in an empty
+project outside any workspace and runs the bin from there — what CI checks on every pull request. Releases:
+[AGENTS.md](AGENTS.md#release).
 
 ## Governance
 

@@ -112,22 +112,24 @@ export function resolveWorkspaceRootSmart(): string {
   return process.cwd();
 }
 
-/**
- * The Orazaka workspace this CLI runs from: the nearest directory above {@code start} holding
- * {@link WORKSPACE_MANIFEST}. Every repository of the platform is cloned under it, so the CLI's own
- * position (orazaka-apps/ui/orazaka-cli) is not what defines it.
- */
-export function resolveWorkspaceFrom(start: string): string {
+/** The nearest directory at or above {@code start} holding {@link WORKSPACE_MANIFEST}, or null. */
+export function findWorkspaceManifestRoot(start: string): string | null {
   let current = path.resolve(start);
-  const top = path.parse(current).root;
-  while (current !== top) {
-    if (fs.existsSync(path.join(current, WORKSPACE_MANIFEST))) {
-      return current;
-    }
-    current = path.dirname(current);
+  for (;;) {
+    if (fs.existsSync(path.join(current, WORKSPACE_MANIFEST))) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
   }
-  // Not inside a workspace: the layout the CLI ships in (orazaka-apps/ui/orazaka-cli/dist/<dir>).
-  return path.resolve(start, "..", "..", "..", "..", "..");
+}
+
+/**
+ * The Orazaka workspace the CLI works on: the one around the current directory first (the CLI
+ * installed from npm runs from anywhere), then the one the CLI itself sits in (a workspace clone
+ * running its own build). Null when neither exists — the caller explains how to get one.
+ */
+export function locateWorkspace(cwd: string = process.cwd(), cliDir: string = __dirname): string | null {
+  return findWorkspaceManifestRoot(cwd) ?? findWorkspaceManifestRoot(cliDir);
 }
 
 /** Resolves the workspace root directory for the Orazaka project. */
