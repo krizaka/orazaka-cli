@@ -7,7 +7,7 @@
 import { assertLocalDemoTarget, DemoGuardError } from "../services/demo/demo.guard";
 import { actorIdOf, DemoSeeder, verificationTokenIn, type Fetch } from "../services/demo/demo.seed";
 import { DEMO_CREDITS, DEMO_PERSONA, DEMO_RUNS, DEMO_STUDIOS } from "../services/demo/demo.persona";
-import { DEMO_LEASE, demoInvoicePdf } from "../services/demo/demo.documents";
+import { DEMO_INVOICE, DEMO_INVOICE_LINES, DEMO_INVOICE_TOTALS, DEMO_LEASE, demoInvoicePdf } from "../services/demo/demo.documents";
 
 const ACTOR = "1c10ee07-1b3a-4140-923e-4923f959f8c7";
 const jwt = (sub: string) => `h.${Buffer.from(JSON.stringify({ sub })).toString("base64url")}.s`;
@@ -209,6 +209,19 @@ describe("demo documents", () => {
     expect(DEMO_LEASE).toMatch(/dépôt de garantie de 1 960 €/);
     expect(DEMO_LEASE).toMatch(/loyer mensuel est fixé à 980 €/);
     expect(DEMO_LEASE).toMatch(/ne pourra pas recevoir de visites/);
+  });
+
+  test("the invoice is Canadian: CAD, GST 5 % and QST 9.975 % on the subtotal, totals that add up", () => {
+    expect(DEMO_INVOICE.gstRate).toBe(0.05);
+    expect(DEMO_INVOICE.qstRate).toBe(0.09975);
+    expect(DEMO_INVOICE_TOTALS).toEqual({ subtotal: 129_500, gst: 6_475, qst: 12_918, total: 148_893 });
+    const text = DEMO_INVOICE_LINES.join("\n");
+    expect(text).toMatch(/Montréal/);
+    expect(text).toMatch(/dollars canadiens \(CAD\)/);
+    expect(text).toMatch(/TPS 5 %\s\.+\s+64,75 \$/);
+    expect(text).toMatch(/TVQ 9,975 %\s\.+\s+129,18 \$/);
+    expect(text).toMatch(/Total\s\.+\s+1 488,93 \$/);
+    expect(text).not.toMatch(/€|EUR|TVA/);
   });
 
   test("the invoice is a well-formed PDF: header, objects at the offsets the xref claims, trailer", () => {

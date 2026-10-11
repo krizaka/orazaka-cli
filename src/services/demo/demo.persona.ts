@@ -3,7 +3,7 @@
  * @description The demonstration persona: who signs in when Orazaka is shown to a client.
  *
  * "admin" is a role, not a person — nobody watching a demo can picture themselves in it. Eric is
- * an invented head of sales at an invented lighting studio: a first name a client can read at a
+ * an invented head of sales at an invented Montréal lighting studio (it sells in Canadian dollars): a first name a client can read at a
  * glance, a generic surname, a reserved e-mail domain (RFC 2606, `example.com`, never delivered)
  * and no avatar but his initial. Nothing here describes a real person or a real company.
  *
@@ -28,7 +28,7 @@ export const DEMO_PERSONA = {
     voiceModel: "nova",
     primaryIndustry: "creative",
     aiBehavior:
-      "Eric leads sales at Lumen Atelier, a small studio that designs ceramic lamps. Answer clearly, in short paragraphs, and end with the next step.",
+      "Eric leads sales at Lumen Atelier, a small Montréal studio that designs ceramic lamps. Prices are in Canadian dollars. Answer clearly, in short paragraphs, and end with the next step.",
   },
   /** Preferences the client reads (profile → Appearance, chat defaults). */
   preferences: {
@@ -87,12 +87,12 @@ export const DEMO_RUNS: readonly DemoRun[] = [
   },
   {
     studioKey: "speech-synthesis",
-    inputs: { text: "Meet Ember, our new table lamp. Shaped by hand in Lyon, glazed in amber, and lit to make an evening feel like home." },
+    inputs: { text: "Meet Ember, our new table lamp. Shaped by hand in Montréal, glazed in amber, and lit to make an evening feel like home." },
   },
   {
     studioKey: "lead-research",
     inputs: {
-      prospects: ["Maison Lumière, concept store, Paris", "Hôtel des Canuts, boutique hotel, Lyon", "Atelier Nord, interior architects, Lille"],
+      prospects: ["Maison Lumière, concept store, Montréal", "Auberge des Érables, boutique hotel, Québec City", "Atelier Nord, interior architects, Toronto"],
       offer: "Hand-glazed ceramic lamps made to order, delivered in four weeks",
       icp: "Boutique hotels and interior architects furnishing 10 to 60 rooms",
     },
