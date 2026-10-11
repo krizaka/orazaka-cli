@@ -5,7 +5,7 @@
  * reported for `--skip-router` (ex `--skip-core`) and `--skip-mobile`.
  */
 
-import { absoluteUploadDir, resolveEnabledServices, type ServiceKey } from "../commands/dev.command";
+import { absoluteUploadDir, bannerAddress, bannerLabelWidth, resolveEnabledServices, type ServiceKey } from "../commands/dev.command";
 
 const ALL: ServiceKey[] = ["router", "web", "admin", "mobile"];
 
@@ -94,5 +94,17 @@ describe("absoluteUploadDir", () => {
   test("an absent or blank UPLOAD_DIR falls back to the workspace's var/orazaka-uploads", () => {
     expect(absoluteUploadDir("/ws", undefined)).toBe("/ws/var/orazaka-uploads");
     expect(absoluteUploadDir("/ws", "  ")).toBe("/ws/var/orazaka-uploads");
+  });
+});
+
+describe("dev banner", () => {
+  test("a service shows its port and URL; a worker says it has no HTTP port", () => {
+    expect(bannerAddress(8088)).toBe(":8088  http://localhost:8088");
+    expect(bannerAddress(undefined)).toBe("queue worker — no HTTP port");
+  });
+
+  test("the name column fits the longest name (a worker's), never less than 14", () => {
+    expect(bannerLabelWidth([{ label: "EDGE" }])).toBe(14);
+    expect(bannerLabelWidth([{ label: "EDGE" }, { label: "ORAZAKA-WORKER-VALIDATION" }])).toBe(26);
   });
 });
