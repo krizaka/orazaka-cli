@@ -139,6 +139,16 @@ function readWorkerRun(
   };
 }
 
+/** What the dev banner shows after a process's name: its port and URL, or that it consumes a queue (a worker). */
+export function bannerAddress(port: number | undefined): string {
+  return port === undefined ? "queue worker — no HTTP port" : `:${port}  http://localhost:${port}`;
+}
+
+/** The width of the banner's name column: the longest name plus a space, at least 14. */
+export function bannerLabelWidth(configs: readonly { label: string }[]): number {
+  return Math.max(14, ...configs.map((cfg) => cfg.label.length + 1));
+}
+
 /** Label configuration for each spawned process. */
 interface ProcessConfig {
   serviceKey: ServiceKey;
@@ -412,7 +422,10 @@ export const devCommand = new Command("dev")
     }
 
     // ─── Startup Banner ──────────────────────────────────────
-    const BOX_W = 54; // inner width between │ chars
+    // The label column and the box grow to the longest row: a worker named by its worker.yaml
+    // (`ORAZAKA-WORKER-VALIDATION`) is longer than a service, and has no HTTP port to show.
+    const labelW = bannerLabelWidth([...activeConfigs, ...skippedConfigs]);
+    const BOX_W = Math.max(54, ...activeConfigs.map((cfg) => `  ● ${cfg.label.padEnd(labelW)}${bannerAddress(cfg.port)}`.length + 2));
 
     const pad = (text: string, width: number): string =>
       text + " ".repeat(Math.max(0, width - text.length));
@@ -423,12 +436,14 @@ export const devCommand = new Command("dev")
     console.log(chalk.cyan.bold("  ├" + "─".repeat(BOX_W) + "┤"));
 
     for (const cfg of activeConfigs) {
-      const row = `  ● ${cfg.label.padEnd(14)}:${cfg.port}  http://localhost:${cfg.port}`;
+      const address = bannerAddress(cfg.port);
+      const row = `  ● ${cfg.label.padEnd(labelW)}${address}`;
       console.log(
         chalk.cyan("  │") +
-        `  ${cfg.color("●")} ${cfg.color(cfg.label.padEnd(14))}` +
-        chalk.white(`:${cfg.port}`) +
-        chalk.dim(`  http://localhost:${cfg.port}`) +
+        `  ${cfg.color("●")} ${cfg.color(cfg.label.padEnd(labelW))}` +
+        (cfg.port === undefined
+          ? chalk.dim(address)
+          : chalk.white(`:${cfg.port}`) + chalk.dim(`  http://localhost:${cfg.port}`)) +
         " ".repeat(Math.max(0, BOX_W - row.length)) +
         chalk.cyan("│"),
       );
@@ -438,10 +453,10 @@ export const devCommand = new Command("dev")
       const dashContent = "  " + Array.from({ length: Math.floor((BOX_W - 4) / 2) }, () => "─ ").join("").trimEnd();
       console.log(chalk.cyan("  │") + chalk.dim(pad(dashContent, BOX_W)) + chalk.cyan("│"));
       for (const cfg of skippedConfigs) {
-        const row = `  ○ ${cfg.label.padEnd(14)}skipped`;
+        const row = `  ○ ${cfg.label.padEnd(labelW)}skipped`;
         console.log(
           chalk.cyan("  │") +
-          `  ${chalk.dim("○")} ${chalk.dim(cfg.label.padEnd(14))}` +
+          `  ${chalk.dim("○")} ${chalk.dim(cfg.label.padEnd(labelW))}` +
           chalk.dim("skipped") +
           " ".repeat(Math.max(0, BOX_W - row.length)) +
           chalk.cyan("│"),
