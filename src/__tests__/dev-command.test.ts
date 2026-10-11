@@ -5,7 +5,7 @@
  * reported for `--skip-router` (ex `--skip-core`) and `--skip-mobile`.
  */
 
-import { resolveEnabledServices, type ServiceKey } from "../commands/dev.command";
+import { absoluteUploadDir, resolveEnabledServices, type ServiceKey } from "../commands/dev.command";
 
 const ALL: ServiceKey[] = ["router", "web", "admin", "mobile"];
 
@@ -79,5 +79,20 @@ describe("resolveEnabledServices", () => {
     const enabled = resolveEnabledServices({ only: "core" });
     expect(enabled.router).toBe(true);
     expect(enabled.web).toBe(false);
+  });
+});
+
+describe("absoluteUploadDir", () => {
+  test("a relative UPLOAD_DIR is resolved against the workspace, not a service's module", () => {
+    expect(absoluteUploadDir("/ws", "var/orazaka-uploads")).toBe("/ws/var/orazaka-uploads");
+  });
+
+  test("an absolute UPLOAD_DIR is kept", () => {
+    expect(absoluteUploadDir("/ws", "/data/uploads")).toBe("/data/uploads");
+  });
+
+  test("an absent or blank UPLOAD_DIR falls back to the workspace's var/orazaka-uploads", () => {
+    expect(absoluteUploadDir("/ws", undefined)).toBe("/ws/var/orazaka-uploads");
+    expect(absoluteUploadDir("/ws", "  ")).toBe("/ws/var/orazaka-uploads");
   });
 });

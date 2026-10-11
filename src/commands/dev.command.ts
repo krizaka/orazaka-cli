@@ -170,6 +170,18 @@ function parseOnly(raw: string | undefined): Set<ServiceKey> {
   return selected;
 }
 
+/**
+ * The one upload directory every service shares, made absolute.
+ *
+ * `spring-boot:run` starts each service in its own module directory, so a relative `UPLOAD_DIR`
+ * (`.env`: `var/orazaka-uploads`) named a different folder per service: the job service wrote a
+ * generated image under `orazaka-job-service/var/…` and the conversation service, which serves
+ * `/api/v1/assets/…`, looked under its own and answered 404. Resolved once against the workspace.
+ */
+export function absoluteUploadDir(root: string, configured: string | undefined): string {
+  return path.resolve(root, configured && configured.trim() !== "" ? configured : path.join("var", "orazaka-uploads"));
+}
+
 /** Options accepted by `orazaka dev` (skip flags + `--only` filter). */
 export interface DevOptions {
   only?: string;
@@ -244,6 +256,7 @@ export const devCommand = new Command("dev")
   .action((opts: DevOptions) => {
     const root = requireWorkspace("dev");
     const uiRoot = path.join(root, "orazaka-apps", "ui");
+    process.env.UPLOAD_DIR = absoluteUploadDir(root, process.env.UPLOAD_DIR);
 
     const enabled = resolveEnabledServices(opts);
     const isEnabled = (key: ServiceKey): boolean => enabled[key];

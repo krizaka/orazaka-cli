@@ -56,6 +56,27 @@ The single orchestrator of the platform (no shell scripts): `orazaka install`, `
 `models pull`, `dev`, `onboard`, `test [unit|it|e2e]`, `docs [build|sync]`, `pack list|validate|install|publish`,
 `demo seed`, `doctor`.
 
+### Local image models
+
+Images are generated on the Mac by [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) (`sd-server`,
+Metal). `orazaka models image` installs the models it can serve — every one under a licence that allows commercial use:
+
+| Model | Licence | Disk | RAM | Measured on an M1 Max (64 GB) |
+|:---|:---|---:|---:|:---|
+| `flux-2-klein-4b` — FLUX.2 [klein] 4B (default) | Apache-2.0 | 8.7 GB | ~11 GB | 1024×1024 in ~82 s, 1024×1280 in ~105 s |
+| `z-image-turbo` — Z-Image Turbo | Apache-2.0 | 11.2 GB | ~12 GB | 1024×1024 in ~233 s |
+| `v1-5-pruned-emaonly` — Stable Diffusion 1.5 | CreativeML OpenRAIL-M | 4.3 GB | ~5 GB | 512×512 in ~68 s |
+
+```bash
+orazaka models image list                    # licence, size, installed, which one is served
+orazaka models image pull flux-2-klein-4b    # download into ~/models/stable-diffusion, sha256-verified
+orazaka models image use flux-2-klein-4b     # make it the catalogue's default, then restart the stack
+```
+
+`sd-server` serves one model at a time: `orazaka start` launches the catalogue's default image model with its own
+recipe (steps, guidance, flags from `src/services/image-model-recipes.json`) and refuses to serve another one under its name.
+Prose inputs with commas go through a file: `orazaka studio run <installation> --inputs-file inputs.json`.
+
 ## Position in the platform
 
 | | |

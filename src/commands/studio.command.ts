@@ -9,6 +9,7 @@
  */
 
 import { Command } from "commander";
+import * as fs from "node:fs";
 import chalk from "chalk";
 import { requireAuth } from "../threads";
 import { createSpinner } from "../ui/prompts";
@@ -39,6 +40,18 @@ function parseInputs(raw?: string): Record<string, unknown> {
     inputs[key] = value.includes("|") ? value.split("|").map((item) => item.trim()) : value;
   }
   return inputs;
+}
+
+/**
+ * Inputs from a JSON file: what a prose input needs, since a sentence carries the commas that
+ * `--inputs` splits on. `--inputs` pairs are applied on top, so one file can be re-run with a seed.
+ */
+function readInputsFile(file: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf-8"));
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`${file} must hold one JSON object of inputs`);
+  }
+  return parsed as Record<string, unknown>;
 }
 
 function fail(message: string, error: unknown): never {
@@ -135,15 +148,23 @@ const installCommand = new Command("install")
   });
 
 const runCommand = new Command("run")
-  .description("Run an installed Studio")
-  .argument("<installationId>", "The installation to run")
+  .description("Run an installed Studio — or, with --studio, a toolkit Studio by its key")
+  .argument("<target>", "The installation to run (or the Studio key with --studio)")
   .option("-i, --inputs <pairs>", "Inputs as key=value,key2=a|b|c (pipes make a list)")
-  .action(async (installationId: string, options: { inputs?: string }) => {
+  .option("-f, --inputs-file <file>", "Inputs as one JSON object (for prose with commas); --inputs pairs apply on top")
+  .option("-s, --studio", "The target is a Studio key: a toolkit Studio (media, art direction) has no installation")
+  .action(async (target: string, options: { inputs?: string; inputsFile?: string; studio?: boolean }) => {
     requireAuth();
     const spinner = await createSpinner();
     spinner.start("Starting the run...");
     try {
-      const run = await StudioApi.run(installationId, parseInputs(options.inputs));
+      const inputs = {
+        ...(options.inputsFile ? readInputsFile(options.inputsFile) : {}),
+        ...parseInputs(options.inputs),
+      };
+      const run = options.studio
+        ? await StudioApi.startStudioRun(target, inputs)
+        : await StudioApi.run(target, inputs);
       spinner.stop(`Run ${run.status.toLowerCase()}`);
       Logger.info(`Run id: ${run.id}`);
       Logger.info(`Follow it with: orazaka studio logs ${run.id}`);
