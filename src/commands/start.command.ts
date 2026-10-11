@@ -40,6 +40,8 @@ import { isPortInUse, waitForPort } from "../utils/health";
 import { spawnDetachedToLog } from "../utils/process";
 import { PORTS, OLLAMA_MODEL } from "../utils/config";
 import { resolveMediaWorkerPython } from "../services/tool-installer";
+import { findImageModel, isInstalled, sdServerArgs } from "../services/image-models";
+import { defaultImageModel } from "../services/model-catalog";
 
 // `checkServiceHealth(port)` → service is up; `waitForService(port, retries)` →
 // poll until up. Both delegate to the shared health primitives (utils/health),
@@ -315,7 +317,7 @@ export const startCommand = new Command("start")
     // jobs hit "connection refused" → SafeImageModel transparent-PNG fallback.
     // ═══════════════════════════════════════════════════════════
     if (shouldStart("image-gen")) {
-      await logStep("Phase 3b: Image Generation (Stable Diffusion)");
+      await logStep("Phase 3b: Image Generation (stable-diffusion.cpp)");
 
       const imageGenPort = PORTS.imageGen;
       const imageGenActive = await checkServiceHealth(imageGenPort);
@@ -324,33 +326,37 @@ export const startCommand = new Command("start")
         await logSuccess(`✔ Image Gen Worker already active on port ${String(imageGenPort)}`);
         startedServices.push("Image Gen");
       } else {
+        // The catalogue's default image model is what this server serves — one model at a time,
+        // and never another one under its name (services/image-models.ts).
         const modelsDir = resolveModelsDir();
-        const sdModel = path.join(modelsDir, "v1-5-pruned-emaonly.safetensors");
         const sdServerBin = path.join(modelsDir, "stable-diffusion.cpp", "build", "bin", "sd-server");
+        let catalogued: string | undefined;
+        try {
+          catalogued = defaultImageModel();
+        } catch {
+          catalogued = undefined;
+        }
+        const recipe = catalogued ? findImageModel(catalogued) : undefined;
 
-        if (fs.existsSync(sdModel) && fs.existsSync(sdServerBin)) {
-          spinner.start("Starting Image Gen Worker (stable-diffusion.cpp, Metal)...");
+        if (recipe && isInstalled(recipe, modelsDir) && fs.existsSync(sdServerBin)) {
+          spinner.start(`Starting Image Gen Worker (${recipe.label}, stable-diffusion.cpp, Metal)...`);
           try {
-            const sdProcess = spawnDetachedToLog(sdServerBin, [
-              "--listen-port", String(imageGenPort),
-              "-m", sdModel,
-              "--seed", process.env.IMAGE_GEN_SEED ?? "-1",
-              // Stated, not left to sd-server's default: the billing meter reports this same
-              // count as what a generation consumed, and reads it from the same env var
-              // (orazaka.core.image.generation.steps). Change one and you must change both —
-              // ADR-047 records that coupling as this capability's weakest link.
-              "--steps", process.env.IMAGE_GEN_STEPS ?? "20",
-            ], {
-              logFile: path.join(logDir, `${dateStamp}_image-generation-worker.log`),
-              env: { ...process.env },
-              pidFile,
-              pidName: "image-gen-worker",
-            });
+            const sdProcess = spawnDetachedToLog(
+              sdServerBin,
+              sdServerArgs(recipe, modelsDir, { port: imageGenPort, seed: process.env.IMAGE_GEN_SEED }),
+              {
+                logFile: path.join(logDir, `${dateStamp}_image-generation-worker.log`),
+                env: { ...process.env },
+                pidFile,
+                pidName: "image-gen-worker",
+              },
+            );
             spinner.stop(`Image Gen Worker started (PID ${String(sdProcess.pid)})`);
 
-            const healthy = await waitForService(imageGenPort, 45);
+            // A 4–7 GB model loads in ~10–15 s from an SSD; leave room for a cold disk cache.
+            const healthy = await waitForService(imageGenPort, 90);
             if (healthy) {
-              await logSuccess(`✔ Image Gen Worker ready on port ${String(imageGenPort)}`);
+              await logSuccess(`✔ Image Gen Worker ready on port ${String(imageGenPort)} — ${recipe.label}`);
               startedServices.push("Image Gen");
             } else {
               await logWarning("⚠ Image Gen Worker not responding (image generation may fail)");
@@ -362,11 +368,14 @@ export const startCommand = new Command("start")
           }
         } else {
           const issues: string[] = [];
-          if (!fs.existsSync(sdModel)) issues.push(`SD model not found: ${sdModel}`);
+          if (!catalogued) issues.push("the catalogue names no default image model (is the database up?)");
+          else if (!recipe) issues.push(`no install recipe for the catalogue's default '${catalogued}'`);
+          else if (!isInstalled(recipe, modelsDir)) issues.push(`${recipe.label} is not downloaded`);
           if (!fs.existsSync(sdServerBin)) issues.push(`sd-server binary not found: ${sdServerBin}`);
           await logWarning(
             `⚠ Image Gen Worker not available (${issues.join("; ")})\n` +
-            `  Setup: ${chalk.gray("npx orazaka install")} to build stable-diffusion.cpp + pull the SD model`
+            `  Setup: ${chalk.gray("orazaka models image list")} then ${chalk.gray("orazaka models image pull <id>")} ` +
+            `and ${chalk.gray("orazaka models image use <id>")}`
           );
         }
       }

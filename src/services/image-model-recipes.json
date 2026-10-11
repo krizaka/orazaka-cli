@@ -1,0 +1,93 @@
+{
+  "$comment": "How each local image model is installed and served by stable-diffusion.cpp (sd-server, Metal). The id of a recipe IS the model_name of its orazaka_models row: the catalogue says which model is the image default, this file says how to download and launch it. Only models whose licence allows commercial use are listed. Timings were measured on an M1 Max (64 GB) and are indicative.",
+  "models": [
+    {
+      "id": "flux-2-klein-4b",
+      "label": "FLUX.2 [klein] 4B",
+      "family": "flux2",
+      "licence": "Apache-2.0",
+      "licenceUrl": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4B",
+      "summary": "Editorial-grade photographs, illustrations and miniatures in 4 steps. The local default.",
+      "ramGb": 11,
+      "measured": "1024x1024 in ~82 s, 1024x1280 in ~105 s on an M1 Max; peak 10 GB",
+      "files": [
+        {
+          "role": "diffusion-model",
+          "path": "flux2-klein-4b/flux-2-klein-4b-Q8_0.gguf",
+          "url": "https://huggingface.co/leejet/FLUX.2-klein-4B-GGUF/resolve/main/flux-2-klein-4b-Q8_0.gguf",
+          "bytes": 4300629440,
+          "sha256": "0bba6951258ec8f92d51114a8fa13e66828297bfff58a738f52729b3ef66fa28"
+        },
+        {
+          "role": "llm",
+          "path": "flux2-klein-4b/Qwen3-4B-Q8_0.gguf",
+          "url": "https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q8_0.gguf",
+          "bytes": 4280405792,
+          "sha256": "eed555233267a33c7e8ee31682762cc7751b3f6d224039086e0e846f05fffa5d"
+        },
+        {
+          "role": "vae",
+          "path": "flux2-klein-4b/flux2-vae.safetensors",
+          "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4B/resolve/main/vae/diffusion_pytorch_model.safetensors",
+          "bytes": 168120878,
+          "sha256": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04"
+        }
+      ],
+      "launch": { "steps": 4, "cfgScale": 1.0, "width": 1024, "height": 1024, "flags": ["--diffusion-fa"] }
+    },
+    {
+      "id": "z-image-turbo",
+      "label": "Z-Image Turbo",
+      "family": "z-image",
+      "licence": "Apache-2.0",
+      "licenceUrl": "https://huggingface.co/Tongyi-MAI/Z-Image-Turbo",
+      "summary": "The most detailed photographs, at three times FLUX.2 [klein]'s time. Renders lettering readily: keep words out of the prompt.",
+      "ramGb": 12,
+      "measured": "1024x1024 in ~233 s on an M1 Max; peak 11.4 GB",
+      "files": [
+        {
+          "role": "diffusion-model",
+          "path": "z-image-turbo/z_image_turbo-Q8_0.gguf",
+          "url": "https://huggingface.co/leejet/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q8_0.gguf",
+          "bytes": 6577440704,
+          "sha256": "df1c5baa86d1398c979495a6072dbcee79444fdb884a2445582ba0769c44e9a1"
+        },
+        {
+          "role": "llm",
+          "path": "z-image-turbo/Qwen3-4B-Instruct-2507-Q8_0.gguf",
+          "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q8_0.gguf",
+          "bytes": 4280405600,
+          "sha256": "391c1e410fd9f4cf2de2b510273b56a84c19ce18f4fa3bfb3774031dac4ef068"
+        },
+        {
+          "role": "vae",
+          "path": "z-image-turbo/ae.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors",
+          "bytes": 335304388,
+          "sha256": "afc8e28272cd15db3919bacdb6918ce9c1ed22e96cb12c4d5ed0fba823529e38"
+        }
+      ],
+      "launch": { "steps": 8, "cfgScale": 1.0, "width": 1024, "height": 1024, "flags": ["--diffusion-fa"] }
+    },
+    {
+      "id": "v1-5-pruned-emaonly",
+      "label": "Stable Diffusion 1.5",
+      "family": "sd1",
+      "licence": "CreativeML OpenRAIL-M",
+      "licenceUrl": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5",
+      "summary": "The former default: 512 px, 77-token prompts. Kept for small machines.",
+      "ramGb": 5,
+      "measured": "512x512 in ~68 s (20 steps) on an M1 Max; peak 4.2 GB",
+      "files": [
+        {
+          "role": "model",
+          "path": "v1-5-pruned-emaonly.safetensors",
+          "url": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors",
+          "bytes": 4265146304,
+          "sha256": "6ce0161689b3853acaa03779ec93eafe75a02f4ced659bee03f50797806fa2fa"
+        }
+      ],
+      "launch": { "steps": 20, "cfgScale": 7.0, "width": 512, "height": 512, "flags": [] }
+    }
+  ]
+}
