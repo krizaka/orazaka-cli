@@ -101,7 +101,13 @@ export const DEMO_RUNS: readonly DemoRun[] = [
   { studioKey: "document-authenticity", inputs: () => ({ documentBase64: demoInvoicePdf().toString("base64"), expectedIssuer: "Emaux & Terres" }) },
   {
     studioKey: "video-generation",
-    inputs: { prompt: "Slow orbit around a glowing amber ceramic table lamp on a dark slate plinth, soft light, ink-blue background", durationSeconds: 2 },
+    // The text-to-video pipeline by name: the catalogue's default video model is an image-to-video one, which starts
+    // from a still and refuses this machine's memory without it.
+    inputs: {
+      prompt: "Slow orbit around a glowing amber ceramic table lamp on a dark slate plinth, soft light, ink-blue background",
+      durationSeconds: 4,
+      model: "ByteDance/AnimateDiff-Lightning",
+    },
     heavy: true,
   },
 ];
