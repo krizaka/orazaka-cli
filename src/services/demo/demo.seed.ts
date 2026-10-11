@@ -13,7 +13,7 @@
  */
 
 import { assertLocalDemoTarget } from "./demo.guard";
-import { DEMO_CREDITS, DEMO_PACKS, DEMO_PERSONA, DEMO_PLAN, DEMO_STUDIOS } from "./demo.persona";
+import { DEMO_CREDITS, DEMO_PACKS, DEMO_PERSONA, DEMO_PLAN, DEMO_RUNS, DEMO_STUDIOS } from "./demo.persona";
 
 /** The part of `fetch` the seeder uses — injected so the steps are testable without a stack. */
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -33,6 +33,13 @@ export interface DemoSeedOptions {
   mailTimeoutMs?: number;
   /** Deletes Eric's conversations first, for a demo that starts from a clean history. */
   fresh?: boolean;
+  /** Starts Eric's demo runs (DEMO_RUNS) on the local stack: real generations and checks, done by the Studios. */
+  runs?: boolean;
+  /** Includes the heavy runs (video) — one at a time, never by default: it loads a video model on this machine. */
+  withVideo?: boolean;
+  /** How long to wait for a free run slot (ms, default 10 min), and how often to ask (ms, default 5 s). */
+  runSlotTimeoutMs?: number;
+  runSlotPollMs?: number;
 }
 
 export interface DemoSeedResult {
@@ -42,6 +49,8 @@ export interface DemoSeedResult {
   credits: number;
   packs: string[];
   studios: string[];
+  /** The demo runs started by this seed (studio keys); empty without `runs`. */
+  runs: string[];
 }
 
 interface LoginResponse {
@@ -86,7 +95,8 @@ export class DemoSeeder {
     const credits = await this.credits(actorId, adminToken);
     const packs = await this.packs(token);
     const studios = await this.studios(token);
-    return { actorId, email: DEMO_PERSONA.email, plan: DEMO_PLAN, credits, packs, studios };
+    const runs = this.o.runs ? await this.demoRuns(token) : [];
+    return { actorId, email: DEMO_PERSONA.email, plan: DEMO_PLAN, credits, packs, studios, runs };
   }
 
   /** Registers the account if needed, verifies it through the local mailbox, and signs in. */
@@ -236,6 +246,47 @@ export class DemoSeeder {
       this.o.onStep(`Studio installed: ${key}`);
     }
     return [...DEMO_STUDIOS];
+  }
+
+  /**
+   * Starts the demo runs through the same endpoint the run form uses. Replayable: a Studio Eric already ran with
+   * success — or that is still running — is not run again, so a second seed adds no work and spends no credit.
+   * The runs go on in the background: the jobs page and the bell show them as they finish.
+   */
+  private async demoRuns(token: string): Promise<string[]> {
+    const history = (await this.call("GET", "/api/v1/studios/runs?limit=200", token)) as { studioKey: string; status: string }[];
+    const done = new Set(history.filter((r) => r.status === "SUCCEEDED" || r.status === "RUNNING").map((r) => r.studioKey));
+    const started: string[] = [];
+    for (const run of DEMO_RUNS) {
+      if (run.heavy && !this.o.withVideo) continue;
+      if (done.has(run.studioKey)) {
+        this.o.onStep(`Run already done: ${run.studioKey}`);
+        continue;
+      }
+      const inputs = typeof run.inputs === "function" ? run.inputs() : run.inputs;
+      await this.startWhenFree(run.studioKey, inputs, token);
+      this.o.onStep(`Run started: ${run.studioKey}`);
+      started.push(run.studioKey);
+    }
+    return started;
+  }
+
+  /**
+   * Starts one run, waiting for a free slot when the plan's concurrent-run limit is reached (409 run_refused):
+   * the machine does one piece of work after another instead of being refused — and never saturated.
+   */
+  private async startWhenFree(studioKey: string, inputs: Readonly<Record<string, unknown>>, token: string): Promise<void> {
+    const deadline = Date.now() + (this.o.runSlotTimeoutMs ?? 10 * 60_000);
+    for (;;) {
+      const res = await this.raw("POST", `/api/v1/studios/${studioKey}/runs`, token, { inputs });
+      if (res.ok) return;
+      const text = await res.text();
+      if (res.status !== 409 || !text.includes("run_refused") || Date.now() > deadline) {
+        throw new Error(`POST /api/v1/studios/${studioKey}/runs: HTTP ${res.status} ${text}`);
+      }
+      this.o.onStep(`Waiting for a free run slot before ${studioKey}…`);
+      await new Promise((r) => setTimeout(r, this.o.runSlotPollMs ?? 5_000));
+    }
   }
 
   private raw(method: string, path: string, token?: string, body?: unknown): Promise<Response> {

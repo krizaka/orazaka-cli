@@ -6,7 +6,8 @@
 
 import { assertLocalDemoTarget, DemoGuardError } from "../services/demo/demo.guard";
 import { actorIdOf, DemoSeeder, verificationTokenIn, type Fetch } from "../services/demo/demo.seed";
-import { DEMO_CREDITS, DEMO_PERSONA, DEMO_STUDIOS } from "../services/demo/demo.persona";
+import { DEMO_CREDITS, DEMO_PERSONA, DEMO_RUNS, DEMO_STUDIOS } from "../services/demo/demo.persona";
+import { DEMO_LEASE, demoInvoicePdf } from "../services/demo/demo.documents";
 
 const ACTOR = "1c10ee07-1b3a-4140-923e-4923f959f8c7";
 const jwt = (sub: string) => `h.${Buffer.from(JSON.stringify({ sub })).toString("base64url")}.s`;
@@ -48,7 +49,7 @@ describe("token helpers", () => {
 
 /** A tiny in-memory platform: enough of each service for the seed to talk to. */
 function platform() {
-  const state = { sessions: ["s1", "s2"], registered: false, verified: false, plan: "", balance: 0, packs: new Set<string>(), studios: new Set<string>(), calls: [] as string[] };
+  const state = { sessions: ["s1", "s2"], registered: false, verified: false, plan: "", balance: 0, packs: new Set<string>(), studios: new Set<string>(), runs: [] as { studioKey: string; status: string; inputs: Record<string, unknown> }[], calls: [] as string[] };
   const fetch: Fetch = async (url, init) => {
     const method = init?.method ?? "GET";
     const path = url.replace(/^https?:\/\/[^/]+/, "");
@@ -83,6 +84,8 @@ function platform() {
         return json(200, {});
       case "GET /api/v1/chat/sessions":
         return json(200, state.sessions.map((id) => ({ id })));
+      case "GET /api/v1/studios/runs":
+        return json(200, state.runs.map(({ studioKey, status }) => ({ studioKey, status })));
       case "GET /api/v1/studios/installations":
         return json(200, [...state.studios].map((studioKey) => ({ studioKey })));
     }
@@ -92,6 +95,11 @@ function platform() {
     if (method === "DELETE" && session) {
       state.sessions = state.sessions.filter((id) => id !== session[1]);
       return json(200);
+    }
+    const run = /^\/api\/v1\/studios\/([^/]+)\/runs$/.exec(path);
+    if (method === "POST" && run) {
+      state.runs.push({ studioKey: run[1], status: "RUNNING", inputs: body.inputs });
+      return json(201, { id: `run-${state.runs.length}` });
     }
     const studio = /^\/api\/v1\/studios\/([^/]+)\/installations/.exec(path);
     if (studio) {
@@ -104,9 +112,11 @@ function platform() {
   return { state, fetch };
 }
 
-function seeder(fetch: Fetch, steps: string[] = [], fresh = false) {
+function seeder(fetch: Fetch, steps: string[] = [], fresh = false, runs = false, withVideo = false) {
   return new DemoSeeder({
     fresh,
+    runs,
+    withVideo,
     baseUrl: "http://localhost:8088",
     mailUrl: "http://localhost:8025",
     password: "secret-demo",
@@ -125,7 +135,9 @@ describe("DemoSeeder", () => {
 
     expect(result).toMatchObject({ actorId: ACTOR, email: DEMO_PERSONA.email, plan: "premium", credits: DEMO_CREDITS });
     expect(state).toMatchObject({ registered: true, verified: true, plan: "premium", balance: DEMO_CREDITS });
-    expect([...state.packs]).toEqual(["orazaka-media", "outbound-prospection"]);
+    expect([...state.packs]).toEqual(["orazaka-media", "outbound-prospection", "document-validation"]);
+    expect(result.runs).toEqual([]);
+    expect(state.runs).toEqual([]);
     expect([...state.studios]).toEqual(DEMO_STUDIOS.filter((k) => k !== "image-generation"));
     expect(state.calls).toContain("POST /api/v1/interceptions/resolve");
   });
@@ -157,5 +169,55 @@ describe("DemoSeeder", () => {
     const remote = new DemoSeeder({ baseUrl: "https://orazaka.example", mailUrl: "", password: "p", admin: { email: "a", password: "b" }, env: {}, fetch, onStep: () => {} });
     await expect(remote.run()).rejects.toThrow(DemoGuardError);
     expect(state.calls).toEqual([]);
+  });
+
+  test("waits for a free run slot instead of failing on the plan's concurrency limit", async () => {
+    const { state, fetch } = platform();
+    let refusals = 2;
+    const busy: Fetch = async (url, init) => {
+      if (init?.method === "POST" && /\/runs$/.test(url) && refusals-- > 0) return json(409, { status: "run_refused" });
+      return fetch(url, init);
+    };
+    const steps: string[] = [];
+    const s = new DemoSeeder({
+      runs: true, baseUrl: "http://localhost:8088", mailUrl: "http://localhost:8025", password: "secret-demo",
+      admin: { email: "admin@orazaka.com", password: "x" }, env: {}, fetch: busy, onStep: (l) => steps.push(l), mailTimeoutMs: 0, runSlotPollMs: 1,
+    });
+    await s.run();
+    expect(steps.filter((l) => l.startsWith("Waiting for a free run slot"))).toHaveLength(2);
+    expect(state.runs.length).toBe(DEMO_RUNS.filter((r) => !r.heavy).length);
+  });
+
+  test("with runs, does Eric's demo work once — and the video only when asked", async () => {
+    const { state, fetch } = platform();
+    const result = await seeder(fetch, [], false, true).run();
+    const light = DEMO_RUNS.filter((r) => !r.heavy).map((r) => r.studioKey);
+    expect(result.runs).toEqual(light);
+    expect(state.runs.map((r) => r.studioKey)).not.toContain("video-generation");
+    expect(state.runs.find((r) => r.studioKey === "compliance-check")?.inputs).toMatchObject({ document: DEMO_LEASE, jurisdiction: "FR" });
+    expect(typeof state.runs.find((r) => r.studioKey === "document-authenticity")?.inputs.documentBase64).toBe("string");
+
+    const steps: string[] = [];
+    const again = await seeder(fetch, steps, false, true, true).run();
+    expect(again.runs).toEqual(["video-generation"]);
+    expect(steps).toContain("Run already done: compliance-check");
+  });
+});
+
+describe("demo documents", () => {
+  test("the lease carries the two clauses the compliance check must find", () => {
+    expect(DEMO_LEASE).toMatch(/dépôt de garantie de 1 960 €/);
+    expect(DEMO_LEASE).toMatch(/loyer mensuel est fixé à 980 €/);
+    expect(DEMO_LEASE).toMatch(/ne pourra pas recevoir de visites/);
+  });
+
+  test("the invoice is a well-formed PDF: header, objects at the offsets the xref claims, trailer", () => {
+    const pdf = demoInvoicePdf().toString("latin1");
+    expect(pdf.startsWith("%PDF-1.4")).toBe(true);
+    expect(pdf.trimEnd().endsWith("%%EOF")).toBe(true);
+    const xref = Number(/startxref\n(\d+)/.exec(pdf)?.[1]);
+    expect(pdf.slice(xref, xref + 4)).toBe("xref");
+    const offsets = [...pdf.matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]));
+    offsets.forEach((offset, i) => expect(pdf.slice(offset, offset + `${i + 1} 0 obj\n`.length)).toBe(`${i + 1} 0 obj\n`));
   });
 });
