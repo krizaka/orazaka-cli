@@ -11,6 +11,9 @@ import * as os from "node:os";
 import chalk from "chalk";
 import { execSync } from "node:child_process";
 
+/** The npm package the CLI is published as (the unscoped `orazaka` package is an alias of it). */
+const PACKAGE_NAME = "@krizaka/orazaka-cli";
+
 /**
  * Version information structure.
  */
@@ -103,7 +106,7 @@ export class VersionManager {
   private async fetchLatestVersion(): Promise<string | null> {
     try {
       const result = execSync(
-        "npm view orazaka-cli version --json 2>/dev/null || echo null",
+        `npm view ${PACKAGE_NAME} version --json 2>/dev/null || echo null`,
         {
           timeout: 3000,
           encoding: "utf-8",
@@ -243,19 +246,7 @@ export class VersionManager {
       );
       lines.push(
         chalk.red.bold("│") +
-          chalk.red("  $ npm install -g orazaka-cli@latest                   ") +
-          chalk.red.bold("│")
-      );
-      lines.push(
-        chalk.red.bold("│") +
-          chalk.red(
-            "  or                                                         "
-          ) +
-          chalk.red.bold("│")
-      );
-      lines.push(
-        chalk.red.bold("│") +
-          chalk.red("  $ brew upgrade orazaka-cli                           ") +
+          chalk.red(`  $ npm install -g ${PACKAGE_NAME}@latest`.padEnd(62)) +
           chalk.red.bold("│")
       );
       lines.push(
@@ -282,7 +273,7 @@ export class VersionManager {
       lines.push(
         chalk.yellow("│") +
           chalk.yellow(
-            `  Run: $ npm install -g orazaka-cli@${versionInfo.latest}`.padEnd(62) +
+            `  Run: $ npm install -g ${PACKAGE_NAME}@${versionInfo.latest}`.padEnd(62) +
               " "
           ) +
           chalk.yellow("│")

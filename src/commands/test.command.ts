@@ -12,6 +12,7 @@ import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import chalk from "chalk";
 import { intro, outro, note, logWarning } from "../ui/prompts";
+import { requireWorkspace } from "./workspace-guard";
 
 /** The supported test tiers. */
 type TestMode = "unit" | "it" | "e2e" | "worker";
@@ -34,9 +35,9 @@ const DESCRIPTIONS: Record<TestMode, string> = {
   worker: "Python media worker: ruff lint + pytest (the Maven reactor excludes it by design)",
 };
 
-/** Resolves the orazaka monorepo root (where `./mvnw` lives) from this file. */
+/** The Orazaka workspace root (where `./mvnw` lives). */
 function resolveMonorepoRoot(): string {
-  return path.resolve(__dirname, "..", "..", "..", "..", "..");
+  return requireWorkspace("test");
 }
 
 function isTestMode(value: string): value is TestMode {

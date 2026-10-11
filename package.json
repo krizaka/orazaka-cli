@@ -1,10 +1,29 @@
 {
-  "name": "orazaka-cli",
+  "name": "@krizaka/orazaka-cli",
   "version": "1.0.0",
-  "description": "Orazaka AI CLI — Terminal client for the Orazaka Orchestration Engine",
-  "main": "dist/index.js",
+  "description": "The orazaka CLI — clone, install, start and develop the Orazaka sovereign AI platform from your terminal.",
   "bin": {
     "orazaka": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krizaka/orazaka-cli.git"
+  },
+  "homepage": "https://www.krizaka.com/en/products/orazaka",
+  "bugs": {
+    "url": "https://github.com/krizaka/orazaka-cli/issues"
   },
   "scripts": {
     "start": "ts-node src/index.ts",
@@ -21,22 +40,26 @@
     "infra:reset": "ts-node src/index.ts stop -y --purge && ts-node src/index.ts start --mode dev",
     "dev": "ts-node src/index.ts dev",
     "dev:web": "ts-node src/index.ts dev --only web,admin",
-    "build": "tsc --outDir dist",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --runInBand",
     "sonar": "npx -y sonar-scanner -Dsonar.token=$SONAR_TOKEN -Dsonar.branch.name=$(git rev-parse --abbrev-ref HEAD)",
     "lint": "eslint src",
     "depcheck": "depcruise src --config .dependency-cruiser.cjs",
     "test:e2e": "npx vitest run --config vitest.config.ts",
-    "validate": "npm rebuild && npm run lint && npm run depcheck && npm run build && npm run test:coverage"
+    "validate": "npm rebuild && npm run lint && npm run depcheck && npm run build && npm run test:coverage",
+    "prepack": "npm run build",
+    "test:pack": "node scripts/pack-smoke.mjs"
   },
   "keywords": [
     "orazaka",
+    "krizaka",
+    "sovereign-ai",
     "ai",
     "cli"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Krizaka (https://www.krizaka.com)",
+  "license": "Apache-2.0",
   "type": "commonjs",
   "dependencies": {
     "@clack/prompts": "^0.9.1",

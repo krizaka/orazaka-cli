@@ -14,6 +14,7 @@ import * as path from "node:path";
 import { execSync, spawn } from "node:child_process";
 import chalk from "chalk";
 import { format } from "date-fns";
+import { requireWorkspace } from "./workspace-guard";
 import {
   intro,
   outro,
@@ -76,6 +77,7 @@ export const startCommand = new Command("start")
         : "🥷 Orazaka Full Infrastructure Bootstrap"
     ));
 
+    requireWorkspace("start");
     const workspaceRoot = resolveWorkspaceRoot();
     const pidFile = resolvePidFile();
     const logDir = resolveLogDir();

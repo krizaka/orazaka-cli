@@ -11,11 +11,11 @@ import * as fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import chalk from "chalk";
 import { intro, outro, note, logWarning, logSuccess } from "../ui/prompts";
-import { resolveWorkspaceFrom } from "../utils/platform";
+import { requireWorkspace } from "./workspace-guard";
 
 /** Orazaka workspace root (where the generator + docs/ live). */
 function resolveMonorepoRoot(): string {
-  return resolveWorkspaceFrom(__dirname);
+  return requireWorkspace("docs");
 }
 
 /** Krizaka site root (products/<workspace> → products → krizaka-com). */

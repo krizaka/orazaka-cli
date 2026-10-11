@@ -11,6 +11,7 @@ export {
   getToolVersion,
   detectOrazakaWorkspace,
   resolveWorkspaceRootSmart,
+  locateWorkspace,
   resolveWorkspaceRoot,
   resolveVarDir,
   resolveLogDir,

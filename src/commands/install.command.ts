@@ -27,10 +27,11 @@ import {
   handleCancel,
 } from "../ui/prompts";
 import {
-  resolveWorkspaceRoot,
+  locateWorkspace,
   resolveEnvFile,
   parseEnvFile,
   mergeEnvFile,
+  writeEnvFile,
   ensureDir,
   isAppleSilicon,
   hasTool,
@@ -43,6 +44,7 @@ import {
   resolveMediaWorkerPython,
   type ToolCheckResult,
 } from "../services/tool-installer";
+import { bootstrapWorkspace } from "../services/workspace-bootstrap";
 
 function secureHex(bytes: number): string {
   return crypto.randomBytes(bytes).toString("hex");
@@ -51,9 +53,16 @@ function secureHex(bytes: number): string {
 export const installCommand = new Command("install")
   .description("Setup wizard — verify tools, install dependencies, and configure deployment topology")
   .option("--check-only", "Read-only: verify tool availability & versions, then exit (no .env / compose changes)")
-  .option("-y, --yes", "Non-interactive mode — skip install prompts")
-  .action(async (options: { checkOnly?: boolean; yes?: boolean }) => {
-    const workspaceRoot = resolveWorkspaceRoot();
+  .option("-y, --yes", "Non-interactive mode — accept every default (clone, tools, local dev topology, bundled infra)")
+  .option("--dir <path>", "Where to clone the platform when no workspace is found", "orazaka")
+  .option("--depth <n>", "git clone depth for the platform repositories (0 = full history)", "1")
+  .action(async (options: { checkOnly?: boolean; yes?: boolean; dir: string; depth: string }) => {
+    const startDir = process.cwd();
+    // Without a terminal nobody can answer a prompt: take the defaults rather than crash on TTY init,
+    // but only --yes installs tools or clones anything.
+    const yes = options.yes === true;
+    const interactive = !yes && process.stdin.isTTY === true;
+    let workspaceRoot = locateWorkspace() ?? process.cwd();
     await intro(chalk.cyan.bold("🥷 Orazaka Setup Wizard"));
 
     // ─── Phase 1: Tool Verification ─────────────────────────────
@@ -130,8 +139,8 @@ export const installCommand = new Command("install")
       for (const missing of allMissing) {
         if (!missing.tool.brewFormula) continue;
 
-        let shouldInstall = options.yes;
-        if (!shouldInstall) {
+        let shouldInstall = yes;
+        if (interactive) {
           const answer = await confirm({
             message: `Install ${chalk.cyan(missing.tool.name)} via ${chalk.gray(`brew install ${missing.tool.brewFormula}`)}?`,
             initialValue: true,
@@ -159,6 +168,37 @@ export const installCommand = new Command("install")
       }
     }
 
+    // ─── Workspace: clone the platform when there is none ───────
+    if (!locateWorkspace()) {
+      await logStep("Workspace — no Orazaka workspace here");
+      const target = path.resolve(options.dir);
+      let shouldClone = yes;
+      if (interactive) {
+        const answer = await confirm({
+          message: `Clone the Orazaka platform into ${chalk.cyan(target)}? (git, ~20 repositories)`,
+          initialValue: true,
+        });
+        handleCancel(answer);
+        shouldClone = answer === true;
+      }
+      if (!shouldClone || !hasTool("git")) {
+        await logError(
+          hasTool("git")
+            ? `Nothing to configure without a workspace — re-run with ${chalk.cyan("--yes")} to clone it.`
+            : "git is required to clone the platform — install it, then run this command again.",
+        );
+        process.exit(1);
+      }
+      const result = bootstrapWorkspace(target, { depth: Number.parseInt(options.depth, 10) || 0 });
+      if (!result.ok) {
+        await logError(result.error ?? "Could not clone the platform.");
+        process.exit(1);
+      }
+      process.chdir(result.root);
+      workspaceRoot = result.root;
+      await logSuccess(`Workspace ready in ${chalk.cyan(result.root)}`);
+    }
+
     // ─── Phase 3: Media Worker Python Environment ───────────────
     const mediaReqFile = path.join(workspaceRoot, "orazaka-apps", "workers", "orazaka-worker-media", "requirements.txt");
     if (fs.existsSync(mediaReqFile) && hasTool("python3")) {
@@ -170,8 +210,8 @@ export const installCommand = new Command("install")
       if (venvExists) {
         await logSuccess("Media worker venv already exists ✔");
       } else {
-        let shouldSetup = options.yes;
-        if (!shouldSetup) {
+        let shouldSetup = yes;
+        if (interactive) {
           const answer = await confirm({
             message: "Set up Python virtual environment for the media worker?",
             initialValue: true,
@@ -197,7 +237,7 @@ export const installCommand = new Command("install")
     // ─── Phase 4: Deployment Topology Configuration ─────────────
     await logStep("Phase 4 — Deployment Topology Configuration");
 
-    const targetEnv = await select({
+    const targetEnv = !interactive ? "local_dev" : await select({
       message: "Select target environment profile:",
       options: [
         {
@@ -215,7 +255,7 @@ export const installCommand = new Command("install")
     });
     handleCancel(targetEnv);
 
-    const infraMode = await select({
+    const infraMode = !interactive ? "bundled" : await select({
       message: "Select infrastructure topology:",
       options: [
         {
@@ -358,11 +398,14 @@ export const installCommand = new Command("install")
     // `mergeEnvFile` only appends keys that are *absent*. Keys that already
     // exist are preserved; if a present value differs from the topology-derived
     // default we surface it so the dev can reconcile deliberately.
+    // A key the template declares empty (VIDEO_WORKER_PYTHON_PATH=) was never set by anyone: fill it.
     const existingEnv = parseEnvFile(envPath);
+    const blanks = Object.fromEntries(Object.entries(envUpdates).filter(([k]) => existingEnv[k] === ""));
+    if (Object.keys(blanks).length > 0) writeEnvFile(envPath, blanks);
     const conflicts = Object.entries(envUpdates).filter(
-      ([k, v]) => k in existingEnv && existingEnv[k] !== v,
+      ([k, v]) => k in existingEnv && existingEnv[k] !== "" && existingEnv[k] !== v,
     );
-    const added = mergeEnvFile(envPath, envUpdates);
+    const added = [...Object.keys(blanks), ...mergeEnvFile(envPath, envUpdates)];
 
     // Generate docker-compose.override.yml — infra-only model (AGENTS.md §1).
     // The base compose hosts ONLY stateful infra (PG/pgvector, Redis, RabbitMQ);
@@ -436,12 +479,25 @@ export const installCommand = new Command("install")
       summary.push(`${chalk.green("✔")} Apple Silicon Metal MPS: enabled`);
     }
 
+    // A fresh clone is not built yet: the reactor and the UI workspace come first (AGENTS.md §1).
+    const steps: string[] = [];
+    if (path.relative(workspaceRoot, startDir).startsWith("..")) {
+      steps.push(chalk.cyan(`cd ${path.relative(startDir, workspaceRoot)}`));
+    }
+    if (!fs.existsSync(path.join(workspaceRoot, "orazaka-apps", "ui", "node_modules"))) {
+      steps.push(
+        `${chalk.cyan("./mvnw install")}                — Build every JVM repository (one reactor)`,
+        `${chalk.cyan("(cd orazaka-apps/ui && npm install)")} — Link the web, mobile and CLI workspaces`,
+      );
+    }
+    steps.push(
+      `${chalk.cyan("npx orazaka start --mode dev")}  — Launch middleware + AI engines`,
+      `${chalk.cyan("npx orazaka dev")}               — Spawn Router + Web + Admin + Mobile`,
+    );
     summary.push(
       "",
       `${chalk.cyan("Next steps:")}`,
-      `  ${chalk.white("1.")} ${chalk.cyan("npx orazaka start --mode dev")}  — Launch middleware + AI engines`,
-      `  ${chalk.white("2.")} ${chalk.cyan("npx orazaka dev")}               — Spawn Router + Web + Admin + Mobile`,
-      `  ${chalk.white("3.")} ${chalk.gray("(or debug RouterApplication in IntelliJ + ")}${chalk.cyan("npx orazaka dev --skip-router")}${chalk.gray(")")}`,
+      ...steps.map((step, i) => `  ${chalk.white(`${String(i + 1)}.`)} ${step}`),
     );
 
     await note(summary.join("\n"), "✨ Setup Complete");
