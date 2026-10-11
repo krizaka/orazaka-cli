@@ -1,6 +1,6 @@
 {
   "name": "orazaka",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "npx orazaka — the short name of @krizaka/orazaka-cli, the CLI of the Orazaka sovereign AI platform.",
   "bin": {
     "orazaka": "bin/orazaka.js"
@@ -14,7 +14,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@krizaka/orazaka-cli": "1.0.0"
+    "@krizaka/orazaka-cli": "1.1.0"
   },
   "publishConfig": {
     "access": "public"
