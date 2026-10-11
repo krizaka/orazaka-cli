@@ -14,7 +14,7 @@ import { ROUTER_URL, strEnv } from "../utils/config";
 import { DemoSeeder } from "../services/demo/demo.seed";
 import { DEMO_PERSONA } from "../services/demo/demo.persona";
 
-async function seed(opts: { fresh?: boolean }): Promise<void> {
+async function seed(opts: { fresh?: boolean; runs?: boolean; withVideo?: boolean }): Promise<void> {
   await intro(chalk.cyan("Orazaka demo persona"));
   const password = strEnv("DEMO_PASSWORD", DEMO_PERSONA.defaultPassword);
   try {
@@ -27,10 +27,14 @@ async function seed(opts: { fresh?: boolean }): Promise<void> {
       fetch: (url, init) => fetch(url, init),
       onStep: (line) => void logSuccess(`✔ ${line}`),
       fresh: opts.fresh,
+      runs: opts.runs || opts.withVideo,
+      withVideo: opts.withVideo,
     }).run();
     await logInfo(
       `Sign in as ${chalk.bold(result.email)} / ${chalk.bold(password)} — ${result.studios.length} Studios, ` +
-        `${result.packs.length} packs, plan ${result.plan}. Conversations: orazaka-web-client \`npm run record:tour -- prepare\`.`,
+        `${result.packs.length} packs, plan ${result.plan}` +
+        (result.runs.length ? `, ${result.runs.length} runs started (they finish in the background)` : "") +
+        `. Conversations: orazaka-web-client \`npm run record:tour -- prepare\`.`,
     );
     await outro(chalk.green(`Good evening, ${DEMO_PERSONA.username}.`));
   } catch (err) {
@@ -45,4 +49,6 @@ demoCommand
   .command("seed")
   .description("Create or refresh Eric, the demo persona: account, onboarding, plan, packs and Studios (replayable)")
   .option("--fresh", "Delete Eric's conversations first, for a demo that starts from a clean history")
+  .option("--runs", "Also run Eric's demo work on this stack: a product photo, a voice-over, a prospect dossier, a lease check, an invoice check")
+  .option("--with-video", "With --runs, also generate a few seconds of video (loads a video model: one heavy job, never by default)")
   .action(seed);
