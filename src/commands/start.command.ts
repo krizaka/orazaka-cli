@@ -281,6 +281,10 @@ export const startCommand = new Command("start")
             "run",
             `--address=127.0.0.1:${String(imageWorkerPort)}`,
             `--models-path=${modelsPath}`,
+            // LocalAI 4.x looks for its backends (piper, whisper) in ./backends relative to the
+            // directory it was started from; the CLI starts it from the workspace, where there are
+            // none, and every speech and transcription call answered "backend not found" (ADR-076).
+            `--backends-path=${path.join(modelsPath, "backends")}`,
           ], {
             logFile: path.join(logDir, `${dateStamp}_image-worker.log`),
             env: { ...process.env, FORCE_CPU: "false" },
