@@ -17,6 +17,9 @@
 
 1. `npm run validate` (or `lint` + `build`) is green inside the workspace (`orazaka-apps/ui`).
 2. No hard-coded colors, 250-line cap per component, types only from `@krizaka/orazaka-shared` (AGENTS.md §8).
+3. The change ships with its tests — a unit test for logic, a render test for a component, an end-to-end test for a
+   route or a flow; a fix starts with a failing test that reproduces the bug. CI runs them and must be green; no test =
+   not done (workspace [`AGENTS.md` §9](https://github.com/krizaka/orazaka/blob/main/AGENTS.md#9-testing)).
 
 ## Release
 
