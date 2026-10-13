@@ -20,7 +20,7 @@ services:
       retries: 5
 
   mcp-debug-server:
-    image: node:24.11.1-slim
+    image: node:24.21.0-slim
     container_name: orazaka-mcp-debug
     working_dir: /app
     extra_hosts:
@@ -42,7 +42,7 @@ services:
       - "8084:8080"
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: orazaka-redis
     command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --save 900 1 --appendonly no
     ports:
@@ -54,7 +54,7 @@ services:
       retries: 5
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: rabbitmq:4-management-alpine
     restart: always
     container_name: orazaka-rabbitmq
     hostname: localhost
