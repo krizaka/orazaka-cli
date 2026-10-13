@@ -34,15 +34,24 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
     ignore:
-      # @krizaka/config peers typescript ^5 (krizaka-ui#141)
-      - dependency-name: "typescript"
-        versions: [">=7"]
-      # types of the Node LTS we run, never a non-LTS line
+      # already on 25; never past the runtime
       - dependency-name: "@types/node"
         versions: [">=26"]
-      # ESM-only; krizaka/orazaka-cli#33
+      # ESM-only, the CLI is CommonJS; krizaka/orazaka-cli#33
       - dependency-name: "commander"
         versions: [">=15"]
+      # ESM-only; krizaka/orazaka-cli#33
+      - dependency-name: "chalk"
+        versions: [">=5"]
+      # ESM-only; krizaka/orazaka-cli#33
+      - dependency-name: "ora"
+        versions: [">=6"]
+      # ESM-only; krizaka/orazaka-cli#33
+      - dependency-name: "@clack/prompts"
+        versions: [">=1"]
+      # TypeScript 7 (native compiler) waits for @krizaka/config and typescript-eslint (krizaka-ui#141)
+      - dependency-name: "typescript"
+        versions: [">=7"]
     commit-message:
       prefix: "chore(deps)"
       prefix-development: "chore(deps-dev)"
