@@ -43,7 +43,7 @@ const verifyCommand = new Command("verify")
   .description("Check a release manifest, and with --dir the artefacts of an offline bundle against it")
   .argument("<manifest>", "Path to the release manifest (orazaka-release.json)")
   .option("--dir <path>", "Offline bundle directory whose artefacts are checked (size and SHA-256)")
-  .option("--target <target>", `Only the artefacts of one target (${RELEASE_TARGETS.join(", ")})`)
+  .option("--target <target>", "Only the artefacts of one target: mac-arm64, linux-amd64 or linux-arm64")
   .option("--json", "Print the result as JSON")
   .action(async (file: string, options: VerifyOptions) => {
     const { manifest, problems } = verify(file, options);
