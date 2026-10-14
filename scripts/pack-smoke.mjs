@@ -124,6 +124,18 @@ try {
     );
   }
 
+  // The release manifest check runs from the published package alone (its schema ships in dist/).
+  const releaseDir = join(work, "release");
+  mkdirSync(releaseDir);
+  const manifestFile = join(releaseDir, "orazaka-release.json");
+  writeFileSync(manifestFile, JSON.stringify({ schema: "orazaka.dev/release/v1", version: "1.0.0" }));
+  const release = run(bin, ["release", "verify", manifestFile, "--json"], elsewhere);
+  check(
+    "orazaka release verify refuses an incomplete manifest with exit 1",
+    release.status === 1 && release.out.includes('"ok": false') && release.out.includes("upgradeFrom"),
+    release.out,
+  );
+
   const noTty = run(bin, ["install"], elsewhere);
   check(
     "orazaka install without a terminal and without --yes clones nothing",
