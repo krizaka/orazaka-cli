@@ -35,7 +35,7 @@ const SERVICES: ServiceEntry[] = [
   { name: "Redis", port: PORTS.redis, category: "middleware", critical: true },
   { name: "RabbitMQ", port: PORTS.rabbitmq, category: "middleware", critical: true },
   { name: "RabbitMQ Mgmt", port: PORTS.rabbitmqMgmt, category: "middleware", critical: false },
-  { name: "Ollama", port: PORTS.ollama, category: "ai", critical: true },
+  { name: "Ollama", port: PORTS.ollama, category: "ai", critical: false },
   { name: "LocalAI", port: PORTS.localai, category: "worker", critical: false },
   { name: "Image Gen", port: PORTS.imageGen, category: "worker", critical: false },
   { name: "Media Worker", port: PORTS.mediaWorker, category: "worker", critical: false },
