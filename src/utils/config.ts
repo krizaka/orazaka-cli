@@ -46,6 +46,9 @@ export function strEnv(keys: string | readonly string[], fallback: string): stri
  * Service ports, env-driven. The fallback mirrors `infra/docker-compose.yml`
  * (middleware) and the app conventions (Router 8080, Web 3000, …).
  */
+/** The one Node.js minimum: what CI runs and `package.json` engines declare. */
+export const NODE_MIN_MAJOR = 22;
+
 export const PORTS = {
   edge: intEnv("EDGE_PORT", 8088),
   identity: intEnv("IDENTITY_PORT", 8083),
