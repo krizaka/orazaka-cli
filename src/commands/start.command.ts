@@ -39,6 +39,7 @@ import {
 import { isPortInUse, waitForPort } from "../utils/health";
 import { spawnDetachedToLog } from "../utils/process";
 import { PORTS, OLLAMA_MODEL } from "../utils/config";
+import { DB_ROLES, DB_ROLE_CONTEXTS } from "../utils/platform";
 import { resolveMediaWorkerPython } from "../services/tool-installer";
 import { findImageModel, isInstalled, sdServerArgs } from "../services/image-models";
 import { defaultImageModel } from "../services/model-catalog";
@@ -546,21 +547,6 @@ export const startCommand = new Command("start")
     ));
   });
 
-/** The bounded contexts whose database role owns its own schema (AGENTS.md §5). */
-/**
- * Each context's role, as its initdb file creates it. The two Krizaka building blocks name theirs
- * after themselves (`10-identity.sql` → `krizaka_users`, `70-billing.sql` → `krizaka_billing`); a role
- * derived as `orazaka_<ctx>` does not exist for them, so `ALTER ROLE` failed and the users service —
- * the one every sign-in needs — could never connect on a fresh volume.
- */
-const DB_ROLES = {
-  IDENTITY: "krizaka_users",
-  KNOWLEDGE: "orazaka_knowledge",
-  AUTOMATION: "orazaka_automation",
-  BILLING: "krizaka_billing",
-  STUDIO: "orazaka_studio",
-} as const;
-const DB_ROLE_CONTEXTS = Object.keys(DB_ROLES) as (keyof typeof DB_ROLES)[];
 
 /**
  * Sets each context role's password from the environment.
