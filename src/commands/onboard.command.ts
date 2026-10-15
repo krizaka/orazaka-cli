@@ -12,11 +12,12 @@ import { Command } from "commander";
 import { execSync } from "node:child_process";
 import { platform } from "node:os";
 import chalk from "chalk";
+import { NODE_MIN_MAJOR } from "../utils/config";
 
 /** Minimum required versions for each prerequisite. */
-const PREREQUISITES = [
+export const PREREQUISITES = [
   { name: "Java", command: "java -version", regex: /version "(\d+)/, minMajor: 21 },
-  { name: "Node.js", command: "node --version", regex: /v(\d+)/, minMajor: 24 },
+  { name: "Node.js", command: "node --version", regex: /v(\d+)/, minMajor: NODE_MIN_MAJOR },
   { name: "Python", command: "python3 --version", regex: /(\d+\.\d+)/, minMajor: 3 },
   { name: "Docker", command: "docker --version", regex: /(\d+\.\d+)/, minMajor: 20 },
   { name: "Ollama", command: "ollama --version", regex: /(\d+\.\d+)/, minMajor: 0 },

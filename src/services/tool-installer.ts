@@ -10,6 +10,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import chalk from "chalk";
 import { hasTool } from "../utils/platform";
+import { NODE_MIN_MAJOR } from "../utils/config";
 
 /** Describes a single tool requirement. */
 export interface ToolRequirement {
@@ -83,7 +84,7 @@ export function getRequiredTools(): ToolRequirement[] {
       name: "Node.js",
       command: "node",
       versionCmd: "node --version",
-      minVersion: "20.0.0",
+      minVersion: `${String(NODE_MIN_MAJOR)}.0.0`,
       description: "JavaScript runtime for CLI and Next.js UI",
       critical: true,
       brewFormula: "node",

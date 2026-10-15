@@ -16,6 +16,7 @@ import {
   getSystemInfo,
 } from "../utils/platform";
 import type { SystemInfo } from "../utils/platform";
+import { NODE_MIN_MAJOR } from "../utils/config";
 // Re-export the shared health primitives so existing importers
 // (`status`, `doctor`) keep importing them from this module.
 export { checkPortAvailable, checkHttpEndpoint } from "../utils/health";
@@ -100,18 +101,18 @@ export async function runDiagnostics(): Promise<DiagnosticReport> {
   const issues: DiagnosticIssue[] = [];
   const systemInfo = getSystemInfo();
 
-  // 1. Check Node.js version (should be 18+)
+  // 1. Check Node.js version (the minimum is NODE_MIN_MAJOR)
   try {
     const version = parseInt(process.version.split(".")[0].substring(1));
-    if (version < 22) {
+    if (version < NODE_MIN_MAJOR) {
       issues.push({
         code: "NODE_VERSION_OLD",
         severity: "error",
         title: "Node.js version too old",
-        description: `Found Node.js ${process.version}, but v22.0.0+ is required.`,
+        description: `Found Node.js ${process.version}, but v${String(NODE_MIN_MAJOR)}.0.0+ is required.`,
         suggestions: [
-          "Install Node.js 22 or later from https://nodejs.org",
-          "Use nvm (Node Version Manager) for easy switching: nvm install 22",
+          `Install Node.js ${String(NODE_MIN_MAJOR)} or later from https://nodejs.org`,
+          `Use nvm (Node Version Manager) for easy switching: nvm install ${String(NODE_MIN_MAJOR)}`,
           "On macOS: brew install node",
         ],
       });
