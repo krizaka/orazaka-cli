@@ -20,6 +20,10 @@ jest.mock("../utils/config", () => ({
   ROUTER_URL: "http://localhost:8080",
 }));
 
+jest.mock("../threads", () => ({
+  loadConfig: () => ({ token: "session-token" }),
+}));
+
 // ── Mock global fetch ────────────────────────────────────────────────────────
 const mockFetch = jest.fn();
 globalThis.fetch = mockFetch;
@@ -285,5 +289,27 @@ describe("renderTimeline", () => {
     const msg = { kind: "invalid-kind", content: "Invalid content" };
     const result = await renderTimeline(msg as any);
     expect(result).toEqual(msg);
+  });
+});
+
+
+// ── a platform asset (what a Studio run answers) ─────────────────────────────
+
+describe("renderVideo — an asset of the platform", () => {
+  test("is downloaded from the router with the session's token and saved", async () => {
+    mockFetch.mockResolvedValue({ ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer });
+    const out = require("node:path").join(require("node:os").tmpdir(), `orazaka-asset-${Date.now()}.mp4`);
+    await renderVideo("/api/v1/assets/job-1/video.mp4", out);
+    expect(mockFetch).toHaveBeenCalledWith("http://localhost:8080/api/v1/assets/job-1/video.mp4", { headers: { Authorization: "Bearer session-token" } });
+    expect(require("node:fs").readFileSync(out)).toEqual(Buffer.from([1, 2, 3]));
+    require("node:fs").rmSync(out);
+  });
+
+  test("a URL elsewhere gets no token", async () => {
+    mockFetch.mockResolvedValue({ ok: true, arrayBuffer: async () => new Uint8Array([9]).buffer });
+    const out = require("node:path").join(require("node:os").tmpdir(), `orazaka-ext-${Date.now()}.mp4`);
+    await renderVideo("https://cdn.example/clip.mp4", out);
+    expect(mockFetch).toHaveBeenCalledWith("https://cdn.example/clip.mp4");
+    require("node:fs").rmSync(out);
   });
 });
