@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import { format } from 'date-fns';
 import type { TimelineMessage } from './types/api.types';
 import { ROUTER_URL } from './utils/config';
+import { loadConfig } from './threads';
 
 const DATA_URL_REGEX = /^data:([^;]+);base64,(.+)$/;
 
@@ -87,8 +88,11 @@ export function renderText(content: string): void {
  * @param savePath - Optional explicit save path; auto-generates if omitted.
  */
 async function downloadUrl(urlStr: string): Promise<Buffer> {
-  const fullUrl = urlStr.startsWith('http') ? urlStr : `${ROUTER_URL}${urlStr}`;
-  const response = await fetch(fullUrl);
+  const absolute = urlStr.startsWith('http');
+  const fullUrl = absolute ? urlStr : `${ROUTER_URL}${urlStr}`;
+  // An asset of the platform (`/api/v1/assets/…`) is its owner's: the session's token asks for it. A URL elsewhere gets none.
+  const token = urlStr.startsWith('/api/') ? loadConfig()?.token : undefined;
+  const response = token ? await fetch(fullUrl, { headers: { Authorization: `Bearer ${token}` } }) : await fetch(fullUrl);
   if (!response.ok) {
     throw new Error(`Failed to download media: status ${response.status}`);
   }
@@ -123,7 +127,7 @@ async function renderMediaContent(
     for (const line of config.formatSuccess(target, decoded.buffer, decoded.mime)) {
       console.log(line);
     }
-  } else if (content.startsWith('http') || content.startsWith('/uploads')) {
+  } else if (content.startsWith('http') || content.startsWith('/uploads') || content.startsWith('/api/')) {
     try {
       const buffer = await downloadUrl(content);
       const target = savePath || autoFileName(config.prefix, config.defaultExt);
