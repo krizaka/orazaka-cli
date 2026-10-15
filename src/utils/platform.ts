@@ -313,3 +313,33 @@ export function resolveDockerComposeCmd(): string | null {
     return null;
   }
 }
+
+/**
+ * Each bounded context's database role, as its `infra/initdb` file creates it. The two Krizaka building blocks
+ * name theirs after themselves (`10-identity.sql` → `krizaka_users`, `70-billing.sql` → `krizaka_billing`).
+ * `orazaka start` sets each role's password from `<CTX>_DB_PASSWORD`; `orazaka install` generates them.
+ */
+export const DB_ROLES = {
+  IDENTITY: "krizaka_users",
+  KNOWLEDGE: "orazaka_knowledge",
+  AUTOMATION: "orazaka_automation",
+  BILLING: "krizaka_billing",
+  STUDIO: "orazaka_studio",
+} as const;
+export const DB_ROLE_CONTEXTS = Object.keys(DB_ROLES) as (keyof typeof DB_ROLES)[];
+
+/** A value that is not a password: blank, or the template's placeholder. */
+const isPlaceholderPassword = (v: string | undefined): boolean => v === undefined || v === "" || /^CHANGE_?ME$/i.test(v);
+
+/**
+ * Gives every `<CTX>_DB_PASSWORD` a strong random value when it is missing, blank or still the template's
+ * `CHANGE_ME`. A value the developer already set is never touched. The file is made owner-only (0600) — it now
+ * holds secrets — and nothing is printed: the return value names the keys, never the values.
+ */
+export function ensureDbRolePasswords(filePath: string, generate: () => string): string[] {
+  const existing = parseEnvFile(filePath);
+  const keys = DB_ROLE_CONTEXTS.map((ctx) => `${ctx}_DB_PASSWORD`).filter((k) => isPlaceholderPassword(existing[k]));
+  if (keys.length > 0) writeEnvFile(filePath, Object.fromEntries(keys.map((k) => [k, generate()])));
+  if (fs.existsSync(filePath)) fs.chmodSync(filePath, 0o600);
+  return keys;
+}

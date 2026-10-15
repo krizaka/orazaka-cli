@@ -44,6 +44,7 @@ import {
   resolveMediaWorkerPython,
   type ToolCheckResult,
 } from "../services/tool-installer";
+import { ensureDbRolePasswords } from "../utils/platform";
 import { bootstrapWorkspace } from "../services/workspace-bootstrap";
 
 function secureHex(bytes: number): string {
@@ -407,6 +408,10 @@ export const installCommand = new Command("install")
     );
     const added = [...Object.keys(blanks), ...mergeEnvFile(envPath, envUpdates)];
 
+    // Every context role gets its own strong password (`start` applies them to the roles). Generated, written to
+    // .env (owner-only, 0600) and never printed — a value the developer already set is kept.
+    const generatedPasswords = ensureDbRolePasswords(envPath, () => secureHex(24));
+
     // Generate docker-compose.override.yml — infra-only model (AGENTS.md §1).
     // The base compose hosts ONLY stateful infra (PG/pgvector, Redis, RabbitMQ);
     // AI runtimes and apps run natively (configured via .env), so local dev needs
@@ -448,6 +453,11 @@ export const installCommand = new Command("install")
     spinner.stop("Deployment artifacts generated ✔");
 
     // ─── Report .env reconciliation ─────────────────────────────
+    if (generatedPasswords.length > 0) {
+      await logSuccess(
+        `Generated ${String(generatedPasswords.length)} database role password(s) in .env ${chalk.gray("(owner-only, never shown)")}: ${chalk.gray(generatedPasswords.join(", "))}`,
+      );
+    }
     if (added.length > 0) {
       await logSuccess(`Added ${String(added.length)} missing key(s) to .env: ${chalk.gray(added.join(", "))}`);
     } else {

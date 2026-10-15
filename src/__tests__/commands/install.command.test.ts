@@ -93,6 +93,24 @@ describe("install command", () => {
     );
   });
 
+  test("generates a strong password for every database role, stored owner-only (fresh install)", async () => {
+    (select as jest.Mock).mockResolvedValueOnce("local_dev").mockResolvedValueOnce("bundled");
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.readFileSync as jest.Mock).mockReturnValue("BILLING_DB_PASSWORD=CHANGE_ME\nSTUDIO_DB_PASSWORD=CHANGE_ME\n");
+
+    await installCommand.parseAsync(["node", "install"]);
+
+    const written = (fs.writeFileSync as jest.Mock).mock.calls
+      .filter(([file]) => file === "/mock/workspace/.env")
+      .map(([, content]) => String(content))
+      .join("\n");
+    for (const ctx of ["IDENTITY", "KNOWLEDGE", "AUTOMATION", "BILLING", "STUDIO"]) {
+      expect(written).toMatch(new RegExp(`${ctx}_DB_PASSWORD=[0-9a-f]{48}`));
+    }
+    expect(written).not.toContain("CHANGE_ME");
+    expect(fs.chmodSync).toHaveBeenCalledWith("/mock/workspace/.env", 0o600);
+  });
+
   test("generates Production + External config correctly", async () => {
     (select as jest.Mock)
       .mockResolvedValueOnce("production") // targetEnv
