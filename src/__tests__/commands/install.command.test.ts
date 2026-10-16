@@ -191,4 +191,32 @@ describe("install command", () => {
     chdir.mockRestore();
     hasTool.mockReturnValue(false);
   });
+  test("non-interactive install (--yes) follows the host: Linux x64 gets the Production topology, not Local Dev", async () => {
+    const { isAppleSilicon } = jest.requireMock("../../ui/platform") as { isAppleSilicon: jest.Mock };
+    const { note } = jest.requireMock("../../ui/prompts") as { note: jest.Mock };
+    isAppleSilicon.mockReturnValue(false);
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.readFileSync as jest.Mock).mockReturnValue("");
+
+    await installCommand.parseAsync(["node", "install", "--yes"]);
+
+    const setup = note.mock.calls.find(([, title]) => title === "✨ Setup Complete");
+    expect(setup?.[0]).toContain("Production (Linux)");
+    expect(setup?.[0]).not.toContain("Local Dev");
+    isAppleSilicon.mockReturnValue(false);
+  });
+
+  test("non-interactive install on Apple Silicon keeps the Local Dev topology", async () => {
+    const { isAppleSilicon } = jest.requireMock("../../ui/platform") as { isAppleSilicon: jest.Mock };
+    const { note } = jest.requireMock("../../ui/prompts") as { note: jest.Mock };
+    isAppleSilicon.mockReturnValue(true);
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.readFileSync as jest.Mock).mockReturnValue("");
+
+    await installCommand.parseAsync(["node", "install", "--yes"]);
+
+    const setup = note.mock.calls.find(([, title]) => title === "✨ Setup Complete");
+    expect(setup?.[0]).toContain("Local Dev (Apple Silicon)");
+    isAppleSilicon.mockReturnValue(false);
+  });
 });
