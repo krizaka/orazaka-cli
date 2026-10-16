@@ -238,7 +238,8 @@ export const installCommand = new Command("install")
     // ─── Phase 4: Deployment Topology Configuration ─────────────
     await logStep("Phase 4 — Deployment Topology Configuration");
 
-    const targetEnv = !interactive ? "local_dev" : await select({
+    // Non-interactive: the topology follows the host (Apple Silicon → local_dev, otherwise production).
+    const targetEnv = !interactive ? (isAppleSilicon() ? "local_dev" : "production") : await select({
       message: "Select target environment profile:",
       options: [
         {
