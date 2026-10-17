@@ -38,6 +38,9 @@ export interface RunRecord {
   readonly output?: string;
   readonly assetId?: string;
   readonly seconds?: number;
+  /** The platform's own clock: when the run started and finished (ISO 8601). */
+  readonly startedAt?: string;
+  readonly finishedAt?: string;
   readonly error?: string;
   readonly seed?: number;
 }

@@ -201,6 +201,7 @@ describe("the director", () => {
     expect(nextStep(done).kind).toBe("done");
     expect(done.history).toHaveLength(10);
     expect(done.history[0].seconds).toBe(90); // the platform's clock, not the director's
+    expect(done.history[0]).toMatchObject({ startedAt: "2026-10-17T00:00:00Z", finishedAt: "2026-10-17T00:01:30Z" });
     expect(saved).toHaveLength(10); // saved after every run: a stop loses nothing
   });
 
