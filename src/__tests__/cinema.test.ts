@@ -44,7 +44,7 @@ const SCRIPT = {
   titles: [{ text: "NIGHTFALL", start: 0.5, end: 2.5, style: "hero" }, { text: "late", start: 99, end: 100, style: "end" }],
   shots: [
     { id: 1, seconds: 5, characters: ["volt"], camera: "wide, slow push", action: "she stands", vfx: "", keyframe: "a figure on a rooftop", motion: "rain falls", transition: "dissolve", speed: 1, rampAt: null, caption: "" },
-    { id: 2, seconds: 5, characters: ["volt", "ghost"], camera: "low angle", action: "she lands", vfx: "cyan shockwave", keyframe: "landing", motion: "she lands hard", transition: "flash", speed: 1, rampAt: 2, caption: "Impact" },
+    { id: 2, seconds: 5, characters: ["volt", "ghost"], camera: "low angle", lens: "24", lighting: "cyan rim light", atmosphere: "rain", action: "she lands", vfx: "cyan shockwave", keyframe: "landing", motion: "she lands hard", transition: "flash", speed: 1, rampAt: 2, caption: "Impact" },
     { id: 3, seconds: 9, characters: [], camera: "close", action: "eyes glow", vfx: "", keyframe: "her eyes", motion: "eyes glow", transition: "spiral", speed: 0.5, rampAt: 3, caption: "", continuous: true },
     { id: 4, seconds: 5, characters: [], camera: "", action: "", vfx: "", keyframe: "beyond the asked count", motion: "", transition: "cut", speed: 1, rampAt: null, caption: "" },
   ],
@@ -84,6 +84,15 @@ describe("the prompts keep the look and the faces", () => {
     expect(prompt).toContain("magenta and teal");
     expect(prompt).toContain("vertical 9:16");
     expect(prompt).toContain("No text");
+  });
+
+  test("the cinematic kit: lens, light and air reach the keyframe and the shot", () => {
+    for (const prompt of [keyframePrompt(script, script.shots[1], "9:16"), motionPrompt(script, script.shots[1])]) {
+      expect(prompt).toContain("24mm lens");
+      expect(prompt).toContain("lighting: cyan rim light");
+      expect(prompt).toContain("atmosphere: rain");
+    }
+    expect(keyframePrompt(script, script.shots[1], "9:16")).toContain("anamorphic film look");
   });
 
   test("the motion prompt carries the effects and the camera", () => {

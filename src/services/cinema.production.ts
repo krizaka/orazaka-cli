@@ -50,6 +50,10 @@ export interface ScriptShot {
   readonly seconds: number;
   readonly characters: readonly string[];
   readonly camera: string;
+  /** The Krizaka cinematic kit (ADR-080): the lens in mm, the light, the air. */
+  readonly lens: string;
+  readonly lighting: string;
+  readonly atmosphere: string;
   readonly action: string;
   readonly vfx: string;
   readonly keyframe: string;
@@ -162,6 +166,9 @@ export function parseScript(raw: string, brief: Brief): Script {
       seconds,
       characters: (Array.isArray(s?.characters) ? s.characters : []).map((c) => text(c, 40)).filter((c) => known.has(c)),
       camera: text(s?.camera, 300),
+      lens: text(s?.lens, 60),
+      lighting: text(s?.lighting, 300),
+      atmosphere: text(s?.atmosphere, 200),
       action: text(s?.action, 500),
       vfx: text(s?.vfx, 400),
       keyframe,
@@ -211,6 +218,23 @@ export const keyframeSize = (aspect: Aspect): string => (aspect === "9:16" ? "76
 
 const NO_TEXT = "No text, no letters, no logos, no watermark, no brand names.";
 
+/** The Krizaka cinematic kit's finish, said in every picture: what makes a frame read as a film, not a render. */
+export const KIT_FINISH =
+  "Shot on a cinema camera, anamorphic film look, natural skin texture, motivated lighting, filmic contrast, subtle film grain, " +
+  "high dynamic range, sharp focus on the subject, photorealistic, highly detailed";
+
+/** A shot's direction in one sentence: the lens, the camera, the light and the air (only what the script gave). */
+export function direction(shot: ScriptShot): string {
+  return [
+    shot.lens ? `${/mm/i.test(shot.lens) ? shot.lens : `${shot.lens}mm`} lens` : "",
+    shot.camera ? `camera: ${shot.camera}` : "",
+    shot.lighting ? `lighting: ${shot.lighting}` : "",
+    shot.atmosphere ? `atmosphere: ${shot.atmosphere}` : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 /** The still of a character, first: the reference a person looks at before any shot is paid. */
 export function characterPrompt(script: Script, character: Character): string {
   return text(
@@ -233,19 +257,20 @@ export function keyframePrompt(script: Script, shot: ScriptShot, aspect: Aspect)
   return text(
     `${shot.keyframe}. ${cast ? `${cast}. ` : ""}${shot.vfx ? `Effects: ${shot.vfx}. ` : ""}` +
       `Style: ${script.style} Cinematic film still, ${aspect === "9:16" ? "vertical 9:16" : "widescreen 16:9"} composition, ` +
-      `${shot.camera}. ${NO_TEXT}`,
+      `${direction(shot)}. ${KIT_FINISH}. ${NO_TEXT}`,
     1900,
   );
 }
 
 export const KEYFRAME_NEGATIVE =
-  "text, letters, caption, watermark, logo, signature, deformed hands, extra fingers, extra limbs, blurry, low quality";
+  "text, letters, caption, watermark, logo, signature, deformed hands, extra fingers, extra limbs, fused fingers, " +
+  "distorted face, plastic skin, oversaturated, cartoon, 3d render, cgi look, blurry, low quality, jpeg artifacts";
 
 /** The motion prompt of a shot: what moves, the effects, the camera, the look. */
 export function motionPrompt(script: Script, shot: ScriptShot): string {
   return text(
-    `${shot.motion}. ${shot.vfx ? `Visual effects: ${shot.vfx}. ` : ""}Camera: ${shot.camera}. ` +
-      `${script.style} Cinematic, smooth natural motion, the same characters throughout, ${NO_TEXT}`,
+    `${shot.motion}. ${shot.vfx ? `Visual effects: ${shot.vfx}. ` : ""}${direction(shot)}. ` +
+      `${script.style} Cinematic, smooth natural motion, stable faces and hands, the same characters throughout, ${NO_TEXT}`,
     1900,
   );
 }
