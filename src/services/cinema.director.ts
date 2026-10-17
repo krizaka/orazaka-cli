@@ -63,6 +63,8 @@ function recordOf(studioKey: string, run: FinishedRun, seed?: number, key?: stri
     status: run.status,
     output: output?.value,
     seconds: SECONDS(run),
+    startedAt: run.startedAt,
+    finishedAt: run.finishedAt ?? undefined,
     error: run.status === RunState.Succeeded ? undefined : (run.errorMessage ?? `status ${run.status}`),
     seed,
   };

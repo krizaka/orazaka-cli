@@ -40,11 +40,12 @@ const SCRIPT = {
   style: "wet neon streets, magenta and teal, anamorphic 35mm.",
   characters: [{ id: "volt", description: "a woman in her thirties, short silver hair, matte-black armour with cyan seams" }],
   music: "dark synth, 120 bpm",
+  ambience: "storm",
   voiceover: "The city sleeps. She does not.",
   titles: [{ text: "NIGHTFALL", start: 0.5, end: 2.5, style: "hero" }, { text: "late", start: 99, end: 100, style: "end" }],
   shots: [
     { id: 1, seconds: 5, characters: ["volt"], camera: "wide, slow push", action: "she stands", vfx: "", keyframe: "a figure on a rooftop", motion: "rain falls", transition: "dissolve", speed: 1, rampAt: null, caption: "" },
-    { id: 2, seconds: 5, characters: ["volt", "ghost"], camera: "low angle", action: "she lands", vfx: "cyan shockwave", keyframe: "landing", motion: "she lands hard", transition: "flash", speed: 1, rampAt: 2, caption: "Impact" },
+    { id: 2, seconds: 5, characters: ["volt", "ghost"], camera: "low angle", lens: "24", lighting: "cyan rim light", atmosphere: "rain", action: "she lands", vfx: "cyan shockwave", keyframe: "landing", motion: "she lands hard", transition: "flash", speed: 1, rampAt: 2, caption: "Impact" },
     { id: 3, seconds: 9, characters: [], camera: "close", action: "eyes glow", vfx: "", keyframe: "her eyes", motion: "eyes glow", transition: "spiral", speed: 0.5, rampAt: 3, caption: "", continuous: true },
     { id: 4, seconds: 5, characters: [], camera: "", action: "", vfx: "", keyframe: "beyond the asked count", motion: "", transition: "cut", speed: 1, rampAt: null, caption: "" },
   ],
@@ -54,6 +55,14 @@ describe("the script is parsed once", () => {
   test("an answer wrapped in prose or a code fence still yields its JSON", () => {
     expect(extractJson("Here it is:\n```json\n{\"a\":1}\n```")).toEqual({ a: 1 });
     expect(() => extractJson("no json")).toThrow(ScriptError);
+  });
+
+  test("a missing comma between members or a trailing comma is repaired, never more", () => {
+    expect(extractJson('{\n "a": "x"\n\n "b": [1, 2,],\n "c": {"d": 1}\n "e": true\n}')).toEqual({ a: "x", b: [1, 2], c: { d: 1 }, e: true });
+    expect(() => extractJson('{"a": x}')).toThrow(ScriptError);
+    expect(extractJson('{"v": "line one\nline two"}')).toEqual({ v: "line one line two" });
+    expect(extractJson('{"lens": 35mm,\n "tempo": 68 BPM\n}')).toEqual({ lens: "35mm", tempo: "68 BPM" });
+    expect(extractJson('{"style": "a 16:9 frame, 3:2 ratio"}')).toEqual({ style: "a 16:9 frame, 3:2 ratio" });
   });
 
   test("unknown values are corrected, the count is bounded, unknown characters dropped", () => {
@@ -67,6 +76,8 @@ describe("the script is parsed once", () => {
     expect(script.shots[1].rampAt).toBe(2);
     expect(script.shots[2].continuous).toBe(true);
     expect(script.grade).toBe("neon-night");
+    expect(parseScript(JSON.stringify({ ...SCRIPT, title: "The **city** *breathes*" }), BRIEF).title).toBe("The city breathes");
+    expect(parseScript(JSON.stringify({ ...SCRIPT, music: { genre: "synthwave", tempo: "120 bpm" } }), BRIEF).music).toBe("synthwave, 120 bpm");
   });
 
   test("a script without keyframes or shots is refused", () => {
@@ -84,6 +95,15 @@ describe("the prompts keep the look and the faces", () => {
     expect(prompt).toContain("magenta and teal");
     expect(prompt).toContain("vertical 9:16");
     expect(prompt).toContain("No text");
+  });
+
+  test("the cinematic kit: lens, light and air reach the keyframe and the shot", () => {
+    for (const prompt of [keyframePrompt(script, script.shots[1], "9:16"), motionPrompt(script, script.shots[1])]) {
+      expect(prompt).toContain("24mm lens");
+      expect(prompt).toContain("lighting: cyan rim light");
+      expect(prompt).toContain("atmosphere: rain");
+    }
+    expect(keyframePrompt(script, script.shots[1], "9:16")).toContain("anamorphic film look");
   });
 
   test("the motion prompt carries the effects and the camera", () => {
@@ -104,6 +124,9 @@ describe("the edit decision list fits the cut", () => {
   const script = parseScript(JSON.stringify(SCRIPT), BRIEF);
   const edit = editDecisionList(production, script) as {
     shots: Array<Record<string, unknown>>;
+    upscale: string;
+    ambience: string;
+    sfx: boolean;
     titles: Array<Record<string, unknown>>;
     aspect: string;
     label: string;
@@ -112,6 +135,7 @@ describe("the edit decision list fits the cut", () => {
   test("each shot trims the clip's still head, ramps and transitions are kept, the label is set", () => {
     expect(edit.aspect).toBe("9:16");
     expect(edit.label).toBe("AI-generated");
+    expect(edit).toMatchObject({ upscale: "seedvr2", ambience: "storm", sfx: true });
     expect(edit.shots[0]).toMatchObject({ clip: 0, in: 0.15, out: 5 });
     expect(edit.shots[1]).toMatchObject({ transition: "flash", transitionSeconds: 0.35, rampAt: 2.15, rampSpeed: 0.4 });
     expect(edit.shots[2]).toMatchObject({ speed: 0.5, zoom: 1 });
@@ -177,6 +201,7 @@ describe("the director", () => {
     expect(nextStep(done).kind).toBe("done");
     expect(done.history).toHaveLength(10);
     expect(done.history[0].seconds).toBe(90); // the platform's clock, not the director's
+    expect(done.history[0]).toMatchObject({ startedAt: "2026-10-17T00:00:00Z", finishedAt: "2026-10-17T00:01:30Z" });
     expect(saved).toHaveLength(10); // saved after every run: a stop loses nothing
   });
 
