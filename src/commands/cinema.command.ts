@@ -61,6 +61,9 @@ function save(dir: string, production: Production): void {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** An uploaded asset's id (a UUID), as `POST /api/v1/media/upload` answers it — not a URL to download. */
+export const isAssetId = (value: string): boolean => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
 /** How long a run waits for a free slot of the account's concurrent-run cap before the director gives up. */
 const SLOT_WAIT_MS = 60 * 60_000;
 
@@ -98,6 +101,8 @@ const restPort: StudioPort = {
     return run;
   },
   async reupload(output, lastFrame): Promise<string> {
+    // Already an uploaded asset (a keyframe re-uploaded from the production folder): nothing to move.
+    if (!lastFrame && isAssetId(output)) return output;
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orz-cinema-"));
     try {
       const downloaded = path.join(scratch, lastFrame ? "clip.mp4" : "keyframe.png");
