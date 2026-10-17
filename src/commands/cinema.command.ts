@@ -61,10 +61,30 @@ function save(dir: string, production: Production): void {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** How long a run waits for a free slot of the account's concurrent-run cap before the director gives up. */
+const SLOT_WAIT_MS = 60 * 60_000;
+
+/**
+ * Starts a run, waiting while the account is at its concurrent-run cap ("too many concurrent runs"): a refusal that only
+ * says "not now" is not a failed production. Any other refusal is thrown at once.
+ */
+export async function startWhenFree<T>(start: () => Promise<T>, wait = sleep, limitMs = SLOT_WAIT_MS, pollMs = 30_000): Promise<T> {
+  const deadline = Date.now() + limitMs;
+  for (;;) {
+    try {
+      return await start();
+    } catch (error: unknown) {
+      const busy = error instanceof Error && /too many concurrent runs/i.test(error.message);
+      if (!busy || Date.now() + pollMs > deadline) throw error;
+      await wait(pollMs);
+    }
+  }
+}
+
 /** The REST port: a run is started, then followed to its end; an output is re-uploaded as an asset a run can start from. */
 const restPort: StudioPort = {
   async run(studioKey, inputs): Promise<FinishedRun> {
-    const started = await StudioApi.startStudioRun(studioKey, inputs);
+    const started = await startWhenFree(() => StudioApi.startStudioRun(studioKey, inputs));
     const deadline = Date.now() + RUN_LIMIT_MS;
     let run = started;
     while (!TERMINAL.has(run.status) && Date.now() < deadline) {
