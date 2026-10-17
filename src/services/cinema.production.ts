@@ -268,10 +268,11 @@ export const KIT_FINISH =
   "high dynamic range, sharp focus on the subject, photorealistic, highly detailed";
 
 /** A shot's direction in one sentence: the lens, the camera, the light and the air (only what the script gave). */
-export function direction(shot: ScriptShot): string {
+export function direction(shot: ScriptShot, forMotion = false): string {
   return [
     shot.lens ? `${/mm/i.test(shot.lens) ? shot.lens : `${shot.lens}mm`} lens` : "",
-    shot.camera ? `camera: ${shot.camera}` : "",
+    // In a motion prompt the word "camera" summoned a camera into the frame (gate, 2026-10-17): the view moves instead.
+    shot.camera ? (forMotion ? `the view: ${shot.camera.replace(/\bcamera\b/gi, "view")}` : `camera: ${shot.camera}`) : "",
     shot.lighting ? `lighting: ${shot.lighting}` : "",
     shot.atmosphere ? `atmosphere: ${shot.atmosphere}` : "",
   ]
@@ -313,7 +314,7 @@ export const KEYFRAME_NEGATIVE =
 /** The motion prompt of a shot: what moves, the effects, the camera, the look. */
 export function motionPrompt(script: Script, shot: ScriptShot): string {
   return text(
-    `${shot.motion}. ${shot.vfx ? `Visual effects: ${shot.vfx}. ` : ""}${direction(shot)}. ` +
+    `${shot.motion.replace(/\bcamera\b/gi, "view")}. ${shot.vfx ? `Visual effects: ${shot.vfx}. ` : ""}${direction(shot, true)}. ` +
       `${script.style} Cinematic, smooth natural motion, stable faces and hands, the same characters throughout, ${NO_TEXT}`,
     1900,
   );
