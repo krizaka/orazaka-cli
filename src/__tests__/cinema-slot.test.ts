@@ -48,3 +48,14 @@ describe("isAssetId", () => {
     expect(isAssetId("/api/v1/assets/0b6f2a52-1c1e-4c84-9a8e-2f6b2b1d9a10/image.png")).toBe(false);
   });
 });
+
+describe("the measured estimate", () => {
+  test("every step the director runs has a measured time, and a shot costs GPU", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const measured = require("../services/cinema-estimate.json") as { measured: string; steps: Record<string, { seconds: number; gpuUsd: number }> };
+    expect(measured.measured).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    for (const step of ["script", "keyframe", "video", "cut", "voice", "sound"]) expect(measured.steps[step]).toBeDefined();
+    expect(measured.steps.video.seconds).toBeGreaterThan(0);
+    expect(measured.steps.video.gpuUsd).toBeGreaterThan(0);
+  });
+});
