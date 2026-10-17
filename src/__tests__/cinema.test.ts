@@ -40,6 +40,7 @@ const SCRIPT = {
   style: "wet neon streets, magenta and teal, anamorphic 35mm.",
   characters: [{ id: "volt", description: "a woman in her thirties, short silver hair, matte-black armour with cyan seams" }],
   music: "dark synth, 120 bpm",
+  ambience: "storm",
   voiceover: "The city sleeps. She does not.",
   titles: [{ text: "NIGHTFALL", start: 0.5, end: 2.5, style: "hero" }, { text: "late", start: 99, end: 100, style: "end" }],
   shots: [
@@ -113,6 +114,9 @@ describe("the edit decision list fits the cut", () => {
   const script = parseScript(JSON.stringify(SCRIPT), BRIEF);
   const edit = editDecisionList(production, script) as {
     shots: Array<Record<string, unknown>>;
+    upscale: string;
+    ambience: string;
+    sfx: boolean;
     titles: Array<Record<string, unknown>>;
     aspect: string;
     label: string;
@@ -121,6 +125,7 @@ describe("the edit decision list fits the cut", () => {
   test("each shot trims the clip's still head, ramps and transitions are kept, the label is set", () => {
     expect(edit.aspect).toBe("9:16");
     expect(edit.label).toBe("AI-generated");
+    expect(edit).toMatchObject({ upscale: "seedvr2", ambience: "storm", sfx: true });
     expect(edit.shots[0]).toMatchObject({ clip: 0, in: 0.15, out: 5 });
     expect(edit.shots[1]).toMatchObject({ transition: "flash", transitionSeconds: 0.35, rampAt: 2.15, rampSpeed: 0.4 });
     expect(edit.shots[2]).toMatchObject({ speed: 0.5, zoom: 1 });

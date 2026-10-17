@@ -18,6 +18,8 @@ export type Aspect = (typeof ASPECTS)[number];
 export const GRADES = ["none", "teal-orange", "neon-night", "warm-film", "clean-news", "nordic"] as const;
 export const TRANSITIONS = ["cut", "fade", "dissolve", "black", "flash", "whip", "slide", "radial", "iris"] as const;
 export const TITLE_STYLES = ["hero", "kicker", "lower-third", "end"] as const;
+/** The cut's synthesized ambience beds (orazaka-worker-media app/cut.py AMBIENCES). */
+export const AMBIENCES = ["none", "rain", "storm", "wind", "city", "room", "nature"] as const;
 
 /** The state of one Studio run of the production, as the platform reported it. */
 export const RunState = {
@@ -80,6 +82,7 @@ export interface Script {
   readonly style: string;
   readonly characters: readonly Character[];
   readonly music: string;
+  readonly ambience: (typeof AMBIENCES)[number];
   readonly voiceover: string;
   readonly titles: readonly ScriptTitle[];
   readonly shots: readonly ScriptShot[];
@@ -197,6 +200,7 @@ export function parseScript(raw: string, brief: Brief): Script {
     style: text(data.style, 800),
     characters,
     music: text(data.music, 480) || "cinematic orchestral score, building tension, no vocals",
+    ambience: oneOf(data.ambience, AMBIENCES, "none"),
     voiceover: text(data.voiceover, 1800),
     titles,
     shots,
@@ -300,7 +304,18 @@ export function editDecisionList(production: Production, script: Script): Record
   const titles = script.titles
     .filter((t) => t.start < length - 0.5)
     .map((t) => ({ ...t, end: Math.min(t.end, length) }));
-  return { aspect: production.brief.aspect, fps: 30, grade: script.grade, shots, titles, label: "AI-generated" };
+  // Hollywood finishing (ADR-080): every shot upscaled by SeedVR2 before the cut, the ambience bed and the hits under it.
+  return {
+    aspect: production.brief.aspect,
+    fps: 30,
+    grade: script.grade,
+    shots,
+    titles,
+    label: "AI-generated",
+    upscale: "seedvr2",
+    ambience: script.ambience,
+    sfx: true,
+  };
 }
 
 /** How long the finished film is: each shot's screen time (slow motion and ramps included) minus the overlaps. */
