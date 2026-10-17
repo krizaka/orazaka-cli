@@ -126,6 +126,7 @@ async function runStep(
         durationSeconds: brief.durationSeconds,
         shots: brief.shots,
         language: brief.language,
+        ...(brief.scriptModel ? { model: brief.scriptModel } : {}),
       });
       const record = recordOf("cinematic-script", run);
       if (run.status !== RunState.Succeeded || !record.output) {

@@ -92,6 +92,8 @@ export interface Brief {
   readonly seed: number;
   /** A voice of the speech catalogue for the voice-over (empty: the catalogue's default). */
   readonly voice?: string;
+  /** The language model that writes the script (empty: the catalogue's chat default). */
+  readonly scriptModel?: string;
 }
 
 export interface ShotState {
