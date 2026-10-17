@@ -1,0 +1,14 @@
+{
+  "_": "What one Studio run of a cinematic short takes and costs, as measured on Orazaka dev (ADR-080): seconds = the run's own start-to-finish time (median), gpuUsd = those seconds at the GPU's hourly rate. Regenerated from the production records of the showcase films (krizaka/orazaka docs/measurements/runs.json, docs/_generated/MEASURED_RUNS.md) — never typed from a wish.",
+  "measured": "pending",
+  "gpu": "pending",
+  "steps": {
+    "script": { "studioKey": "cinematic-script", "seconds": 0, "gpuUsd": 0 },
+    "character": { "studioKey": "image-generation", "seconds": 0, "gpuUsd": 0 },
+    "keyframe": { "studioKey": "image-generation", "seconds": 0, "gpuUsd": 0 },
+    "video": { "studioKey": "video-generation", "seconds": 0, "gpuUsd": 0 },
+    "cut": { "studioKey": "cinematic-cut", "seconds": 0, "gpuUsd": 0 },
+    "voice": { "studioKey": "speech-synthesis", "seconds": 0, "gpuUsd": 0 },
+    "sound": { "studioKey": "video-sound", "seconds": 0, "gpuUsd": 0 }
+  }
+}

@@ -44,6 +44,24 @@ export class ApiClient {
 
     return response.json() as Promise<{ assetId: string }>;
   }
+  /**
+   * Downloads what the Gateway serves at `pathOrUrl` (a run's output, `/api/v1/assets/<job>/<file>`) into `file`.
+   */
+  public static async downloadTo(pathOrUrl: string, file: string): Promise<number> {
+    const url = /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${this.getBaseUrl()}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+    const config = loadConfig();
+    const response = await fetch(url, {
+      headers: config?.token && url.startsWith(this.getBaseUrl()) ? { Authorization: `Bearer ${config.token}` } : {},
+    });
+    if (!response.ok) {
+      throw new Error(`Download failed: status ${response.status}`);
+    }
+    const bytes = Buffer.from(await response.arrayBuffer());
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, bytes);
+    return bytes.length;
+  }
+
   private static getBaseUrl(): string {
     return ROUTER_URL;
   }
