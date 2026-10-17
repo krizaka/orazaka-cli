@@ -47,7 +47,7 @@ const STUDIOS = `studios:
 `;
 
 const CATALOG = `catalog:
-  categoryKey: business
+  categoryKey: business-compliance
   iconKey: image
 pricing:
   priceCents: 0
