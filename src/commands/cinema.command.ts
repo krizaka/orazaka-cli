@@ -77,7 +77,8 @@ export async function startWhenFree<T>(start: () => Promise<T>, wait = sleep, li
     try {
       return await start();
     } catch (error: unknown) {
-      const busy = error instanceof Error && /too many concurrent runs/i.test(error.message);
+      // "Not now": the account is at its cap, or the platform is restarting (a 5xx while a deploy rolls out).
+      const busy = error instanceof Error && /too many concurrent runs|internal server error|status 50\d|bad gateway|service unavailable/i.test(error.message);
       if (!busy || Date.now() + pollMs > deadline) throw error;
       await wait(pollMs);
     }

@@ -24,6 +24,16 @@ describe("startWhenFree", () => {
     expect(waits).toEqual([10, 10]);
   });
 
+  test("a platform restarting (5xx) is waited for too", async () => {
+    let calls = 0;
+    const run = await startWhenFree(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("Internal Server Error");
+      return "run-2";
+    }, async () => undefined, 60_000, 10);
+    expect(run).toBe("run-2");
+  });
+
   test("any other refusal is thrown at once", async () => {
     const failing = startWhenFree(async () => {
       throw new Error("No such studio: x");
