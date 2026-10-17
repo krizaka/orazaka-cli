@@ -1,14 +1,18 @@
 /**
  * @file agent.command.ts
- * @description Command to start the CLI agent listener, which listens for automation jobs,
- * registers in-memory database ingestion, executes commands offline, and syncs status back.
+ * @description The CLI agent listener: holds the agent stream open, records the automation payloads it receives in the
+ * local SQLite queue and reports their status back.
+ *
+ * It **never executes** what the server sends. Running a shell command received over the network is remote code
+ * execution by design; ADR-079 (krizaka/orazaka, docs/adr/ADR-079-automations-and-local-agents.md) retires it: work on
+ * the user's machine is done by the Orazaka runner (the Mac app today, a headless runner later), with tools behind
+ * approvals and no shell in v1. A payload that reaches this listener is recorded and reported as refused.
  */
 
 import { Command } from "commander";
 import chalk from "chalk";
 import * as http from "node:http";
 import * as https from "node:https";
-import { exec } from "node:child_process";
 import { requireAuth, saveConfig } from "../threads";
 import { SettingsApi } from "../services/settings.api";
 import { ROUTER_URL } from '../utils/config';
@@ -75,44 +79,16 @@ async function postJobReport(
   }
 }
 
+export const REFUSAL =
+  "Refused: this listener never runs commands sent by the server (ADR-079). Use the Orazaka runner — the Mac app's Automations — whose tools ask before any side effect.";
+
 /**
- * Spawns the task local child-process execution.
+ * Records and reports the refusal of a payload: nothing is executed, whatever it carries.
  */
-function executeLocalJob(
-  jobId: string,
-  action: string,
-  payload: Record<string, unknown>,
-  userId: string,
-  token: string,
-): void {
-  console.log(chalk.blue(`🚀 Executing job ${jobId} locally...`));
-  updateJobStatus(jobId, "RUNNING", "");
-
-  const command =
-    (payload.command as string) ||
-    (payload.script as string) ||
-    (action ? `${action}` : "");
-
-  if (!command) {
-    const errorMsg = "No command or script found in payload";
-    updateJobStatus(jobId, "FAILED", errorMsg);
-    postJobReport(jobId, "FAILED", errorMsg, -1, userId, token);
-    return;
-  }
-
-  exec(command, (error, stdout, stderr) => {
-    const logs = `STDOUT:\n${stdout}\nSTDERR:\n${stderr}`;
-    const exitCode = error ? (error.code ?? 1) : 0;
-    const status = error ? "FAILED" : "COMPLETED";
-
-    console.log(chalk.gray(`Execution completed for job ${jobId} with status ${status}`));
-
-    // Update SQLite state (offline task durability)
-    updateJobStatus(jobId, status, logs);
-
-    // Attempt to post report
-    postJobReport(jobId, status, logs, exitCode, userId, token);
-  });
+function refuseRemoteExecution(jobId: string, userId: string, token: string): void {
+  console.warn(chalk.yellow(`⛔ Job ${jobId}: ${REFUSAL}`));
+  updateJobStatus(jobId, "FAILED", REFUSAL);
+  postJobReport(jobId, "FAILED", REFUSAL, -1, userId, token);
 }
 
 /**
@@ -147,12 +123,9 @@ function handleSseEvent(eventStr: string, userId: string, token: string): void {
         ),
       );
 
-      // Atomic Ingestion Protocol: Write to local SQLite as PENDING before execution starts
-      insertJob(data.jobId, data.payload, "APPROVED");
-      console.log(chalk.gray(`Atomic ingestion: Job ${data.jobId} written to local SQLite store.`));
-
-      // Trigger execution
-      executeLocalJob(data.jobId, data.action, data.payload, userId, token);
+      // Recorded in the local SQLite queue (so the refusal is reported even after a disconnection), never executed.
+      insertJob(data.jobId, data.payload, "REFUSED");
+      refuseRemoteExecution(data.jobId, userId, token);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(chalk.red(`Failed to parse automation payload: ${msg}`));
