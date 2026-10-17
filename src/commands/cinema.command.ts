@@ -61,10 +61,34 @@ function save(dir: string, production: Production): void {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** An uploaded asset's id (a UUID), as `POST /api/v1/media/upload` answers it — not a URL to download. */
+export const isAssetId = (value: string): boolean => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+/** How long a run waits for a free slot of the account's concurrent-run cap before the director gives up. */
+const SLOT_WAIT_MS = 60 * 60_000;
+
+/**
+ * Starts a run, waiting while the account is at its concurrent-run cap ("too many concurrent runs"): a refusal that only
+ * says "not now" is not a failed production. Any other refusal is thrown at once.
+ */
+export async function startWhenFree<T>(start: () => Promise<T>, wait = sleep, limitMs = SLOT_WAIT_MS, pollMs = 30_000): Promise<T> {
+  const deadline = Date.now() + limitMs;
+  for (;;) {
+    try {
+      return await start();
+    } catch (error: unknown) {
+      // "Not now": the account is at its cap, or the platform is restarting (a 5xx while a deploy rolls out).
+      const busy = error instanceof Error && /too many concurrent runs|internal server error|status 50\d|bad gateway|service unavailable/i.test(error.message);
+      if (!busy || Date.now() + pollMs > deadline) throw error;
+      await wait(pollMs);
+    }
+  }
+}
+
 /** The REST port: a run is started, then followed to its end; an output is re-uploaded as an asset a run can start from. */
 const restPort: StudioPort = {
   async run(studioKey, inputs): Promise<FinishedRun> {
-    const started = await StudioApi.startStudioRun(studioKey, inputs);
+    const started = await startWhenFree(() => StudioApi.startStudioRun(studioKey, inputs));
     const deadline = Date.now() + RUN_LIMIT_MS;
     let run = started;
     while (!TERMINAL.has(run.status) && Date.now() < deadline) {
@@ -78,6 +102,8 @@ const restPort: StudioPort = {
     return run;
   },
   async reupload(output, lastFrame): Promise<string> {
+    // Already an uploaded asset (a keyframe re-uploaded from the production folder): nothing to move.
+    if (!lastFrame && isAssetId(output)) return output;
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orz-cinema-"));
     try {
       const downloaded = path.join(scratch, lastFrame ? "clip.mp4" : "keyframe.png");

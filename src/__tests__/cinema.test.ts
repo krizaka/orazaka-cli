@@ -106,10 +106,11 @@ describe("the prompts keep the look and the faces", () => {
     expect(keyframePrompt(script, script.shots[1], "9:16")).toContain("anamorphic film look");
   });
 
-  test("the motion prompt carries the effects and the camera", () => {
-    const prompt = motionPrompt(script, script.shots[1]);
+  test("the motion prompt carries the effects and the move, never the word camera (it puts a camera in the frame)", () => {
+    const prompt = motionPrompt(script, { ...script.shots[1], motion: "the camera follows her" });
     expect(prompt).toContain("cyan shockwave");
     expect(prompt).toContain("low angle");
+    expect(prompt).not.toMatch(/camera/i);
   });
 
   test("seeds are reproducible and a reshoot changes them", () => {
