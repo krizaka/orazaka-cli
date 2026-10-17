@@ -57,6 +57,14 @@ describe("the script is parsed once", () => {
     expect(() => extractJson("no json")).toThrow(ScriptError);
   });
 
+  test("a missing comma between members or a trailing comma is repaired, never more", () => {
+    expect(extractJson('{\n "a": "x"\n\n "b": [1, 2,],\n "c": {"d": 1}\n "e": true\n}')).toEqual({ a: "x", b: [1, 2], c: { d: 1 }, e: true });
+    expect(() => extractJson('{"a": x}')).toThrow(ScriptError);
+    expect(extractJson('{"v": "line one\nline two"}')).toEqual({ v: "line one line two" });
+    expect(extractJson('{"lens": 35mm,\n "tempo": 68 BPM\n}')).toEqual({ lens: "35mm", tempo: "68 BPM" });
+    expect(extractJson('{"style": "a 16:9 frame, 3:2 ratio"}')).toEqual({ style: "a 16:9 frame, 3:2 ratio" });
+  });
+
   test("unknown values are corrected, the count is bounded, unknown characters dropped", () => {
     const script = parseScript(JSON.stringify(SCRIPT), BRIEF);
     expect(script.shots).toHaveLength(3);
@@ -68,6 +76,8 @@ describe("the script is parsed once", () => {
     expect(script.shots[1].rampAt).toBe(2);
     expect(script.shots[2].continuous).toBe(true);
     expect(script.grade).toBe("neon-night");
+    expect(parseScript(JSON.stringify({ ...SCRIPT, title: "The **city** *breathes*" }), BRIEF).title).toBe("The city breathes");
+    expect(parseScript(JSON.stringify({ ...SCRIPT, music: { genre: "synthwave", tempo: "120 bpm" } }), BRIEF).music).toBe("synthwave, 120 bpm");
   });
 
   test("a script without keyframes or shots is refused", () => {

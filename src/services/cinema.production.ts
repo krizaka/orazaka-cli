@@ -127,7 +127,12 @@ export interface Production {
 
 export class ScriptError extends Error {}
 
-const text = (value: unknown, max = 1200): string => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+/** A value as one line of text: a string as it is, an object or list the model wrote instead as its values joined. */
+const flatten = (value: unknown): string =>
+  value !== null && typeof value === "object" ? Object.values(value as object).map(flatten).join(", ") : String(value ?? "");
+/** Markdown emphasis a model adds (`**bold**`, `*italic*`) is not a word of the prompt nor of a title. */
+const text = (value: unknown, max = 1200): string =>
+  flatten(value).replace(/\*+/g, "").replace(/\s+/g, " ").trim().slice(0, max);
 const clamp = (value: number, low: number, high: number): number => Math.min(high, Math.max(low, value));
 const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   (allowed as readonly string[]).includes(String(value)) ? (String(value) as T) : fallback;
@@ -137,11 +142,43 @@ export function extractJson(raw: string): unknown {
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
   if (start < 0 || end <= start) throw new ScriptError("the script holds no JSON object");
+  const body = raw.slice(start, end + 1);
   try {
-    return JSON.parse(raw.slice(start, end + 1));
+    return JSON.parse(body);
   } catch (error: unknown) {
-    throw new ScriptError(`the script is not valid JSON (${error instanceof Error ? error.message : "parse error"})`);
+    // A language model's usual slip: a missing comma between two members, or a trailing one. Repaired once,
+    // then parsed; anything else is refused with the parser's own message.
+    try {
+      return JSON.parse(repairJson(body));
+    } catch {
+      throw new ScriptError(`the script is not valid JSON (${error instanceof Error ? error.message : "parse error"})`);
+    }
   }
+}
+
+/** Inserts the commas a model forgot between members on separate lines, and drops trailing ones (pure). */
+export function repairJson(body: string): string {
+  // Raw line breaks inside a string literal are not JSON: they become spaces (a walk that knows when it is in a string).
+  let inString = false;
+  let escaped = false;
+  let flat = "";
+  for (const char of body) {
+    if (inString && (char === "\n" || char === "\r" || char === "\t")) {
+      flat += " ";
+      continue;
+    }
+    if (char === '"' && !escaped) inString = !inString;
+    escaped = char === "\\" && !escaped;
+    flat += char;
+  }
+  // A bare value with units (`35mm`, `68 BPM`) is a string the model forgot to quote — looked for outside the strings only.
+  const quoted = flat
+    .split(/("(?:[^"\\]|\\.)*")/)
+    .map((part, i) => (i % 2 === 1 ? part : part.replace(/:\s*(-?\d[^",\n{}[\]]*?[A-Za-z%][^",\n{}[\]]*?)\s*(?=[,\n}\]])/g, ': "$1"')))
+    .join("");
+  return quoted
+    .replace(/("|\}|\]|\d|true|false|null)(\s*\n\s*)(?=["{\[])/g, "$1,$2")
+    .replace(/,(\s*[}\]])/g, "$1");
 }
 
 /**
