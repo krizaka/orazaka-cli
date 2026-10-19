@@ -215,6 +215,8 @@ async function runStep(
       const run = await port.run("speech-synthesis", {
         text: script.voiceover,
         ...(brief.voice ? { voice: brief.voice } : {}),
+        // Named, never the default: speech routes to it while its host answers, to the default otherwise.
+        ...(brief.voiceModel ? { model: brief.voiceModel } : {}),
       });
       production.voice = recordOf("speech-synthesis", run);
       return production.voice;

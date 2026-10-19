@@ -102,6 +102,8 @@ export interface Brief {
   readonly seed: number;
   /** A voice of the speech catalogue for the voice-over (empty: the catalogue's default). */
   readonly voice?: string;
+  /** The speech model of the voice-over (e.g. kokoro-82m on a cinema GPU host); empty: the catalogue's default. */
+  readonly voiceModel?: string;
   /** The language model that writes the script (empty: the catalogue's chat default). */
   readonly scriptModel?: string;
 }

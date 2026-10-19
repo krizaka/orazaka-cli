@@ -199,11 +199,18 @@ describe("the director", () => {
     expect(port.calls[4][1].model).toBe("wan2.2-i2v-a14b");
     expect(JSON.parse(String(port.calls[7][1].edit)).shots).toHaveLength(3);
     expect(port.calls[9][1].voice).toBeDefined();
+    expect(port.calls[8][1].model).toBeUndefined(); // no voice model named: the catalogue's default speaks
     expect(nextStep(done).kind).toBe("done");
     expect(done.history).toHaveLength(10);
     expect(done.history[0].seconds).toBe(90); // the platform's clock, not the director's
     expect(done.history[0]).toMatchObject({ startedAt: "2026-10-17T00:00:00Z", finishedAt: "2026-10-17T00:01:30Z" });
     expect(saved).toHaveLength(10); // saved after every run: a stop loses nothing
+  });
+
+  test("a named voice model is asked for by name", async () => {
+    const port = fakePort();
+    await direct(newProduction({ ...BRIEF, voiceModel: "kokoro-82m" }), port, { save: () => undefined, log: () => undefined });
+    expect(port.calls.find(([k]) => k === "speech-synthesis")?.[1].model).toBe("kokoro-82m");
   });
 
   test("a failed run stops it, and the same command resumes there without paying twice", async () => {

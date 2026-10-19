@@ -163,6 +163,7 @@ const newCommand = new Command("new")
   .option("-l, --language <lang>", "en or fr", "en")
   .option("--seed <seed>", "The production's seed (every shot's seed derives from it)")
   .option("--voice <voice>", "A voice of the speech catalogue for the voice-over")
+  .option("--voice-model <model>", "The speech model of the voice-over (e.g. kokoro-82m while a cinema GPU host runs)")
   .option("--script-model <model>", "The language model that writes the script (default: the catalogue's)")
   .action((dir: string, o: Record<string, string>) => {
     if (fs.existsSync(path.join(dir, FILE))) {
@@ -183,6 +184,7 @@ const newCommand = new Command("new")
       seed: Number(o.seed) || Math.floor(Math.random() * 2_000_000_000),
       ...(o.voice ? { voice: o.voice } : {}),
       ...(o.scriptModel ? { scriptModel: o.scriptModel } : {}),
+      ...(o.voiceModel ? { voiceModel: o.voiceModel } : {}),
     };
     save(dir, newProduction(brief));
     Logger.success(`production created in ${dir} — next: orazaka cinema estimate ${dir}`);
