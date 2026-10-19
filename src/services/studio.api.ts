@@ -76,7 +76,23 @@ export interface RunArtefactResponse {
   readonly value: string;
 }
 
+/** One Studio of the catalogue, with what a run of it is estimated to cost (its blueprint's own figure). */
+export interface StudioDetailResponse {
+  readonly studioKey: string;
+  readonly label: string;
+  readonly latestVersion: string | null;
+  readonly estimatedCredits: number | null;
+}
+
 export const StudioApi = {
+  /** One Studio by key: its label, version and estimated credits per run. */
+  detail: async (studioKey: string): Promise<StudioDetailResponse> => {
+    return ApiClient.requestRest<StudioDetailResponse>({
+      method: "GET",
+      path: `/api/v1/studios/${encodeURIComponent(studioKey)}`,
+    });
+  },
+
   /** The Studios this deployment can launch from a single input, for this actor. */
   composer: async (locale = "fr"): Promise<ComposerStudioResponse[]> => {
     return ApiClient.requestRest<ComposerStudioResponse[]>({
