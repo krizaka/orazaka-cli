@@ -222,12 +222,13 @@ describe("the director", () => {
     expect(again.calls.map(([k]) => k)).toEqual(["cinematic-cut", "speech-synthesis", "video-sound"]);
   });
 
-  test("a reshoot redoes that shot, the cut and the sound — nothing else", async () => {
+  test("a reshoot redoes that shot, the shot chained to its last frame, the cut and the sound — nothing else", async () => {
     const made = await direct(newProduction(BRIEF), fakePort(), { save: () => undefined, log: () => undefined });
     markReshoot(made, [2]);
     const port = fakePort();
     await direct(made, port, { save: () => undefined, log: () => undefined });
-    expect(port.calls.map(([k]) => k)).toEqual(["video-generation", "cinematic-cut", "video-sound"]);
+    // Shot 3 is continuous: it started from shot 2's last frame, which the reshoot replaces (orazaka#259).
+    expect(port.calls.map(([k]) => k)).toEqual(["video-generation", "video-generation", "cinematic-cut", "video-sound"]);
     expect(() => markReshoot(made, [9])).toThrow(/not in this production/);
   });
 

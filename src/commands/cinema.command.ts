@@ -12,6 +12,14 @@
  *   orazaka cinema fetch <dir>            keyframes, shots and the film, to look at them
  *   orazaka cinema reshoot <dir> 3,7 [--new-keyframe]
  *   orazaka cinema status <dir>
+ *
+ * A directed film (orazaka#259) starts from a treatment instead of a brief, and its shots can be made on a GPU host:
+ *
+ *   orazaka cinema plan <dir> --treatment treatment.json [--references renders/] [--language en]
+ *   orazaka cinema sheet <dir>            the reference sheet of each character that has a reference render
+ *   orazaka cinema jobs <dir> [--out f]   the pending shots, as jobs for a GPU host (the worker's own generator)
+ *   orazaka cinema take <dir> 3 take.mp4  records a take made there (then: reshoot redoes it, and its chain)
+ *   orazaka cinema review <dir> 3 take.mp4  a frame every 8 under the cast's reference sheet, to accept or reject it
  */
 
 import { Command } from "commander";
@@ -39,6 +47,7 @@ import {
   nextStep,
 } from "../services/cinema.production";
 import measured from "../services/cinema-estimate.json";
+import { TreatmentError, planProduction, podJobs, recordTake, replan, reviewArgs, sheetArgs } from "../services/cinema.treatment";
 
 const FILE = "production.json";
 const TERMINAL = new Set(["SUCCEEDED", "FAILED", "CANCELLED", "REJECTED", "TIMED_OUT"]);
@@ -101,7 +110,7 @@ const restPort: StudioPort = {
     }
     return run;
   },
-  async reupload(output, lastFrame): Promise<string> {
+  async reupload(output, lastFrame, at): Promise<string> {
     // Already an uploaded asset (a keyframe re-uploaded from the production folder): nothing to move.
     if (!lastFrame && isAssetId(output)) return output;
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orz-cinema-"));
@@ -111,7 +120,9 @@ const restPort: StudioPort = {
       let file = downloaded;
       if (lastFrame) {
         file = path.join(scratch, "last-frame.png");
-        execFileSync("ffmpeg", ["-v", "error", "-y", "-sseof", "-0.15", "-i", downloaded, "-update", "1", "-frames:v", "1", file]);
+        // The chained frame: a chosen second of the previous take (`chainAt`), else its last frame.
+        const seek = at !== undefined ? ["-ss", at.toFixed(3)] : ["-sseof", "-0.15"];
+        execFileSync("ffmpeg", ["-v", "error", "-y", ...seek, "-i", downloaded, "-update", "1", "-frames:v", "1", file]);
       }
       return (await ApiClient.uploadFile(file)).assetId;
     } finally {
@@ -222,6 +233,16 @@ const runCommand = new Command("run")
         log: (line) => console.log(`${chalk.cyan("▸")} ${line}`),
         maxRuns: o.maxRuns ? Number(o.maxRuns) : undefined,
         videoModel: o.model,
+        // A character drawn by its brand (a reference render) gets its sheet uploaded as its reference, never redrawn.
+        reference: async (id) => {
+          const character = production.script?.parsed?.characters.find((c) => c.id === id);
+          if (!character?.reference) throw new TreatmentError(`character ${id} has no reference render`);
+          const file = path.join(dir, "sheets", `${id}.png`);
+          fs.mkdirSync(path.dirname(file), { recursive: true });
+          execFileSync("ffmpeg", sheetArgs([character.reference], file));
+          const { assetId } = await ApiClient.uploadFile(file);
+          return { runId: `sheet:${id}`, studioKey: "reference-sheet", status: "SUCCEEDED", output: assetId, assetId };
+        },
       });
     } catch (error: unknown) {
       Logger.error(error instanceof Error ? error.message : String(error));
@@ -282,6 +303,114 @@ const statusCommand = new Command("status")
     console.log(chalk.gray(`next: ${nextStep(p).kind} · ${p.history.length} run(s) so far`));
   });
 
+/** The render a character's `reference` names: a file as given, or `<name>-alpha.png` / `<name>.png` in the renders folder. */
+function resolveReference(reference: string, renders?: string): string {
+  const candidates = [reference, ...(renders ? [path.join(renders, `${reference}-alpha.png`), path.join(renders, `${reference}.png`)] : [])];
+  const found = candidates.find((c) => fs.existsSync(c));
+  if (!found) throw new TreatmentError(`no render for reference '${reference}' (looked for ${candidates.join(", ")})`);
+  return path.resolve(found);
+}
+
+const planCommand = new Command("plan")
+  .description("Start a production from a treatment (a directed shot list): no language model, every shot as written")
+  .argument("<dir>", "The production's folder")
+  .requiredOption("-t, --treatment <file>", "The treatment (JSON): cast, shots, lens, camera, light, model per shot")
+  .option("-r, --references <dir>", "Where the characters' reference renders are (<name>-alpha.png)")
+  .option("-l, --language <lang>", "en or fr (the captions)", "en")
+  .option("--seed <seed>", "Overrides the treatment's seedBase")
+  .option("--update", "The treatment changed: keep every shot already made, add the new ones")
+  .action((dir: string, o: { treatment: string; references?: string; language: string; seed?: string; update?: boolean }) => {
+    const exists = fs.existsSync(path.join(dir, FILE));
+    if (exists !== Boolean(o.update)) {
+      Logger.error(exists ? `${dir} already holds a production (--update to apply a changed treatment)` : `${dir} holds no production to update`);
+      process.exit(1);
+    }
+    try {
+      const raw = JSON.parse(fs.readFileSync(o.treatment, "utf-8")) as Record<string, unknown>;
+      const characters = Array.isArray(raw.characters) ? (raw.characters as Array<Record<string, unknown>>) : [];
+      raw.characters = characters.map((c) =>
+        typeof c.reference === "string" && c.reference ? { ...c, reference: resolveReference(c.reference, o.references) } : c,
+      );
+      const options = { language: (o.language === "fr" ? "fr" : "en") as "en" | "fr", ...(o.seed ? { seed: Number(o.seed) } : {}) };
+      const production = o.update ? replan(load(dir), raw, options) : planProduction(raw, options);
+      save(dir, production);
+      const script = production.script?.parsed;
+      Logger.success(`${script?.title}: ${script?.shots.length} shots planned in ${dir} — next: orazaka cinema sheet ${dir}`);
+    } catch (error: unknown) {
+      Logger.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+const sheetCommand = new Command("sheet")
+  .description("Make the reference sheet of each character that has a reference render (kept as drawn, never redrawn)")
+  .argument("<dir>", "The production's folder")
+  .action((dir: string) => {
+    const production = load(dir);
+    const out = path.join(dir, "sheets");
+    fs.mkdirSync(out, { recursive: true });
+    for (const character of production.script?.parsed?.characters ?? []) {
+      if (!character.reference) continue;
+      const file = path.join(out, `${character.id}.png`);
+      execFileSync("ffmpeg", sheetArgs([character.reference], file));
+      production.characters[character.id] = { runId: `sheet:${character.id}`, studioKey: "reference-sheet", status: "SUCCEEDED", output: file };
+      console.log(`${character.id.padEnd(12)} ${file}`);
+    }
+    save(dir, production);
+  });
+
+const jobsCommand = new Command("jobs")
+  .description("The pending shots as jobs for a GPU host that runs the worker's own generator")
+  .argument("<dir>", "The production's folder")
+  .option("-o, --out <file>", "Write them to a file instead of printing them")
+  .action((dir: string, o: { out?: string }) => {
+    const jobs = podJobs(load(dir));
+    const body = `${JSON.stringify(jobs, null, 2)}\n`;
+    if (o.out) {
+      fs.writeFileSync(o.out, body);
+      Logger.success(`${jobs.length} job(s) in ${o.out}`);
+    } else process.stdout.write(body);
+  });
+
+const takeCommand = new Command("take")
+  .description("Record a take a GPU host made for a shot")
+  .argument("<dir>", "The production's folder")
+  .argument("<shot>", "The shot's number")
+  .argument("<file>", "The take (mp4)")
+  .option("--seconds <s>", "How long the host took to make it")
+  .action((dir: string, shot: string, file: string, o: { seconds?: string }) => {
+    save(dir, recordTake(load(dir), Number(shot), path.resolve(file), o.seconds ? Number(o.seconds) : undefined));
+    Logger.success(`shot ${shot}: take recorded`);
+  });
+
+const reviewCommand = new Command("review")
+  .description("A take's review sheet: a frame every 8 under the cast's reference sheet")
+  .argument("<dir>", "The production's folder")
+  .argument("<shot>", "The shot's number")
+  .argument("<file>", "The take (mp4)")
+  .action((dir: string, shot: string, file: string) => {
+    const production = load(dir);
+    const script = production.script?.parsed;
+    const planned = script?.shots.find((s) => s.id === Number(shot));
+    if (!script || !planned) {
+      Logger.error(`shot ${shot} is not in this production`);
+      process.exit(1);
+    }
+    const out = path.join(dir, "review");
+    fs.mkdirSync(out, { recursive: true });
+    const renders = planned.characters
+      .map((id) => script.characters.find((c) => c.id === id)?.reference)
+      .filter((r): r is string => Boolean(r))
+      .slice(0, 5);
+    const cast = path.join(out, `${path.basename(file, path.extname(file))}-cast.png`);
+    // A shot without a cast (a landscape) is compared with its own first frame.
+    if (renders.length > 0) execFileSync("ffmpeg", sheetArgs(renders, cast));
+    else execFileSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-frames:v", "1", cast]);
+    const sheet = path.join(out, `${path.basename(file, path.extname(file))}.jpg`);
+    execFileSync("ffmpeg", reviewArgs(file, cast, sheet));
+    Logger.success(`review sheet: ${sheet}`);
+  });
+
 export const cinemaCommand = new Command("cinema")
   .description("A cinematic short (30–60 s) from a brief: script, keyframes, shots, cut, sound — each an ordinary Studio run")
   .addCommand(newCommand)
@@ -289,4 +418,9 @@ export const cinemaCommand = new Command("cinema")
   .addCommand(runCommand)
   .addCommand(fetchCommand)
   .addCommand(reshootCommand)
-  .addCommand(statusCommand);
+  .addCommand(statusCommand)
+  .addCommand(planCommand)
+  .addCommand(sheetCommand)
+  .addCommand(jobsCommand)
+  .addCommand(takeCommand)
+  .addCommand(reviewCommand);
