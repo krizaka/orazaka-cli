@@ -80,14 +80,16 @@ const story = (over: Raw = {}): Raw => ({
     { id: "falcon", shots: [3], en: "The falcon keeps watch.", fr: "Le faucon veille.", direction: { emotion: "calm", pace: "measured", emphasis: [] } },
   ],
   shots: [
-    { id: 1, ...bird() },
-    { id: 2, ...land("journey") },
+    { id: 1, ...bird({ characters: ["pigeon", "falcon"], interactionKind: "meet", interaction: "the falcon lands beside the pigeon" }) },
+    { id: 2, ...land("journey", { seconds: 2 }) },
     {
       id: 3,
       ...bird({
         slug: "falcon-watch",
         beat: "journey",
-        characters: ["falcon"],
+        seconds: 2.5,
+        characters: ["falcon", "pigeon"],
+        interactionKind: "help",
         purpose: "The falcon keeps watch over the pigeon's route.",
         intent: "the falcon locks onto the pigeon to watch over it",
         gaze: "snaps to the right toward the pigeon",
@@ -95,8 +97,20 @@ const story = (over: Raw = {}): Raw => ({
         action: "the falcon's head snaps to the right, it leans into the wind, then braces its wings and keeps watch",
       }),
     },
-    { id: 4, ...land("turn") },
-    { id: 5, ...bird({ slug: "pigeon-door", beat: "payoff", purpose: "The parcel arrives at dawn.", action: "the pigeon lands, sets the parcel down, then looks back", chainFrom: { shot: 1, at: 2 } }) },
+    { id: 4, ...land("turn", { seconds: 4 }) },
+    {
+      id: 5,
+      ...bird({
+        slug: "pigeon-door",
+        beat: "payoff",
+        seconds: 3.5,
+        characters: ["pigeon", "falcon"],
+        interactionKind: "handoff",
+        purpose: "The parcel arrives at dawn.",
+        action: "the pigeon lands, sets the parcel down, then looks back",
+        chainFrom: { shot: 1, at: 2 },
+      }),
+    },
   ],
   ...over,
 });
@@ -183,7 +197,7 @@ describe("critiqueStory — the rubric", () => {
         expect.stringMatching(/^voice:.*rushed/),
         expect.stringMatching(/^music:.*louder than 0.85/),
         expect.stringMatching(/^music:.*hook's cue is not the quietest/),
-        expect.stringMatching(/^music:.*payoff is louder than the turn/),
+        expect.stringMatching(/^music:.*ends at its peak/),
         expect.stringMatching(/^sound:.*not heard/),
       ]),
     );
@@ -225,13 +239,13 @@ describe("the language-model judge", () => {
 describe("timeline — lines, cues and sounds on the cut", () => {
   it("starts a line a beat after its first shot's cut and says whether its measured length fits", () => {
     const t = timeline(parseStory(story()), "en", { storm: 2.5, falcon: 4 });
-    expect(t.shots.map((s) => [s.start, s.end])).toEqual([[0, 3], [3, 6], [6, 9], [9, 12], [12, 15]]);
+    expect(t.shots.map((s) => [s.start, s.end])).toEqual([[0, 3], [3, 5], [5, 7.5], [7.5, 11.5], [11.5, 15]]);
     expect(t.lines).toEqual([
       { id: "storm", start: 0.35, end: 2.85, fits: true, room: 0.55 },
-      { id: "falcon", start: 6.35, end: 10.35, fits: false, room: -0.95 },
+      { id: "falcon", start: 5.35, end: 9.35, fits: false, room: -1.45 },
     ]);
-    expect(t.music.map((m) => [m.id, m.start, m.end, m.intensity])).toEqual([["hook", 0, 3, 0.3], ["journey", 3, 9, 0.5], ["turn", 9, 12, 0.75], ["payoff", 12, 15, 0.6]]);
-    expect(t.sound.filter((x) => x.kind === "steps").map((x) => x.start)).toEqual([2.2, 8.2, 14.2]);
+    expect(t.music.map((m) => [m.id, m.start, m.end, m.intensity])).toEqual([["hook", 0, 3, 0.3], ["journey", 3, 7.5, 0.5], ["turn", 7.5, 11.5, 0.75], ["payoff", 11.5, 15, 0.6]]);
+    expect(t.sound.filter((x) => x.kind === "steps").map((x) => x.start)).toEqual([2.2, 7.2, 13.7]);
     expect(t.sound.find((x) => x.kind === "rain")).toMatchObject({ start: 0, end: 3 });
   });
 
@@ -246,7 +260,7 @@ describe("directedMotion", () => {
     const s = parseStory(story());
     const shot = { ...s.shots[2], motion: "" };
     const m = directedMotion(s, shot);
-    expect(m).toMatch(/^The orange falcon\. Intention: the falcon locks onto the pigeon/);
+    expect(m).toMatch(/^The orange falcon and the sky-blue pigeon\. Intention: the falcon locks onto the pigeon/);
     expect(m).toContain("Gaze: snaps to the right toward the pigeon.");
     expect(m).toContain("Physical detail: leans into the wind");
     expect(directedMotion(s, s.shots[0])).toBe("The pigeon breathes and shuffles to the edge.");
@@ -321,5 +335,67 @@ describe("the planner: chained from any earlier take, kept takes", () => {
     const bad = treatment();
     (bad.shots as Raw[])[0] = { ...(bad.shots as Raw[])[0], chainFrom: { shot: 3 } };
     expect(() => planProduction(bad, { language: "en" })).toThrow(/chainFrom names a shot before it/);
+  });
+});
+
+describe("orazaka#289, second review: interaction, no lineup, rhythm, the legal rule, a score by place", () => {
+  it("asks characters to act on each other: meet, help, argue, hand off", () => {
+    const s = story();
+    for (const shot of s.shots as Raw[]) delete shot.interactionKind;
+    const c = critiqueStory(parseStory(s));
+    expect(c.findings.filter((f) => f.rule === "interaction").map((f) => f.shot ?? 0)).toEqual(expect.arrayContaining([0, 1, 3, 5]));
+    expect(c.scores.interaction).toBe(0);
+    expect(c.pass).toBe(false);
+  });
+
+  it("rejects a lineup: characters presented to the camera instead of acting", () => {
+    const s = story();
+    s.characters = [...(s.characters as Raw[]), { id: "owl", description: "the owl", promise: "reads every page", intention: "checks the parcel" }];
+    (s.shots as Raw[])[3] = {
+      id: 4,
+      ...bird({ beat: "turn", seconds: 4, characters: ["pigeon", "falcon", "owl"], action: "the three birds stand in a row, then turn their heads to the camera" }),
+    };
+    expect(critiqueStory(parseStory(s)).findings).toEqual(expect.arrayContaining([expect.objectContaining({ rule: "lineup", shot: 4 })]));
+  });
+
+  it("asks for rhythm: lengths that vary and a run of quick cuts", () => {
+    const s = story();
+    for (const shot of s.shots as Raw[]) shot.seconds = 4;
+    const rules = critiqueStory(parseStory(s)).findings.filter((f) => f.rule === "rhythm").map((f) => f.message);
+    expect(rules).toEqual([expect.stringMatching(/about the same/)]);
+  });
+
+  it("refuses a real person, song, game or show named anywhere, and a reference without its legal means", () => {
+    const s = story({
+      references: [{ evokes: "West Coast G-funk", how: "original music in the genre, lowriders and palm trees" }, { evokes: "an open-world game", how: "" }],
+      legal: { never: ["Mile End Mafia"] },
+    });
+    (s.lines as Raw[])[0] = { id: "storm", shots: [1], en: "Drake would never.", direction: { emotion: "light", pace: "slow" } };
+    (s.shots as Raw[])[1] = { id: 2, ...land("journey", { seconds: 2, action: "a car like in GTA drives past the Mile End Mafia café" }) };
+    const legal = critiqueStory(parseStory(s)).findings.filter((f) => f.rule === "legal").map((f) => f.message);
+    expect(legal).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/line storm en names « drake »/),
+        expect.stringMatching(/shot 2 action names « gta »/),
+        expect.stringMatching(/shot 2 action names « mile end mafia »/),
+        expect.stringMatching(/« an open-world game » does not say how/),
+      ]),
+    );
+    expect(critiqueStory(parseStory(s)).pass).toBe(false);
+  });
+
+  it("places a cue per place on its shots, with its genre, and lets a finale peak if the score resolves after it", () => {
+    const s = story();
+    (s.music as Raw).cues = [
+      { shots: [1, 2], genre: "soft", intensity: 0.3, prompt: "felt piano" },
+      { shots: [3, 4], genre: "hip-hop", intensity: 0.6, prompt: "boom-bap" },
+      { shots: [5, 5], genre: "dj", intensity: 0.8, prompt: "house drop" },
+      { beat: "payoff", shots: [5, 5], genre: "outro", intensity: 0.5, prompt: "pads" },
+    ];
+    const story2 = parseStory(s);
+    expect(story2.music.cues[1]).toMatchObject({ beat: "journey", shots: [3, 4], genre: "hip-hop" });
+    expect(timeline(story2).music.map((m) => [m.id, m.start, m.end])).toEqual([["1-soft", 0, 5], ["2-hip-hop", 5, 11.5], ["3-dj", 11.5, 15], ["4-outro", 11.5, 15]]);
+    expect(critiqueStory(story2).findings.filter((f) => f.rule === "music")).toEqual([]);
+    expect(() => parseStory({ ...s, music: { cues: [{ shots: [4, 2], intensity: 0.3, prompt: "x" }] } })).toThrow(/shots is \[first, last\]/);
   });
 });

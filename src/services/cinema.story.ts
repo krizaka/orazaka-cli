@@ -25,6 +25,13 @@ export const SOUND_EVENTS = [
 export const SOUND_KINDS = [...SOUND_BEDS, ...SOUND_EVENTS] as const;
 export type SoundKind = (typeof SOUND_KINDS)[number];
 
+/**
+ * What characters do to each other in a shot (orazaka#289, Oussama's review: « they look presented, not part of a story »):
+ * a story where they meet, help, argue and hand off is told by these.
+ */
+export const INTERACTIONS = ["meet", "help", "argue", "handoff", "tease", "celebrate", "compete", "rescue"] as const;
+export type InteractionKind = (typeof INTERACTIONS)[number];
+
 /** Pace of a line: what the voice step turns into a speaking rate. */
 export const PACES = ["slow", "measured", "rhythmic", "lively"] as const;
 export type Pace = (typeof PACES)[number];
@@ -56,7 +63,12 @@ export interface StoryLine {
 }
 
 export interface MusicCue {
+  /** The beat the cue scores, or (with `shots`) the beat its first shot belongs to. */
   readonly beat: Beat;
+  /** The shots the cue spans (first and last id): a score that changes genre with the place, not only with the beat. */
+  readonly shots?: readonly [number, number];
+  /** Its genre (soft, hip-hop, electro, rock, G-funk…): what the music map says. */
+  readonly genre?: string;
   readonly intensity: number;
   readonly prompt: string;
 }
@@ -89,6 +101,10 @@ export interface StoryShot {
   readonly gaze: string;
   readonly physics: string;
   readonly interaction: string;
+  /** What the characters do to each other, when the shot holds more than one. */
+  readonly interactionKind?: InteractionKind;
+  /** Where it happens (a place of the journey). */
+  readonly place: string;
   readonly framing: string;
   readonly camera: string;
   readonly lens: string;
@@ -103,8 +119,18 @@ export interface StoryShot {
   readonly sound: readonly SoundCue[];
 }
 
+/** A cultural reference the film evokes, and how it does so without anyone's likeness, work or trade dress. */
+export interface Reference {
+  readonly evokes: string;
+  /** The original or generic means: a genre of original music, a generic object, an original nod drawn in our style. */
+  readonly how: string;
+}
+
 export interface Story {
   readonly title: string;
+  /** What the film evokes and how (the legal log of orazaka#289), and the names it must never say or show. */
+  readonly references: readonly Reference[];
+  readonly never: readonly string[];
   readonly logline: string;
   readonly theme: string;
   readonly arc: readonly ArcBeat[];
@@ -165,6 +191,8 @@ export function parseStory(raw: unknown): Story {
       gaze: str(s.gaze),
       physics: str(s.physics),
       interaction: str(s.interaction),
+      ...(s.interactionKind ? { interactionKind: oneOf(s.interactionKind, INTERACTIONS, `shot ${id}: interactionKind`) } : {}),
+      place: str(s.place),
       framing: str(s.framing),
       camera: str(s.camera),
       lens: str(s.lens),
@@ -202,8 +230,11 @@ export function parseStory(raw: unknown): Story {
     };
   });
   const music = (t.music && typeof t.music === "object" ? t.music : { prompt: str(t.music) }) as Raw;
+  const legal = (t.legal && typeof t.legal === "object" ? t.legal : {}) as Raw;
   return {
     title: str(t.title),
+    references: list(t.references ?? legal.references).map((r) => ({ evokes: str(r.evokes), how: str(r.how) })),
+    never: list(legal.never).map(String),
     logline: str(t.logline),
     theme: str(t.theme),
     arc,
@@ -211,11 +242,20 @@ export function parseStory(raw: unknown): Story {
     lines,
     music: {
       prompt: str(music.prompt),
-      cues: list(music.cues).map((c, i) => ({
-        beat: oneOf(c.beat, BEATS, `music cue ${i + 1}: beat`),
-        intensity: Math.min(1, Math.max(0, num(c.intensity, 0.5))),
-        prompt: str(c.prompt),
-      })),
+      cues: list(music.cues).map((c, i) => {
+        const span = list(c.shots).map(Number);
+        if (span.length && !(span.length === 2 && ids.has(span[0]) && ids.has(span[1]) && span[0] <= span[1])) {
+          throw new StoryError(`music cue ${i + 1}: shots is [first, last] of existing shots`);
+        }
+        const beat = c.beat ?? (span.length ? shots[span[0] - 1].beat : undefined);
+        return {
+          beat: oneOf(beat, BEATS, `music cue ${i + 1}: beat`),
+          ...(span.length ? { shots: [span[0], span[1]] as const } : {}),
+          ...(str(c.genre) ? { genre: str(c.genre) } : {}),
+          intensity: Math.min(1, Math.max(0, num(c.intensity, 0.5))),
+          prompt: str(c.prompt),
+        };
+      }),
     },
     shots,
   };
@@ -242,7 +282,9 @@ const stems = (value: string): Set<string> =>
   );
 
 export interface Finding {
-  readonly rule: "arc" | "purpose" | "flat" | "off-topic" | "alive" | "continuity" | "voice" | "music" | "sound";
+  readonly rule:
+    | "arc" | "purpose" | "flat" | "off-topic" | "alive" | "continuity" | "voice" | "music" | "sound"
+    | "interaction" | "lineup" | "rhythm" | "legal";
   readonly shot?: number;
   readonly line?: string;
   readonly message: string;
@@ -250,9 +292,57 @@ export interface Finding {
 
 export interface Critique {
   /** Each criterion, 0..1 (1: every shot, line or cue passes it). */
-  readonly scores: Readonly<Record<"arc" | "purpose" | "alive" | "onTopic" | "continuity" | "voice" | "music" | "sound", number>>;
+  readonly scores: Readonly<
+    Record<"arc" | "purpose" | "alive" | "onTopic" | "continuity" | "voice" | "music" | "sound" | "interaction" | "rhythm" | "legal", number>
+  >;
   readonly findings: readonly Finding[];
   readonly pass: boolean;
+}
+
+/** A story with a cast shows at least this many kinds of interaction, in at least this share of its character shots. */
+export const MIN_INTERACTION_KINDS = 3;
+export const MIN_INTERACTION_SHARE = 1 / 3;
+/** Rhythm: the spread of shot lengths (coefficient of variation), and what a quick shot is. */
+export const MIN_LENGTH_SPREAD = 0.15;
+export const QUICK_SHOT = 3;
+const LINEUP = /\b(in a row|line[sd]? up|lineup|turns? (their|its) heads? (to|toward) the (camera|lens)|looks? (in)?to the (camera|lens)|pose[sd]? for)\b/i;
+
+/**
+ * Names a film must never say or show (the hard legal rule of orazaka#289): real people, songs, games, shows and brands
+ * a brief may evoke. A treatment adds its own (`legal.never`); a reference is evoked through original or generic means,
+ * never named. Matched as whole words, case-insensitive.
+ */
+export const NEVER_NAMED = [
+  "snoop", "dr. dre", "kendrick", "drake", "sugar sammy", "bougon", "not like us", "gta", "grand theft auto",
+  "rockstar games", "disney", "pixar", "marvel", "nintendo", "pokemon", "taylor swift", "beyonce", "eminem",
+] as const;
+
+function textsOf(story: Story): Array<[string, string]> {
+  const out: Array<[string, string]> = [["title", story.title], ["logline", story.logline], ["theme", story.theme]];
+  for (const l of story.lines) for (const [lang, t] of Object.entries(l.text)) out.push([`line ${l.id} ${lang}`, t]);
+  for (const s of story.shots) {
+    for (const k of ["action", "motion", "purpose", "intent", "interaction", "place", "camera", "lighting", "atmosphere"] as const) out.push([`shot ${s.id} ${k}`, s[k]]);
+  }
+  out.push(["music", story.music.prompt], ...story.music.cues.map((c, i): [string, string] => [`cue ${i + 1}`, c.prompt]));
+  for (const r of story.references) out.push([`reference ${r.evokes}`, `${r.evokes} ${r.how}`]);
+  return out;
+}
+
+/** What a story names that it must not (pure): the built-in list and the treatment's own, as whole words. */
+export function legalFindings(story: Story): Finding[] {
+  const banned = [...NEVER_NAMED, ...story.never].map((n) => n.toLowerCase().trim()).filter(Boolean);
+  const findings: Finding[] = [];
+  for (const [where, text] of textsOf(story)) {
+    const lower = ` ${text.toLowerCase()} `;
+    for (const name of banned) {
+      const at = lower.search(new RegExp(`[^a-z0-9]${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^a-z0-9]`));
+      if (at >= 0) findings.push({ rule: "legal", message: `${where} names « ${name} »: evoke it through an original or generic means instead` });
+    }
+  }
+  for (const r of story.references) {
+    if (r.how.split(/\s+/).length < 3) findings.push({ rule: "legal", message: `the reference « ${r.evokes} » does not say how it is evoked legally` });
+  }
+  return findings;
 }
 
 /** Each criterion must reach this score; any finding of an arc, flat or off-topic beat fails the story outright. */
@@ -352,15 +442,24 @@ export function critiqueStory(story: Story, language = "en"): Critique {
   const cue = (b: Beat): MusicCue | undefined => story.music.cues.find((c) => c.beat === b);
   let musicOk = 0;
   const musicChecks = 4;
-  if (BEATS.every((b) => !story.shots.some((s) => s.beat === b) || cue(b))) musicOk += 1;
-  else findings.push({ rule: "music", message: "a beat of the story has no music cue" });
+  const byShots = story.music.cues.some((c) => c.shots);
+  const covered = byShots
+    ? story.shots.every((s) => story.music.cues.some((c) => c.shots && c.shots[0] <= s.id && s.id <= c.shots[1]))
+    : BEATS.every((b) => !story.shots.some((s) => s.beat === b) || cue(b));
+  if (covered) musicOk += 1;
+  else findings.push({ rule: "music", message: byShots ? "a shot of the story has no music cue" : "a beat of the story has no music cue" });
   if (story.music.cues.every((c) => c.intensity <= MAX_MUSIC_INTENSITY)) musicOk += 1;
   else findings.push({ rule: "music", message: `a cue is louder than ${MAX_MUSIC_INTENSITY} (the score sits under the story)` });
   const [hook, turn, payoff] = [cue("hook"), cue("turn"), cue("payoff")];
   if (!hook || story.music.cues.every((c) => c.intensity >= hook.intensity)) musicOk += 1;
   else findings.push({ rule: "music", message: "the hook's cue is not the quietest (an intro starts low)" });
-  if (!turn || !payoff || payoff.intensity <= turn.intensity) musicOk += 1;
-  else findings.push({ rule: "music", message: "the payoff is louder than the turn (a score resolves after its peak)" });
+  // A score resolves: its last cue sits under its peak (a finale may peak — a DJ moment — then an outro brings it down).
+  const peak = Math.max(...story.music.cues.map((c) => c.intensity), 0);
+  const last = story.music.cues[story.music.cues.length - 1];
+  void turn;
+  void payoff;
+  if (!last || story.music.cues.length < 2 || last.intensity <= peak - 0.1) musicOk += 1;
+  else findings.push({ rule: "music", message: "the score ends at its peak (a score resolves after its peak)" });
 
   // Sound: every shot has a sound; a character shot has at least one event (its action is heard, not just a bed).
   const soundOk = story.shots.filter((s) => {
@@ -371,6 +470,41 @@ export function critiqueStory(story: Story, language = "en"): Critique {
     return false;
   }).length;
 
+  // Interaction (orazaka#289: « they look presented, not part of a story »): characters meet, help, argue, hand off.
+  const multi = characterShots.filter((s) => s.characters.length >= 2);
+  const interacting = characterShots.filter((s) => s.characters.length >= 2 && s.interactionKind);
+  const kinds = new Set(interacting.map((s) => s.interactionKind));
+  const castSize = new Set(story.shots.flatMap((s) => s.characters)).size;
+  let interactionScore = 1;
+  if (castSize >= 2) {
+    const share = characterShots.length ? interacting.length / characterShots.length : 0;
+    interactionScore = Number((Math.min(1, kinds.size / MIN_INTERACTION_KINDS) * Math.min(1, share / MIN_INTERACTION_SHARE)).toFixed(3));
+    if (kinds.size < MIN_INTERACTION_KINDS) {
+      findings.push({ rule: "interaction", message: `the characters only ${[...kinds].join(", ") || "stand side by side"}: they should meet, help, argue, hand off (${MIN_INTERACTION_KINDS} kinds at least)` });
+    }
+    if (share < MIN_INTERACTION_SHARE) {
+      findings.push({ rule: "interaction", message: `${interacting.length} of ${characterShots.length} character shots show characters acting on each other (a third at least)` });
+    }
+    for (const s of multi) if (!s.interactionKind) findings.push({ rule: "interaction", shot: s.id, message: "several characters share the frame but do nothing to each other" });
+  }
+  // A lineup: characters presented to the camera instead of acting (v1's « five on the ridge turn their heads to us »).
+  for (const s of story.shots.filter((x) => x.characters.length >= 3 && !x.reuse)) {
+    if (LINEUP.test(s.action) && !s.interactionKind) findings.push({ rule: "lineup", shot: s.id, message: "the characters are lined up for the camera, not acting" });
+  }
+  // Rhythm: shot lengths that vary, and somewhere a run of quick cuts (dynamism).
+  const lengths = story.shots.map(screen);
+  const mean = lengths.reduce((a, b) => a + b, 0) / Math.max(1, lengths.length);
+  const spread = Math.sqrt(lengths.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, lengths.length)) / Math.max(mean, 1e-6);
+  const quickRun = lengths.some((_, i) => i + 2 < lengths.length && lengths.slice(i, i + 3).every((x) => x <= QUICK_SHOT));
+  let rhythmOk = 0;
+  if (spread >= MIN_LENGTH_SPREAD) rhythmOk += 1;
+  else findings.push({ rule: "rhythm", message: `every shot lasts about the same (spread ${spread.toFixed(2)}): change the rhythm` });
+  if (quickRun || story.shots.length < 6) rhythmOk += 1;
+  else findings.push({ rule: "rhythm", message: `no run of quick cuts (three shots of ${QUICK_SHOT} s or less): nothing has momentum` });
+  // Legal (the hard rule): no real person, song, game, show or brand named anywhere; every reference says how it is evoked.
+  const named = legalFindings(story);
+  findings.push(...named);
+
   const scores = {
     arc: ratio(arcOk, BEATS.length) * (findings.some((f) => f.rule === "arc") ? 0.5 : 1),
     purpose: ratio(purposeful, story.shots.length),
@@ -380,8 +514,11 @@ export function critiqueStory(story: Story, language = "en"): Critique {
     voice: ratio(voiceOk, story.lines.length),
     music: ratio(musicOk, musicChecks),
     sound: ratio(soundOk, story.shots.length),
+    interaction: interactionScore,
+    rhythm: ratio(rhythmOk, 2),
+    legal: named.length ? 0 : 1,
   };
-  const blocking = findings.some((f) => f.rule === "arc" || f.rule === "flat" || f.rule === "off-topic");
+  const blocking = findings.some((f) => ["arc", "flat", "off-topic", "lineup", "legal"].includes(f.rule));
   return { scores, findings, pass: !blocking && Object.values(scores).every((v) => v >= RUBRIC_THRESHOLD) };
 }
 
@@ -412,7 +549,8 @@ export function judgePrompt(story: Story, language = "en"): string {
     "You are a demanding film director reviewing a short film's treatment before it is shot. Judge it against this rubric.",
     "transport: does the story carry the viewer (a hook that raises a question, stakes, an emotional turn, a payoff that answers the hook)?",
     "arc: hook → journey → turn → payoff, in that order, each beat earned.",
-    "characters: does each character want something that comes from its promise?",
+    "characters: does each character want something that comes from its promise, and do the characters act on each other (meet, help, argue, hand off) instead of being presented in a lineup? Is each role clear from what it does?",
+    "rhythm and emotion (part of transport): do the pace and the music change with the places and the beats, with real emotional moments?",
     "alive: does every character shot direct a living performance (gesture, gaze, breath, weight, wings, interaction), not generic motion?",
     "onTopic: does every action serve the beat and the character's promise (no decorative or unrelated action)?",
     "continuity: do shots follow each other in space and time (screen direction, the same props, the same weather)?",
@@ -514,12 +652,17 @@ export function timeline(story: Story, language = "en", voice: Readonly<Record<s
     const room = last.end + LINE_SPILL - end;
     return { id: l.id, start: round(start), end: round(end), fits: room >= 0, room: round(room) };
   });
-  const music = BEATS.flatMap((b) => {
-    const inBeat = shots.filter((s) => s.beat === b);
-    const cue = story.music.cues.find((c) => c.beat === b);
-    if (!inBeat.length || !cue) return [];
-    return [{ id: b, start: inBeat[0].start, end: inBeat[inBeat.length - 1].end, intensity: cue.intensity }];
-  });
+  // Cues that name their shots follow the place (a genre per city); the others follow their beat.
+  const music = story.music.cues.some((c) => c.shots)
+    ? story.music.cues
+        .filter((c) => c.shots)
+        .map((c, i) => ({ id: c.genre ? `${i + 1}-${c.genre}` : `${i + 1}-${c.beat}`, start: shots[c.shots![0] - 1].start, end: shots[c.shots![1] - 1].end, intensity: c.intensity }))
+    : BEATS.flatMap((b) => {
+        const inBeat = shots.filter((s) => s.beat === b);
+        const cue = story.music.cues.find((c) => c.beat === b);
+        if (!inBeat.length || !cue) return [];
+        return [{ id: b, start: inBeat[0].start, end: inBeat[inBeat.length - 1].end, intensity: cue.intensity }];
+      });
   const sound = story.shots.flatMap((s, i) =>
     s.sound.map((c) => {
       const shot = shots[i];
