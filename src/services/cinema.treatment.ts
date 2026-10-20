@@ -181,6 +181,17 @@ export interface PodJob {
   readonly start: { readonly keyframe: number } | { readonly lastFrameOf: number };
 }
 
+/**
+ * How many frames a shot needs: the seconds it uses plus a 0.4 s handle for the cut (Wan holds its first frames on the
+ * keyframe), rounded up to the model's 4k+1 (Wan) or 8k+1 (LTX) count and never more than one clip. A 2.7 s shot is made
+ * as a 3.3 s clip, about half the attention work of a 5 s one at the same steps (pure).
+ */
+export function framesFor(shape: { frames: number; fps: number }, seconds: number): number {
+  const step = shape.fps === 24 ? 8 : 4;
+  const wanted = Math.ceil(((seconds + 0.4) * shape.fps) / step) * step + 1;
+  return Math.min(shape.frames, Math.max(step * 4 + 1, wanted));
+}
+
 /** The shots still to make (never made, or marked for a reshoot), in order: what a GPU host runs next (pure). */
 export function podJobs(production: Production): PodJob[] {
   const script = production.script?.parsed;
@@ -204,7 +215,7 @@ export function podJobs(production: Production): PodJob[] {
         seed: seedFor(production, shot.id, attempt, 2),
         width,
         height,
-        frames: shape.frames,
+        frames: framesFor(shape, shot.seconds),
         fps: shape.fps,
         start: shot.continuous && i > 0 ? { lastFrameOf: script.shots[i - 1].id } : { keyframe: shot.id },
       },

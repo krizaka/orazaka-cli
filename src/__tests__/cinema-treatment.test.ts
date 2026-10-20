@@ -140,12 +140,14 @@ describe("pod jobs: the pending shots, for a GPU host that runs the worker's own
   test("each pending shot is one job: its model's size and frames, its seed, and where it starts", () => {
     const p: Production = planProduction(treatment(), { language: "en" });
     const jobs = podJobs(p);
+    // A shot is made as long as it is used (plus a handle), never longer than one clip: 2.67 s → 53 frames at 16 fps.
     expect(jobs.map((j) => [j.shot, j.model, j.width, j.height, j.frames])).toEqual([
       [1, "wan2.2-i2v-a14b-hq", 1280, 720, 81],
-      [2, "ltx-video-0.9.8-13b-distilled", 1216, 704, 121],
-      [3, "wan2.2-i2v-a14b-hq", 1280, 720, 81],
-      [4, "wan2.2-i2v-a14b-hq", 1280, 720, 81],
+      [2, "ltx-video-0.9.8-13b-distilled", 1216, 704, 89],
+      [3, "wan2.2-i2v-a14b-hq", 1280, 720, 53],
+      [4, "wan2.2-i2v-a14b-hq", 1280, 720, 53],
     ]);
+    for (const j of jobs) expect((j.frames - 1) % (j.fps === 24 ? 8 : 4)).toBe(0);
     expect(jobs[0].start).toEqual({ keyframe: 1 });
     expect(jobs[3].start).toEqual({ lastFrameOf: 3 });
     expect(new Set(jobs.map((j) => j.seed)).size).toBe(4);
