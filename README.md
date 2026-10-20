@@ -13,6 +13,7 @@
 The `orazaka` developer CLI: install, start, dev, test, docs and pack tooling for the Orazaka workspace, with an offline SQLite queue.
 
 [![CI](https://github.com/krizaka/orazaka-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/krizaka/orazaka-cli/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/krizaka/orazaka-cli/badge)](https://scorecard.dev/viewer/?uri=github.com/krizaka/orazaka-cli)
 [![npm](https://img.shields.io/npm/v/@krizaka/orazaka-cli?label=%40krizaka%2Forazaka-cli&color=f67e23)](https://www.npmjs.com/package/@krizaka/orazaka-cli)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Orazaka](https://img.shields.io/badge/part%20of-Orazaka-f67e23)](https://github.com/krizaka/orazaka#repositories)
