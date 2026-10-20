@@ -110,7 +110,7 @@ const restPort: StudioPort = {
     }
     return run;
   },
-  async reupload(output, lastFrame): Promise<string> {
+  async reupload(output, lastFrame, at): Promise<string> {
     // Already an uploaded asset (a keyframe re-uploaded from the production folder): nothing to move.
     if (!lastFrame && isAssetId(output)) return output;
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orz-cinema-"));
@@ -120,7 +120,9 @@ const restPort: StudioPort = {
       let file = downloaded;
       if (lastFrame) {
         file = path.join(scratch, "last-frame.png");
-        execFileSync("ffmpeg", ["-v", "error", "-y", "-sseof", "-0.15", "-i", downloaded, "-update", "1", "-frames:v", "1", file]);
+        // The chained frame: a chosen second of the previous take (`chainAt`), else its last frame.
+        const seek = at !== undefined ? ["-ss", at.toFixed(3)] : ["-sseof", "-0.15"];
+        execFileSync("ffmpeg", ["-v", "error", "-y", ...seek, "-i", downloaded, "-update", "1", "-frames:v", "1", file]);
       }
       return (await ApiClient.uploadFile(file)).assetId;
     } finally {

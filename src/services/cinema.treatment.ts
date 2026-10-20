@@ -75,6 +75,10 @@ function shotOf(raw: Raw, index: number, cast: ReadonlySet<string>, cues: Record
   const transition = id === 1 ? "cut" : within(raw.transition ?? "cut", TRANSITIONS, `${where}: transition`);
   const continuous = raw.continuous === true;
   if (continuous && id === 1) throw new TreatmentError("shot 1 cannot continue a shot before it");
+  const chainAt = raw.chainAt === undefined || raw.chainAt === null ? undefined : Number(raw.chainAt);
+  if (chainAt !== undefined && (!continuous || !Number.isFinite(chainAt) || chainAt < 0 || chainAt > 5)) {
+    throw new TreatmentError(`${where}: chainAt is a second (0 to 5) of the previous take, for a continuous shot only`);
+  }
   const speed = raw.speed === undefined ? 1 : Number(raw.speed);
   if (!Number.isFinite(speed) || speed < 0.25 || speed > 2) throw new TreatmentError(`${where}: speed must be between 0.25 and 2`);
   const ramp = raw.rampAt === null || raw.rampAt === undefined ? null : Number(raw.rampAt);
@@ -101,6 +105,7 @@ function shotOf(raw: Raw, index: number, cast: ReadonlySet<string>, cues: Record
     // A caption names a cue of the treatment (the film's exact line in each language), or is its own words.
     caption: cue ? str(cue[language]) : cueId,
     continuous,
+    ...(chainAt !== undefined ? { chainAt } : {}),
     model: within(raw.model ?? "wan2.2-i2v-a14b-hq", VIDEO_MODELS, `${where}: model`),
     slug: str(raw.slug) || `shot-${id}`,
   };
@@ -192,7 +197,7 @@ export interface PodJob {
   readonly frames: number;
   readonly fps: number;
   /** Where the clip starts: its own keyframe, or the last frame of the shot before it (tail-frame chaining). */
-  readonly start: { readonly keyframe: number } | { readonly lastFrameOf: number };
+  readonly start: { readonly keyframe: number } | { readonly lastFrameOf: number; readonly at?: number };
 }
 
 /**
@@ -231,7 +236,10 @@ export function podJobs(production: Production): PodJob[] {
         height,
         frames: framesFor(shape, shot.seconds),
         fps: shape.fps,
-        start: shot.continuous && i > 0 ? { lastFrameOf: script.shots[i - 1].id } : { keyframe: shot.id },
+        start:
+          shot.continuous && i > 0
+            ? { lastFrameOf: script.shots[i - 1].id, ...(shot.chainAt !== undefined ? { at: shot.chainAt } : {}) }
+            : { keyframe: shot.id },
       },
     ];
   });

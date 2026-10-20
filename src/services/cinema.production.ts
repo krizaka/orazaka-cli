@@ -71,6 +71,11 @@ export interface ScriptShot {
   readonly caption: string;
   /** Starts from the previous shot's last frame instead of its own keyframe (last-frame chaining). */
   readonly continuous: boolean;
+  /**
+   * A chained shot's start, in seconds into the previous take, when its last frame is not where the subject is (a bird
+   * that flew out of frame leaves an empty sky); absent: the last frame.
+   */
+  readonly chainAt?: number;
   /** The video model of this shot (a treatment names it per shot); absent: the production's. */
   readonly model?: string;
   /** A short name for files and jobs (a treatment's), e.g. `falcon-cliff`. */

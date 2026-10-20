@@ -38,7 +38,7 @@ export interface StudioPort {
   /** Starts a run of a Studio by key and follows it to its end. */
   run(studioKey: string, inputs: Record<string, unknown>): Promise<FinishedRun>;
   /** Turns an output of an earlier run (an image URL) into an uploaded asset id a video run can start from. */
-  reupload(output: string, lastFrame: boolean): Promise<string>;
+  reupload(output: string, lastFrame: boolean, at?: number): Promise<string>;
 }
 
 export interface DirectorOptions {
@@ -196,7 +196,7 @@ async function runStep(
       const previous = index > 0 ? production.shots.find((s) => s.id === script.shots[index - 1].id) : undefined;
       const source = shot.continuous ? previous?.video?.output : state.keyframe?.output;
       if (!source) throw new ScriptError(`shot ${shot.id} has nothing to start from`);
-      const image = await port.reupload(source, shot.continuous);
+      const image = await port.reupload(source, shot.continuous, shot.continuous ? shot.chainAt : undefined);
       const seed = seedFor(production, shot.id, state.attempt, 2);
       const run = await port.run("video-generation", {
         prompt: motionPrompt(script, shot),

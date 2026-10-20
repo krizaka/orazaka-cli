@@ -111,8 +111,8 @@ function fakePort(): StudioPort & { calls: Array<[string, Record<string, unknown
       n += 1;
       return { id: `run-${n}`, status: "SUCCEEDED", outputs: [{ key: studioKey === "video-sound" ? "video" : "out", value: `/api/v1/assets/job-${n}/out` }] };
     },
-    async reupload(output, lastFrame): Promise<string> {
-      return `${lastFrame ? "last" : "key"}:${output}`;
+    async reupload(output, lastFrame, at): Promise<string> {
+      return `${lastFrame ? "last" : "key"}${at !== undefined ? `@${at}` : ""}:${output}`;
     },
   };
 }
@@ -212,5 +212,21 @@ describe("a treatment that changes during the production", () => {
     const shorter = treatment();
     (shorter.shots as unknown[]).splice(3, 1);
     expect(replan(again, shorter, { language: "en" }).shots.map((s) => s.id)).toEqual([1, 2, 3]);
+  });
+});
+
+describe("a chained shot can start from a chosen second of the previous take", () => {
+  test("chainAt is kept, exported to the pod, and passed to the reupload; it is refused on a shot that is not chained", async () => {
+    const t = treatment();
+    (t.shots as Array<Record<string, unknown>>)[3].chainAt = 1.2;
+    const p = planProduction(t, { language: "en" });
+    expect(p.script?.parsed?.shots[3].chainAt).toBe(1.2);
+    expect(podJobs(p)[3].start).toEqual({ lastFrameOf: 3, at: 1.2 });
+    const port = fakePort();
+    await direct(p, port, { save: () => undefined, log: () => undefined });
+    expect(port.calls.filter(([k]) => k === "video-generation")[3][1].image).toMatch(/^last@1\.2:/);
+    const bad = treatment();
+    (bad.shots as Array<Record<string, unknown>>)[2].chainAt = 1;
+    expect(() => planProduction(bad, { language: "en" })).toThrow(/chainAt is a second .* for a continuous shot only/);
   });
 });
