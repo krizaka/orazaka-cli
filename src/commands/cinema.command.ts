@@ -20,6 +20,12 @@
  *   orazaka cinema jobs <dir> [--out f]   the pending shots, as jobs for a GPU host (the worker's own generator)
  *   orazaka cinema take <dir> 3 take.mp4  records a take made there (then: reshoot redoes it, and its chain)
  *   orazaka cinema review <dir> 3 take.mp4  a frame every 8 under the cast's reference sheet, to accept or reject it
+ *
+ * The treatment stage (orazaka#289) writes the story a short brief needs before any shot is planned, and judges it:
+ *
+ *   orazaka cinema treat <dir> --brief "…" [--revisions 2] [--no-judge]   story, arc, intentions, lines, cues, sound list
+ *   orazaka cinema critique <treatment.json> [--judge]   the rubric (and the LLM judge) over a treatment: pass or why not
+ *   orazaka cinema timeline <treatment.json> [--voice report.json]   every line, cue and sound placed on the cut
  */
 
 import { Command } from "commander";
@@ -32,7 +38,8 @@ import { requireAuth } from "../threads";
 import { Logger } from "../ui/logger";
 import { ApiClient } from "../services/api-client";
 import { StudioApi } from "../services/studio.api";
-import { type FinishedRun, type StudioPort, direct } from "../services/cinema.director";
+import { type FinishedRun, type StudioPort, direct, writeTreatment } from "../services/cinema.director";
+import { StoryError, critiqueStory, judgePrompt, parseJudge, parseStory, timeline, verdict } from "../services/cinema.story";
 import {
   ASPECTS,
   type Aspect,
@@ -411,6 +418,92 @@ const reviewCommand = new Command("review")
     Logger.success(`review sheet: ${sheet}`);
   });
 
+
+const treatCommand = new Command("treat")
+  .description("Write the story of a brief (arc, intentions, purposeful shots, directed lines, music cues, sound list) and judge it")
+  .argument("<dir>", "Where the treatment and its critique are written")
+  .requiredOption("-b, --brief <text>", "The short brief (a sentence or two is enough)")
+  .option("-l, --language <lang>", "en or fr", "en")
+  .option("-d, --duration <s>", "Seconds of film", "60")
+  .option("-a, --aspect <aspect>", "16:9 or 9:16", "16:9")
+  .option("--revisions <n>", "How many times a rejected draft goes back to the writer", "2")
+  .option("--no-judge", "The rubric alone decides (no language-model judge)")
+  .option("--model <name>", "The chat model of the writer and the judge")
+  .action(async (dir: string, o: { brief: string; language: string; duration: string; aspect: string; revisions: string; judge: boolean; model?: string }) => {
+    requireAuth();
+    try {
+      const draft = await writeTreatment(restPort, {
+        brief: o.brief,
+        language: o.language === "fr" ? "fr" : "en",
+        durationSeconds: Number(o.duration),
+        aspect: o.aspect,
+        revisions: Number(o.revisions),
+        noJudge: !o.judge,
+        model: o.model,
+        log: (line) => console.log(`${chalk.cyan("▸")} ${line}`),
+      });
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, "treatment.json"), `${JSON.stringify(draft.treatment, null, 1)}\n`);
+      fs.writeFileSync(path.join(dir, "critique.json"), `${JSON.stringify({ rubric: draft.rubric, judge: draft.judge, verdict: draft.verdict, runs: draft.runs }, null, 1)}\n`);
+      if (draft.verdict.pass) Logger.success(`accepted: ${path.join(dir, "treatment.json")} — next: orazaka cinema plan <prod> --treatment it`);
+      else {
+        Logger.warn(`not accepted after the revisions — read ${path.join(dir, "critique.json")}, edit the treatment, then: orazaka cinema critique`);
+        process.exitCode = 2;
+      }
+    } catch (error: unknown) {
+      Logger.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+const critiqueCommand = new Command("critique")
+  .description("Judge a treatment against the rubric (arc, purpose, alive, on-topic, continuity, voice, music, sound)")
+  .argument("<treatment>", "The treatment (JSON)")
+  .option("-l, --language <lang>", "en or fr", "en")
+  .option("--judge", "Also ask the language-model judge (a cinematic-critique run)")
+  .option("--model <name>", "The judge's chat model")
+  .option("-o, --out <file>", "Write the critique (JSON) there")
+  .action(async (file: string, o: { language: string; judge?: boolean; model?: string; out?: string }) => {
+    try {
+      const story = parseStory(JSON.parse(fs.readFileSync(file, "utf-8")));
+      const rubric = critiqueStory(story, o.language);
+      let judge;
+      if (o.judge) {
+        requireAuth();
+        const run = await restPort.run("cinematic-critique", { treatment: judgePrompt(story, o.language), ...(o.model ? { model: o.model } : {}) });
+        judge = parseJudge(run.outputs[0]?.value ?? "", story.shots.length);
+      }
+      const decided = verdict(rubric, judge);
+      for (const [k, v] of Object.entries(rubric.scores)) console.log(`${k.padEnd(11)} ${v >= 0.85 ? chalk.green(v.toFixed(2)) : chalk.red(v.toFixed(2))}`);
+      if (judge) for (const [k, v] of Object.entries(judge.scores)) console.log(`judge ${k.padEnd(11)} ${v}/5`);
+      for (const r of decided.reasons) console.log(chalk.yellow(`  ${r}`));
+      if (o.out) fs.writeFileSync(o.out, `${JSON.stringify({ rubric, judge, verdict: decided }, null, 1)}\n`);
+      if (decided.pass) Logger.success("the story passes");
+      else process.exitCode = 2;
+    } catch (error: unknown) {
+      Logger.error(error instanceof StoryError || error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+const timelineCommand = new Command("timeline")
+  .description("Place every line, music cue and sound of a treatment on the cut, and say which lines do not fit their shots")
+  .argument("<treatment>", "The treatment (JSON)")
+  .option("-l, --language <lang>", "en or fr", "en")
+  .option("--voice <report>", "The voice step's report: [{id, seconds}] measured per line")
+  .option("--spans <file>", "The cut's own shot spans ([[start, end], …], e.g. the worker's cut.timeline) instead of back to back")
+  .action((file: string, o: { language: string; voice?: string; spans?: string }) => {
+    const story = parseStory(JSON.parse(fs.readFileSync(file, "utf-8")));
+    const measured: Record<string, number> = {};
+    if (o.voice) for (const r of JSON.parse(fs.readFileSync(o.voice, "utf-8")) as Array<{ id: string; language?: string; seconds: number }>) {
+      if (!r.language || r.language === o.language) measured[r.id] = r.seconds;
+    }
+    const spans = o.spans ? (JSON.parse(fs.readFileSync(o.spans, "utf-8")) as Array<[number, number]>) : undefined;
+    const placed = timeline(story, o.language, measured, spans);
+    process.stdout.write(`${JSON.stringify(placed, null, 1)}\n`);
+    if (placed.lines.some((l) => !l.fits)) process.exitCode = 2;
+  });
+
 export const cinemaCommand = new Command("cinema")
   .description("A cinematic short (30–60 s) from a brief: script, keyframes, shots, cut, sound — each an ordinary Studio run")
   .addCommand(newCommand)
@@ -423,4 +516,7 @@ export const cinemaCommand = new Command("cinema")
   .addCommand(sheetCommand)
   .addCommand(jobsCommand)
   .addCommand(takeCommand)
-  .addCommand(reviewCommand);
+  .addCommand(reviewCommand)
+  .addCommand(treatCommand)
+  .addCommand(critiqueCommand)
+  .addCommand(timelineCommand);

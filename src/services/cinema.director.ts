@@ -7,8 +7,10 @@
  * It talks to the platform through a port (a fake in the tests, the REST API in the CLI).
  */
 
+import { type Critique, type Judgement, type Story, type Verdict, critiqueStory, judgePrompt, parseJudge, parseStory, verdict } from "./cinema.story";
 import {
   KEYFRAME_NEGATIVE,
+  extractJson,
   type Production,
   type RunRecord,
   RunState,
@@ -193,10 +195,14 @@ async function runStep(
       const shot = script.shots[index];
       const state = shotState(production, shot.id);
       // A continuous shot starts where the one before it ends (last-frame chaining); every other shot from its keyframe.
-      const previous = index > 0 ? production.shots.find((s) => s.id === script.shots[index - 1].id) : undefined;
-      const source = shot.continuous ? previous?.video?.output : state.keyframe?.output;
+      // A shot chained from an earlier take (`chainFrom`) starts from a frame of that take.
+      const fromId = shot.chainFrom ? shot.chainFrom.shot : index > 0 ? script.shots[index - 1].id : undefined;
+      const previous = fromId !== undefined ? production.shots.find((s) => s.id === fromId) : undefined;
+      const chained = shot.continuous || Boolean(shot.chainFrom);
+      const source = chained ? previous?.video?.output : state.keyframe?.output;
       if (!source) throw new ScriptError(`shot ${shot.id} has nothing to start from`);
-      const image = await port.reupload(source, shot.continuous, shot.continuous ? shot.chainAt : undefined);
+      const at = shot.chainFrom ? shot.chainFrom.at : shot.chainAt;
+      const image = await port.reupload(source, chained, chained ? at : undefined);
       const seed = seedFor(production, shot.id, state.attempt, 2);
       const run = await port.run("video-generation", {
         prompt: motionPrompt(script, shot),
@@ -246,4 +252,86 @@ async function runStep(
       options.log("nothing to do");
       throw new ScriptError("unknown step");
   }
+}
+
+// ── The treatment stage (orazaka#289): a brief becomes a story, judged before it becomes a shot list ────────────────
+
+
+export interface TreatmentDraft {
+  /** The treatment as the writer gave it (the JSON `orazaka cinema plan` reads). */
+  readonly treatment: Record<string, unknown>;
+  readonly story: Story;
+  readonly rubric: Critique;
+  readonly judge?: Judgement;
+  readonly verdict: Verdict;
+  /** Every run of the stage, in order: each writing pass and each judgement. */
+  readonly runs: RunRecord[];
+}
+
+export interface TreatmentOptions {
+  readonly brief: string;
+  readonly language: "en" | "fr";
+  readonly durationSeconds: number;
+  readonly aspect: string;
+  /** How many times the writer is asked again with the critique's notes before the stage gives up (default 2). */
+  readonly revisions?: number;
+  /** Skip the language-model judge (the rubric alone decides): a dry pass, or no chat model up. */
+  readonly noJudge?: boolean;
+  readonly model?: string;
+  readonly log: (line: string) => void;
+}
+
+/**
+ * Writes the treatment of a brief and has it judged (the rubric, then the LLM judge); a rejected draft goes back to the
+ * writer with the reasons, at most `revisions` times. Every pass is an ordinary Studio run (metered, in the history).
+ * Returns the last draft, accepted or not: the caller shows a rejected one to a person rather than filming it.
+ */
+export async function writeTreatment(port: StudioPort, options: TreatmentOptions): Promise<TreatmentDraft> {
+  const runs: RunRecord[] = [];
+  let notes = "";
+  let last: TreatmentDraft | undefined;
+  for (let pass = 0; pass <= (options.revisions ?? 2); pass += 1) {
+    const written = await port.run("cinematic-treatment", {
+      brief: options.brief,
+      language: options.language,
+      durationSeconds: options.durationSeconds,
+      aspect: options.aspect,
+      ...(notes ? { notes } : {}),
+      ...(options.model ? { model: options.model } : {}),
+    });
+    const record = recordOf("cinematic-treatment", written);
+    runs.push(record);
+    if (written.status !== RunState.Succeeded || !record.output) throw new ScriptError(`the treatment run ${written.id} did not succeed`);
+    let treatment: Record<string, unknown>;
+    let story: Story;
+    try {
+      treatment = extractJson(record.output) as Record<string, unknown>;
+      story = parseStory(treatment);
+    } catch (error: unknown) {
+      notes = `Your last answer could not be read: ${error instanceof Error ? error.message : String(error)}. Answer with the JSON object only.`;
+      options.log(`treatment pass ${pass + 1}: unreadable — asking again`);
+      continue;
+    }
+    const rubric = critiqueStory(story, options.language);
+    let judge: Judgement | undefined;
+    if (!options.noJudge) {
+      const judged = await port.run("cinematic-critique", { treatment: judgePrompt(story, options.language), ...(options.model ? { model: options.model } : {}) });
+      const judgeRecord = recordOf("cinematic-critique", judged);
+      runs.push(judgeRecord);
+      if (judged.status === RunState.Succeeded && judgeRecord.output) {
+        try {
+          judge = parseJudge(judgeRecord.output, story.shots.length);
+        } catch (error: unknown) {
+          options.log(`judge: unreadable answer (${error instanceof Error ? error.message : String(error)}) — the rubric decides this pass`);
+        }
+      }
+    }
+    const decided = verdict(rubric, judge);
+    last = { treatment, story, rubric, judge, verdict: decided, runs };
+    options.log(`treatment pass ${pass + 1}: ${decided.pass ? "accepted" : `rejected (${decided.reasons.length} reason(s))`}`);
+    if (decided.pass) return last;
+    notes = decided.notes;
+  }
+  if (!last) throw new ScriptError("no readable treatment after every revision");
+  return last;
 }
