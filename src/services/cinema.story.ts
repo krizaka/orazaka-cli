@@ -266,7 +266,7 @@ export function parseStory(raw: unknown): Story {
 /** Verbs that say nothing about a character (the v1 film's failure): an action made only of these is flat. */
 const GENERIC = /\b(moves?|moving|stands?|standing|looks? around|turns? (its|his|her) head (left|right)|flies around|is shown|appears?|idles?|poses?|walks? around|scanning)\b/gi;
 /** Physical verbs of a living body: a character shot names at least one. */
-const LIVING = /\b(breath\w*|lean\w*|crouch\w*|leap\w*|launch\w*|beat\w*|flap\w*|land\w*|fold\w*|grip\w*|tighten\w*|shuffl\w*|step\w*|nod\w*|bow\w*|nudg\w*|shak\w*|lift\w*|rais\w*|set\w*|tap\w*|push\w*|brac\w*|tumbl\w*|climb\w*|glanc\w*|snap\w*|puff\w*|smooth\w*|carr\w*|hold\w*|answer\w*|read\w*|recogn\w*|spread\w*|ruffl\w*|blink\w*|widen\w*)\b/i;
+const LIVING = /\b(breath\w*|lean\w*|crouch\w*|leap\w*|launch\w*|beat\w*|flap\w*|land\w*|fold\w*|grip\w*|tighten\w*|shuffl\w*|step\w*|nod\w*|bow\w*|nudg\w*|shak\w*|lift\w*|rais\w*|set\w*|tap\w*|push\w*|brac\w*|tumbl\w*|climb\w*|glanc\w*|snap\w*|puff\w*|smooth\w*|carr\w*|hold\w*|answer\w*|read\w*|recogn\w*|spread\w*|ruffl\w*|blink\w*|widen\w*|bump\w*|twirl\w*|hop\w*|spin\w*|wav(e|es|ing)|slid\w*|danc\w*|jump\w*|cheer\w*|scoop\w*|wrap\w*|flick\w*|sink\w*|shiver\w*|curl\w*|dive\w*|snatch\w*|catch\w*|bob\w*|bank\w*)\b/i;
 /** Words too common to tie an action to a promise. */
 const STOP = new Set(["the", "and", "with", "that", "this", "from", "into", "every", "each", "comes", "first", "time", "line", "open", "its", "their", "then", "they", "when", "what", "keeps", "keep", "follows"]);
 
