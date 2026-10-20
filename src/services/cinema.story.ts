@@ -541,7 +541,7 @@ export const JUDGE_THRESHOLD = 3.5;
 /** The prompt of the critique Studio (pure): the story, compact, and the rubric it is scored against. */
 export function judgePrompt(story: Story, language = "en"): string {
   const shots = story.shots
-    .map((s) => `${s.id}. [${s.beat}] ${s.characters.join("+") || "landscape"} — purpose: ${s.purpose} — action: ${s.action}${s.gaze ? ` — gaze: ${s.gaze}` : ""}`)
+    .map((s) => `${s.id}. [${s.beat}] ${s.characters.join("+") || "landscape"} — purpose: ${s.purpose} — action: ${s.action}${s.gaze ? ` — gaze: ${s.gaze}` : ""}${s.physics ? ` — body: ${s.physics}` : ""}${s.interactionKind ? ` — they ${s.interactionKind}` : ""}`)
     .join("\n");
   const cast = story.characters.map((c) => `${c.id}: promise «${c.promise}», intention «${c.intention}»`).join("\n");
   const lines = story.lines.map((l) => `(${l.shots.join(",")}) ${l.text[language] ?? ""} [${l.direction.emotion}, ${l.direction.pace}]`).join("\n");
