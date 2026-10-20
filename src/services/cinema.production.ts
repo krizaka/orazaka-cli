@@ -76,6 +76,13 @@ export interface ScriptShot {
    * that flew out of frame leaves an empty sky); absent: the last frame.
    */
   readonly chainAt?: number;
+  /**
+   * Starts from a frame of an earlier shot's take, not only the one just before it (orazaka#289): a bird that left one
+   * shot is found again two cuts later in the same pose and light. Absent: its keyframe (or `continuous`).
+   */
+  readonly chainFrom?: { readonly shot: number; readonly at?: number };
+  /** A take kept from an earlier production (its file): nothing is made for this shot. */
+  readonly reuse?: string;
   /** The video model of this shot (a treatment names it per shot); absent: the production's. */
   readonly model?: string;
   /** A short name for files and jobs (a treatment's), e.g. `falcon-cliff`. */
@@ -418,7 +425,7 @@ export function nextStep(production: Production): NextStep {
   }
   for (const shot of script.shots) {
     const state = production.shots.find((s) => s.id === shot.id);
-    if (!done(state?.keyframe) && !shot.continuous) return { kind: "keyframe", shot: shot.id };
+    if (!done(state?.keyframe) && !shot.continuous && !shot.chainFrom && !shot.reuse) return { kind: "keyframe", shot: shot.id };
   }
   for (const shot of script.shots) {
     const state = production.shots.find((s) => s.id === shot.id);
@@ -446,7 +453,8 @@ export function markReshoot(production: Production, ids: readonly number[], newK
   // gone, so the chain after it is made again too (and only the chain: a shot from its own keyframe keeps its take).
   const shots = production.script?.parsed?.shots ?? [];
   shots.forEach((shot, i) => {
-    if (i === 0 || !shot.continuous || marked.has(shot.id) || !marked.has(shots[i - 1].id)) return;
+    const from = shot.chainFrom ? shot.chainFrom.shot : shot.continuous && i > 0 ? shots[i - 1].id : undefined;
+    if (from === undefined || marked.has(shot.id) || !marked.has(from)) return;
     const state = production.shots.find((s) => s.id === shot.id);
     if (!state) return;
     marked.add(shot.id);
@@ -489,7 +497,8 @@ export function estimate(
   const pending = (key: "keyframe" | "video"): number =>
     script
       ? shots.filter((s) => {
-          if (key === "keyframe" && s.continuous) return false; // it starts from the shot before it
+          if (key === "keyframe" && (s.continuous || s.chainFrom || s.reuse)) return false; // it starts from another take
+          if (key === "video" && s.reuse) return false; // a kept take
           const state = production.shots.find((x) => x.id === s.id);
           return !done(state?.[key]) || (key === "video" && state?.review === "reshoot");
         }).length

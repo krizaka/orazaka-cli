@@ -70,8 +70,16 @@ function shotOf(raw: Raw, index: number, cast: ReadonlySet<string>, cues: Record
   for (const c of characters) if (!cast.has(c)) throw new TreatmentError(`${where}: character '${c}' is not in the cast`);
   const keyframe = str(raw.keyframe);
   const motion = str(raw.motion);
-  if (!keyframe) throw new TreatmentError(`${where}: a keyframe prompt is required`);
-  if (!motion) throw new TreatmentError(`${where}: a motion prompt is required`);
+  const reuse = str(raw.reuse);
+  const chainRaw = raw.chainFrom as Raw | undefined;
+  const chainFrom = chainRaw ? { shot: Number(chainRaw.shot), ...(chainRaw.at !== undefined ? { at: Number(chainRaw.at) } : {}) } : undefined;
+  if (chainFrom && !(Number.isInteger(chainFrom.shot) && chainFrom.shot >= 1 && chainFrom.shot < id)) {
+    throw new TreatmentError(`${where}: chainFrom names a shot before it`);
+  }
+  if (chainFrom?.at !== undefined && !(chainFrom.at >= 0 && chainFrom.at <= 5)) throw new TreatmentError(`${where}: chainFrom.at is a second (0 to 5)`);
+  // A kept take needs neither prompt; a shot chained from another take needs no keyframe of its own.
+  if (!keyframe && !reuse && !chainFrom) throw new TreatmentError(`${where}: a keyframe prompt is required`);
+  if (!motion && !reuse) throw new TreatmentError(`${where}: a motion prompt is required`);
   const transition = id === 1 ? "cut" : within(raw.transition ?? "cut", TRANSITIONS, `${where}: transition`);
   const continuous = raw.continuous === true;
   if (continuous && id === 1) throw new TreatmentError("shot 1 cannot continue a shot before it");
@@ -106,6 +114,8 @@ function shotOf(raw: Raw, index: number, cast: ReadonlySet<string>, cues: Record
     caption: cue ? str(cue[language]) : cueId,
     continuous,
     ...(chainAt !== undefined ? { chainAt } : {}),
+    ...(chainFrom ? { chainFrom } : {}),
+    ...(reuse ? { reuse } : {}),
     model: within(raw.model ?? "wan2.2-i2v-a14b-hq", VIDEO_MODELS, `${where}: model`),
     slug: str(raw.slug) || `shot-${id}`,
   };
@@ -165,7 +175,12 @@ export function planProduction(raw: unknown, options: PlanOptions): Production {
     seed,
   });
   production.script = { runId: "treatment", studioKey: "treatment", status: RunState.Succeeded, parsed: script };
-  production.shots = script.shots.map((s) => ({ id: s.id, attempt: 0 }));
+  // A kept take (`reuse`) is done from the start: its file is the take, nothing is made or paid for it.
+  production.shots = script.shots.map((s) =>
+    s.reuse
+      ? { id: s.id, attempt: 0, video: { runId: `reuse:${s.reuse}`, studioKey: "reuse", status: RunState.Succeeded, output: s.reuse } }
+      : { id: s.id, attempt: 0 },
+  );
   return production;
 }
 
@@ -219,7 +234,7 @@ export function podJobs(production: Production): PodJob[] {
   return script.shots.flatMap((shot, i): PodJob[] => {
     const state = production.shots.find((s) => s.id === shot.id);
     const done = state?.video?.status === RunState.Succeeded && state.review !== "reshoot";
-    if (done) return [];
+    if (done || shot.reuse) return [];
     const attempt = state?.attempt ?? 0;
     const model = (shot.model ?? "wan2.2-i2v-a14b-hq") as VideoModel;
     const shape = MODEL_SHAPE[model] ?? MODEL_SHAPE["wan2.2-i2v-a14b-hq"];
@@ -236,8 +251,9 @@ export function podJobs(production: Production): PodJob[] {
         height,
         frames: framesFor(shape, shot.seconds),
         fps: shape.fps,
-        start:
-          shot.continuous && i > 0
+        start: shot.chainFrom
+          ? { lastFrameOf: shot.chainFrom.shot, ...(shot.chainFrom.at !== undefined ? { at: shot.chainFrom.at } : {}) }
+          : shot.continuous && i > 0
             ? { lastFrameOf: script.shots[i - 1].id, ...(shot.chainAt !== undefined ? { at: shot.chainAt } : {}) }
             : { keyframe: shot.id },
       },
