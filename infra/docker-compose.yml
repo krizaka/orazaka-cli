@@ -20,7 +20,7 @@ services:
       retries: 5
 
   mcp-debug-server:
-    image: node:24.21.0-slim
+    image: node:24.22.0-slim
     container_name: orazaka-mcp-debug
     working_dir: /app
     extra_hosts:
