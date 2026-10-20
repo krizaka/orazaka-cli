@@ -47,7 +47,7 @@ import {
   nextStep,
 } from "../services/cinema.production";
 import measured from "../services/cinema-estimate.json";
-import { TreatmentError, planProduction, podJobs, recordTake, reviewArgs, sheetArgs } from "../services/cinema.treatment";
+import { TreatmentError, planProduction, podJobs, recordTake, replan, reviewArgs, sheetArgs } from "../services/cinema.treatment";
 
 const FILE = "production.json";
 const TERMINAL = new Set(["SUCCEEDED", "FAILED", "CANCELLED", "REJECTED", "TIMED_OUT"]);
@@ -316,9 +316,11 @@ const planCommand = new Command("plan")
   .option("-r, --references <dir>", "Where the characters' reference renders are (<name>-alpha.png)")
   .option("-l, --language <lang>", "en or fr (the captions)", "en")
   .option("--seed <seed>", "Overrides the treatment's seedBase")
-  .action((dir: string, o: { treatment: string; references?: string; language: string; seed?: string }) => {
-    if (fs.existsSync(path.join(dir, FILE))) {
-      Logger.error(`${dir} already holds a production`);
+  .option("--update", "The treatment changed: keep every shot already made, add the new ones")
+  .action((dir: string, o: { treatment: string; references?: string; language: string; seed?: string; update?: boolean }) => {
+    const exists = fs.existsSync(path.join(dir, FILE));
+    if (exists !== Boolean(o.update)) {
+      Logger.error(exists ? `${dir} already holds a production (--update to apply a changed treatment)` : `${dir} holds no production to update`);
       process.exit(1);
     }
     try {
@@ -327,7 +329,8 @@ const planCommand = new Command("plan")
       raw.characters = characters.map((c) =>
         typeof c.reference === "string" && c.reference ? { ...c, reference: resolveReference(c.reference, o.references) } : c,
       );
-      const production = planProduction(raw, { language: o.language === "fr" ? "fr" : "en", ...(o.seed ? { seed: Number(o.seed) } : {}) });
+      const options = { language: (o.language === "fr" ? "fr" : "en") as "en" | "fr", ...(o.seed ? { seed: Number(o.seed) } : {}) };
+      const production = o.update ? replan(load(dir), raw, options) : planProduction(raw, options);
       save(dir, production);
       const script = production.script?.parsed;
       Logger.success(`${script?.title}: ${script?.shots.length} shots planned in ${dir} — next: orazaka cinema sheet ${dir}`);

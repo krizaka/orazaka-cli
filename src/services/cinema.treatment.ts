@@ -164,6 +164,20 @@ export function planProduction(raw: unknown, options: PlanOptions): Production {
   return production;
 }
 
+/**
+ * A changed treatment applied to a production under way (pure): the script is the new one; every shot that is still in it
+ * keeps what was made for it (keyframe, take, attempt), new shots wait, removed shots are dropped. The production's seed
+ * and history are kept, so a shot's seed and the measured runs do not move.
+ */
+export function replan(production: Production, raw: unknown, options: PlanOptions): Production {
+  const fresh = planProduction(raw, { ...options, seed: production.brief.seed });
+  const kept = new Map(production.shots.map((s) => [s.id, s]));
+  fresh.shots = fresh.shots.map((s) => kept.get(s.id) ?? s);
+  fresh.characters = production.characters;
+  fresh.history = production.history;
+  return fresh;
+}
+
 /** One shot for a GPU host that runs the worker's own generator (orazaka-worker-media `generate_wan_frames`). */
 export interface PodJob {
   /** `<id>-<slug>-t<attempt>`: the take's file name. */

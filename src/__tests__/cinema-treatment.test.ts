@@ -13,6 +13,7 @@ import {
   planProduction,
   podJobs,
   recordTake,
+  replan,
   reviewArgs,
   sheetArgs,
 } from "../services/cinema.treatment";
@@ -192,5 +193,24 @@ describe("a take made on a GPU host is recorded in the production", () => {
     recordTake(p, 1, "/takes/1b.mp4");
     expect(p.shots[0].video?.runId).toBe("pod:01-t1");
     expect(() => recordTake(p, 9, "x")).toThrow(/not in this production/);
+  });
+});
+
+describe("a treatment that changes during the production", () => {
+  test("replanning keeps every shot already made and adds the new ones; a removed shot's take is dropped", () => {
+    const p = planProduction(treatment(), { language: "en" });
+    recordTake(p, 1, "/takes/1.mp4", 900);
+    recordTake(p, 3, "/takes/3.mp4", 600);
+    const changed = treatment();
+    const shots = changed.shots as Array<Record<string, unknown>>;
+    shots.push({ ...shots[1], id: 5, slug: "sunrise", continuous: false });
+    const again = replan(p, changed, { language: "en" });
+    expect(again.script?.parsed?.shots.map((s) => s.slug)).toEqual(["falcon-cliff", "valley", "pigeon-takeoff", "pigeon-flight", "sunrise"]);
+    expect(podJobs(again).map((j) => j.shot)).toEqual([2, 4, 5]);
+    expect(again.history).toHaveLength(2);
+    expect(again.brief.seed).toBe(p.brief.seed);
+    const shorter = treatment();
+    (shorter.shots as unknown[]).splice(3, 1);
+    expect(replan(again, shorter, { language: "en" }).shots.map((s) => s.id)).toEqual([1, 2, 3]);
   });
 });
