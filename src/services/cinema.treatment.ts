@@ -231,7 +231,8 @@ export function sheetArgs(renders: readonly string[], output: string): string[] 
 export function reviewArgs(take: string, sheet: string, output: string, every = 8): string[] {
   const graph =
     `[0:v]select='not(mod(n\\,${every}))',scale=320:-2,tile=6x2:padding=4[frames];` +
-    `[1:v]scale=1944:-2[ref];[ref][frames]scale2ref=w=iw:h=ow/mdar[ref2][frames2];[ref2][frames2]vstack[out]`;
+    // Six 320-wide frames and five 4-px gaps make a 1940-wide strip: the reference sheet sits above it, 360 high, centred.
+    `[1:v]scale=-2:360,pad=1940:376:(ow-iw)/2:8:color=0x202020[ref];[ref][frames]vstack[out]`;
   return ["-v", "error", "-y", "-i", take, "-i", sheet, "-filter_complex", graph, "-map", "[out]", "-frames:v", "1", output];
 }
 
