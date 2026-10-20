@@ -46,8 +46,13 @@ export interface DirectorOptions {
   readonly log: (line: string) => void;
   /** Stop after this many runs (a dry pass, or a budget): the production file keeps the rest for later. */
   readonly maxRuns?: number;
-  /** The video model of the shots (the catalogue's name). */
+  /** The video model of the shots (the catalogue's name); a shot that names its own model keeps it. */
   readonly videoModel?: string;
+  /**
+   * Makes the reference sheet of a character that has a reference render (a brand's own drawing): the sheet is uploaded
+   * as it is, never redrawn by an image model. Absent: such a character is drawn from its description like any other.
+   */
+  readonly reference?: (characterId: string) => Promise<RunRecord>;
 }
 
 const SECONDS = (run: FinishedRun): number | undefined =>
@@ -151,6 +156,11 @@ async function runStep(
       if (!script) throw new ScriptError("no script");
       const character = script.characters.find((c) => c.id === step.id);
       if (!character) throw new ScriptError(`no character ${step.id}`);
+      if (character.reference && options.reference) {
+        const sheet = await options.reference(character.id);
+        production.characters[character.id] = sheet;
+        return sheet;
+      }
       const seed = seedFor(production, 0, 0, script.characters.indexOf(character) + 1);
       const run = await port.run("image-generation", {
         prompt: characterPrompt(script, character),
@@ -194,7 +204,7 @@ async function runStep(
         aspect: brief.aspect,
         seed: String(seed),
         image,
-        model,
+        model: shot.model ?? model,
       });
       state.video = { ...recordOf("video-generation", run, seed), assetId: image };
       if (run.status === RunState.Succeeded) state.review = undefined;

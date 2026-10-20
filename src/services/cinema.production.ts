@@ -48,6 +48,8 @@ export interface RunRecord {
 export interface Character {
   readonly id: string;
   readonly description: string;
+  /** A reference render of the character (a brand's own drawing, e.g. a Mascot render): uploaded as its sheet, never redrawn. */
+  readonly reference?: string;
 }
 
 export interface ScriptShot {
@@ -69,6 +71,10 @@ export interface ScriptShot {
   readonly caption: string;
   /** Starts from the previous shot's last frame instead of its own keyframe (last-frame chaining). */
   readonly continuous: boolean;
+  /** The video model of this shot (a treatment names it per shot); absent: the production's. */
+  readonly model?: string;
+  /** A short name for files and jobs (a treatment's), e.g. `falcon-cliff`. */
+  readonly slug?: string;
 }
 
 export interface ScriptTitle {
@@ -89,6 +95,10 @@ export interface Script {
   readonly voiceover: string;
   readonly titles: readonly ScriptTitle[];
   readonly shots: readonly ScriptShot[];
+  /** A treatment's own closing line of every motion prompt (said positively: a distilled model ignores negatives). */
+  readonly keep?: string;
+  /** A treatment's own closing line of every keyframe prompt. */
+  readonly keyframeKeep?: string;
 }
 
 export interface Brief {
@@ -296,6 +306,14 @@ export function characterPrompt(script: Script, character: Character): string {
  * visual bible — the same words in every picture are what keep a face and a look from shot to shot.
  */
 export function keyframePrompt(script: Script, shot: ScriptShot, aspect: Aspect): string {
+  if (script.keyframeKeep) {
+    // A treatment's keyframe is directed already: its words, the cast as described, the look, its keep line.
+    const described = shot.characters
+      .map((id) => script.characters.find((c) => c.id === id)?.description)
+      .filter(Boolean)
+      .join("; ");
+    return text(`${shot.keyframe} ${described ? `Characters: ${described}. ` : ""}${script.style} ${script.keyframeKeep}`, 1900);
+  }
   const cast = shot.characters
     .map((id) => script.characters.find((c) => c.id === id))
     .filter((c): c is Character => Boolean(c))
@@ -315,6 +333,8 @@ export const KEYFRAME_NEGATIVE =
 
 /** The motion prompt of a shot: what moves, the effects, the camera, the look. */
 export function motionPrompt(script: Script, shot: ScriptShot): string {
+  // A treatment's motion is written in film language already (subject, action, camera, lens, light, pace): kept as is.
+  if (script.keep) return text(`${shot.motion} ${script.keep}`, 1900);
   return text(
     `${shot.motion.replace(/\bcamera\b/gi, "view")}. ${shot.vfx ? `Visual effects: ${shot.vfx}. ` : ""}${direction(shot, true)}. ` +
       `${script.style} Cinematic, smooth natural motion, stable faces and hands, the same characters throughout, ${NO_TEXT}`,
@@ -407,13 +427,27 @@ export function nextStep(production: Production): NextStep {
 
 /** Marks shots to be made again (a person's review): their video, and the cut and sound that used them, are redone. */
 export function markReshoot(production: Production, ids: readonly number[], newKeyframe = false): Production {
+  const marked = new Set<number>();
   for (const id of ids) {
     const state = production.shots.find((s) => s.id === id);
     if (!state) throw new ScriptError(`shot ${id} is not in this production`);
+    if (marked.has(id)) continue;
+    marked.add(id);
     state.review = "reshoot";
     state.attempt += 1;
     if (newKeyframe) state.keyframe = undefined;
   }
+  // A chained shot starts from the last frame of the shot before it: when that shot is made again, its old start is
+  // gone, so the chain after it is made again too (and only the chain: a shot from its own keyframe keeps its take).
+  const shots = production.script?.parsed?.shots ?? [];
+  shots.forEach((shot, i) => {
+    if (i === 0 || !shot.continuous || marked.has(shot.id) || !marked.has(shots[i - 1].id)) return;
+    const state = production.shots.find((s) => s.id === shot.id);
+    if (!state) return;
+    marked.add(shot.id);
+    state.review = "reshoot";
+    state.attempt += 1;
+  });
   production.cut = undefined;
   production.sound = undefined;
   return production;
