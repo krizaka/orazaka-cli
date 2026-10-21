@@ -81,7 +81,7 @@ describe("the planner: a treatment is a typed shot list, checked once", () => {
   test("the treatment's own words are the prompt: the motion as written, then the keep line", () => {
     const script = planProduction(treatment(), { language: "en" }).script!.parsed!;
     expect(motionPrompt(script, script.shots[0])).toBe(
-      "The falcon scans the valley. Slow orbit right, 35 mm. One single continuous shot. The characters keep their exact design.",
+      "The falcon scans the valley. Slow orbit right, 35 mm. One single continuous shot. The characters keep their exact design. No children, no child-like figures, no dolls or toys.",
     );
   });
 

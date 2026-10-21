@@ -285,6 +285,8 @@ export function seedFor(production: Production, shotId: number, attempt: number,
 export const keyframeSize = (aspect: Aspect): string => (aspect === "9:16" ? "768x1360" : "1360x768");
 
 const NO_TEXT = "No text, no letters, no logos, no watermark, no brand names.";
+/** The hard rule of every film (ADR-080 v2.8): in every keyframe, character and shot prompt; checked on the takes (cinema.childsafe.ts). */
+export const NO_CHILDREN = "No children, no child-like figures, no dolls or toys.";
 
 /** The Krizaka cinematic kit's finish, said in every picture: what makes a frame read as a film, not a render. */
 export const KIT_FINISH =
@@ -308,7 +310,7 @@ export function direction(shot: ScriptShot, forMotion = false): string {
 export function characterPrompt(script: Script, character: Character): string {
   return text(
     `Character reference portrait, waist up, three-quarter view, neutral studio background: ${character.description}. ` +
-      `Style: ${script.style} Original character design. ${NO_TEXT}`,
+      `Style: ${script.style} Original character design. ${NO_TEXT} ${NO_CHILDREN}`,
     1900,
   );
 }
@@ -324,7 +326,7 @@ export function keyframePrompt(script: Script, shot: ScriptShot, aspect: Aspect)
       .map((id) => script.characters.find((c) => c.id === id)?.description)
       .filter(Boolean)
       .join("; ");
-    return text(`${shot.keyframe} ${described ? `Characters: ${described}. ` : ""}${script.style} ${script.keyframeKeep}`, 1900);
+    return text(`${shot.keyframe} ${described ? `Characters: ${described}. ` : ""}${script.style} ${script.keyframeKeep} ${NO_CHILDREN}`, 1900);
   }
   const cast = shot.characters
     .map((id) => script.characters.find((c) => c.id === id))
@@ -334,22 +336,23 @@ export function keyframePrompt(script: Script, shot: ScriptShot, aspect: Aspect)
   return text(
     `${shot.keyframe}. ${cast ? `${cast}. ` : ""}${shot.vfx ? `Effects: ${shot.vfx}. ` : ""}` +
       `Style: ${script.style} Cinematic film still, ${aspect === "9:16" ? "vertical 9:16" : "widescreen 16:9"} composition, ` +
-      `${direction(shot)}. ${KIT_FINISH}. ${NO_TEXT}`,
+      `${direction(shot)}. ${KIT_FINISH}. ${NO_TEXT} ${NO_CHILDREN}`,
     1900,
   );
 }
 
 export const KEYFRAME_NEGATIVE =
   "text, letters, caption, watermark, logo, signature, deformed hands, extra fingers, extra limbs, fused fingers, " +
-  "distorted face, plastic skin, oversaturated, cartoon, 3d render, cgi look, blurry, low quality, jpeg artifacts";
+  "distorted face, plastic skin, oversaturated, cartoon, 3d render, cgi look, blurry, low quality, jpeg artifacts, " +
+  "child, children, child-like figure, doll, toy";
 
 /** The motion prompt of a shot: what moves, the effects, the camera, the look. */
 export function motionPrompt(script: Script, shot: ScriptShot): string {
   // A treatment's motion is written in film language already (subject, action, camera, lens, light, pace): kept as is.
-  if (script.keep) return text(`${shot.motion} ${script.keep}`, 1900);
+  if (script.keep) return text(`${shot.motion} ${script.keep} ${NO_CHILDREN}`, 1900);
   return text(
     `${shot.motion.replace(/\bcamera\b/gi, "view")}. ${shot.vfx ? `Visual effects: ${shot.vfx}. ` : ""}${direction(shot, true)}. ` +
-      `${script.style} Cinematic, smooth natural motion, stable faces and hands, the same characters throughout, ${NO_TEXT}`,
+      `${script.style} Cinematic, smooth natural motion, stable faces and hands, the same characters throughout, ${NO_TEXT} ${NO_CHILDREN}`,
     1900,
   );
 }
