@@ -35,7 +35,7 @@ Requirements: git, JDK 21, Node.js 22+, Docker (Python 3.11+ for the media worke
 npx orazaka install   # no workspace here? clones the platform into ./orazaka, then configures it
 cd orazaka && ./mvnw install && (cd orazaka-apps/ui && npm install)
 npx orazaka start     # Docker infrastructure (PostgreSQL + pgvector, Redis, RabbitMQ)
-npx orazaka dev       # the whole stack: services, web, admin, mobile
+npx orazaka dev       # the whole stack: services, web (with the operator console), mobile
 ```
 
 `orazaka` on npm is the short name of the canonical package **`@krizaka/orazaka-cli`** — both run the same CLI:

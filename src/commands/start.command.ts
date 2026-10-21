@@ -512,7 +512,7 @@ export const startCommand = new Command("start")
       summaryLines.push(
         "",
         `${chalk.cyan.bold("Dev mode — infra + AI engines are up. Now run the apps:")}`,
-        `  ${chalk.white("→")} ${chalk.cyan("All apps at once")}: ${chalk.gray("npx orazaka dev")} ${chalk.dim("(spawns Router + Web + Admin + Mobile)")}`,
+        `  ${chalk.white("→")} ${chalk.cyan("All apps at once")}: ${chalk.gray("npx orazaka dev")} ${chalk.dim("(spawns Router + Web + Mobile)")}`,
         `  ${chalk.white("→")} ${chalk.cyan("Router in IDE")}: Run/Debug ${chalk.yellow("RouterApplication")} in IntelliJ, then ${chalk.gray("npx orazaka dev --skip-router")}`,
         "",
         `${chalk.gray("Tip:")} Use ${chalk.cyan("npx orazaka logs")} to tail all service logs`,

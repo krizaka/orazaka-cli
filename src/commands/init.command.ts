@@ -57,7 +57,6 @@ function getRequiredEnvDefaults(): Record<string, string> {
     UI_URL: "http://localhost:3000",
     // App + middleware host ports (single source of truth for the CLI)
     WEB_PORT: "3000",
-    ADMIN_PORT: "3001",
     MOBILE_PORT: "8081",
     OLLAMA_PORT: "11434",
     POSTGRES_PORT: "5432",
@@ -341,7 +340,7 @@ export const initCommand = new Command("init")
           `  ${chalk.white("1.")} ${chalk.cyan("npx orazaka install")}     — Install/verify tools`,
           `  ${chalk.white("2.")} ${chalk.cyan("npx orazaka doctor")}      — Full diagnostics`,
           `  ${chalk.white("3.")} ${chalk.cyan("npx orazaka start --mode dev")} — Launch middleware + AI engines`,
-          `  ${chalk.white("4.")} ${chalk.cyan("npx orazaka dev")}            — Spawn Router + Web + Admin + Mobile`,
+          `  ${chalk.white("4.")} ${chalk.cyan("npx orazaka dev")}            — Spawn Router + Web + Mobile`,
           `  ${chalk.white("5.")} ${chalk.gray("(or debug RouterApplication in IntelliJ + ")}${chalk.cyan("npx orazaka dev --skip-router")}${chalk.gray(")")}`,
         ].join("\n"),
         "✨ Workspace Ready"

@@ -503,7 +503,7 @@ export const installCommand = new Command("install")
     }
     steps.push(
       `${chalk.cyan("npx orazaka start --mode dev")}  — Launch middleware + AI engines`,
-      `${chalk.cyan("npx orazaka dev")}               — Spawn Router + Web + Admin + Mobile`,
+      `${chalk.cyan("npx orazaka dev")}               — Spawn Router + Web + Mobile`,
     );
     summary.push(
       "",
