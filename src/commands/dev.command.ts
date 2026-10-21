@@ -1,7 +1,7 @@
 /**
  * @file dev.command.ts
  * @description Parallel development orchestrator for the Orazaka full-stack.
- * Spawns the Router (Spring Boot) backend, Web Client, Web Admin, and Mobile
+ * Spawns the Router (Spring Boot) backend, Web Client (which serves the operator console), and Mobile
  * Expo servers with color-coded prefixed output and premium DevX logging.
  *
  * This is the *application* layer of the dev loop. The *infrastructure* layer
@@ -31,7 +31,6 @@ export type ServiceKey =
   | "studio"
   | "notifications"
   | "web"
-  | "admin"
   | "mobile"
   | "workers";
 
@@ -46,13 +45,13 @@ const SERVICE_KEYS: readonly ServiceKey[] = [
   "studio",
   "notifications",
   "web",
-  "admin",
   "mobile",
   "workers",
 ];
 
 /** Back-compat aliases for `--only` tokens (old name → canonical key). */
-const SERVICE_ALIASES: Record<string, ServiceKey> = { core: "router" };
+// `admin` is gone: the operator console is served by the web client (admin.<domain>), so the old token means `web`.
+const SERVICE_ALIASES: Record<string, ServiceKey> = { core: "router", admin: "web" };
 
 /**
  * Every worker this repository ships, discovered from its own declaration.
@@ -206,6 +205,7 @@ export interface DevOptions {
   skipBilling?: boolean;
   skipStudio?: boolean;
   skipNotifications?: boolean;
+  /** @deprecated no-op: the operator console is served by the web client. */
   skipAdmin?: boolean;
   skipMobile?: boolean;
   skipWeb?: boolean;
@@ -232,7 +232,6 @@ export function resolveEnabledServices(opts: DevOptions): Record<ServiceKey, boo
     studio: Boolean(opts.skipStudio),
     notifications: Boolean(opts.skipNotifications),
     web: Boolean(opts.skipWeb),
-    admin: Boolean(opts.skipAdmin),
     mobile: Boolean(opts.skipMobile),
     workers: Boolean(opts.skipWorkers),
   };
@@ -244,10 +243,10 @@ export function resolveEnabledServices(opts: DevOptions): Record<ServiceKey, boo
 }
 
 export const devCommand = new Command("dev")
-  .description("Launch the full Orazaka application stack in parallel (9 services + Web, Admin, Mobile)")
+  .description("Launch the full Orazaka application stack in parallel (9 services + Web, Mobile)")
   .option(
     "--only <services>",
-    "Launch only these services (comma-separated: edge,router,identity,automation,knowledge,job,billing,studio,notifications,web,admin,mobile)",
+    "Launch only these services (comma-separated: edge,router,identity,automation,knowledge,job,billing,studio,notifications,web,mobile)",
   )
   .option("--skip-edge", "Skip the Edge gateway (strangler facade on :8088)")
   .option("--skip-identity", "Skip the Identity service (:8083)")
@@ -259,7 +258,7 @@ export const devCommand = new Command("dev")
   .option("--skip-billing", "Skip the Billing service (:8095)")
   .option("--skip-studio", "Skip the Studio service (:8096)")
   .option("--skip-notifications", "Skip the Notification service (:8097)")
-  .option("--skip-admin", "Skip Admin console")
+  .option("--skip-admin", "Deprecated no-op: the operator console is served by the web client")
   .option("--skip-mobile", "Skip Expo mobile server")
   .option("--skip-web", "Skip Web client")
   .option("--skip-workers", "Skip the Python workers declared by worker.yaml")
@@ -386,16 +385,6 @@ export const devCommand = new Command("dev")
         cwd: path.join(uiRoot, "orazaka-web-client"),
         enabled: isEnabled("web"),
         port: PORTS.web,
-      },
-      {
-        serviceKey: "admin",
-        label: "WEB-ADMIN",
-        color: chalk.magenta,
-        command: "npm",
-        args: ["run", "dev"],
-        cwd: path.join(uiRoot, "orazaka-web-admin"),
-        enabled: isEnabled("admin"),
-        port: PORTS.admin,
       },
       {
         serviceKey: "mobile",

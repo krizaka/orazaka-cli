@@ -54,7 +54,6 @@ export const PORTS = {
   identity: intEnv("IDENTITY_PORT", 8083),
   router: intEnv("PORT", 8080),
   web: intEnv("WEB_PORT", 3000),
-  admin: intEnv("ADMIN_PORT", 3001),
   mobile: intEnv("MOBILE_PORT", 8081),
   ollama: intEnv("OLLAMA_PORT", 11434),
   localai: intEnv(["LOCALAI_PORT", "IMAGE_WORKER_PORT"], 8085),
@@ -76,7 +75,7 @@ export const PORTS = {
 
 /** Every host port the CLI touches — used by teardown/port-sweeps. */
 export const ALL_PORTS: readonly number[] = [
-  PORTS.web, PORTS.admin, PORTS.router, PORTS.edge, PORTS.identity, PORTS.knowledge,
+  PORTS.web, PORTS.router, PORTS.edge, PORTS.identity, PORTS.knowledge,
   PORTS.jobService, PORTS.billing, PORTS.studio, PORTS.automationWorker, PORTS.localai,
   PORTS.imageGen, PORTS.mediaWorker, PORTS.ollama, PORTS.postgres, PORTS.redis,
   PORTS.rabbitmq, PORTS.rabbitmqMgmt,

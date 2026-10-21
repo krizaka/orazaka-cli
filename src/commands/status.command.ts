@@ -49,7 +49,6 @@ const SERVICES: ServiceEntry[] = [
   { name: "Billing", port: PORTS.billing, category: "app", critical: false },
   { name: "Studio", port: PORTS.studio, category: "app", critical: false },
   { name: "Frontend UI", port: PORTS.web, category: "app", critical: true },
-  { name: "Admin Console", port: PORTS.admin, category: "app", critical: false },
 ];
 
 export const statusCommand = new Command("status")
