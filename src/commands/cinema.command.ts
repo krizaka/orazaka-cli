@@ -26,6 +26,10 @@
  *   orazaka cinema treat <dir> --brief "…" [--revisions 2] [--no-judge]   story, arc, intentions, lines, cues, sound list
  *   orazaka cinema critique <treatment.json> [--judge]   the rubric (and the LLM judge) over a treatment: pass or why not
  *   orazaka cinema timeline <treatment.json> [--voice report.json]   every line, cue and sound placed on the cut
+ *
+ * The v3 gates (ADR-080 v3): staging, camera and cut, and the questions every keyframe and take must answer:
+ *
+ *   orazaka cinema stage <treatment.json> [--out questions.json]   the cut's findings, and the frame questions per shot
  */
 
 import { Command } from "commander";
@@ -39,6 +43,7 @@ import { Logger } from "../ui/logger";
 import { ApiClient } from "../services/api-client";
 import { StudioApi } from "../services/studio.api";
 import { type FinishedRun, type StudioPort, direct, writeTreatment } from "../services/cinema.director";
+import { FRAME_QUESTIONS, StagingError, critiqueCut, parseStaging, questionsFor } from "../services/cinema.staging";
 import { StoryError, critiqueStory, judgePrompt, parseJudge, parseStory, timeline, verdict } from "../services/cinema.story";
 import {
   ASPECTS,
@@ -504,6 +509,32 @@ const timelineCommand = new Command("timeline")
     if (placed.lines.some((l) => !l.fits)) process.exitCode = 2;
   });
 
+const stageCommand = new Command("stage")
+  .description("Check a v3 treatment's staging, camera and cut, and write the questions every keyframe and take must answer")
+  .argument("<treatment>", "The treatment (JSON, with score.bpm, beats, camera, angle, light and staging per shot)")
+  .option("-o, --out <file>", "Write the frame questions (JSON: per shot, then the take questions) there")
+  .action((file: string, o: { out?: string }) => {
+    try {
+      const raw = JSON.parse(fs.readFileSync(file, "utf-8")) as Record<string, unknown>;
+      const film = parseStaging(raw);
+      const cut = critiqueCut(film);
+      for (const f of cut.findings) console.log(chalk.yellow(`  ${f.rule}${f.shot ? ` (shot ${f.shot})` : ""}: ${f.message}`));
+      const described = Object.fromEntries(
+        ((raw.characters as Array<{ id: string; description: string }> | undefined) ?? []).map((c) => [c.id, `the ${c.description.split(",")[0]}`]),
+      );
+      const questions = {
+        shots: film.shots.map((s) => ({ id: s.id, slug: s.slug, camera: s.camera, staging: s.staging, questions: questionsFor(s, described) })),
+        take: { sliding: FRAME_QUESTIONS.sliding, onModel: FRAME_QUESTIONS.onModel, continuity: FRAME_QUESTIONS.continuity },
+      };
+      if (o.out) fs.writeFileSync(o.out, `${JSON.stringify(questions, null, 1)}\n`);
+      if (cut.pass) Logger.success(`the cut passes: ${film.shots.length} shots at ${film.bpm} BPM`);
+      else process.exitCode = 2;
+    } catch (error: unknown) {
+      Logger.error(error instanceof StagingError || error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
 export const cinemaCommand = new Command("cinema")
   .description("A cinematic short (30–60 s) from a brief: script, keyframes, shots, cut, sound — each an ordinary Studio run")
   .addCommand(newCommand)
@@ -519,4 +550,5 @@ export const cinemaCommand = new Command("cinema")
   .addCommand(reviewCommand)
   .addCommand(treatCommand)
   .addCommand(critiqueCommand)
-  .addCommand(timelineCommand);
+  .addCommand(timelineCommand)
+  .addCommand(stageCommand);
