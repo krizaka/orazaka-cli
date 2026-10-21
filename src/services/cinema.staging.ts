@@ -6,11 +6,11 @@
  * | Anomaly found | Where it is caught |
  * | --- | --- |
  * | birds without a contact shadow, shadow blobs floating in the air | `grounded`, `floatingShadow` questions |
- * | shadows against the light | the plate states its hard key (`light`), `shadowDirection` question |
- * | birds floating beside the surface they should stand on | `staging[].support` + `surface` (placed on it), `grounded` |
+ * | shadows against the light | the plate states its hard key (`light`); shadows cast from it by construction |
+ * | birds floating beside the surface they should stand on | `staging[].support` + `surface` (placed on it), `floating` |
  * | wrong scale against the set | `staging[].scale` (a reference object and a ratio), `scaleFinding` |
- * | cut-out edges, flat cel birds pasted on photographs | `pasted` question |
- * | colour and light that do not match the plate | `pasted` question, measured `lumaRatio` / `chromaShift` |
+ * | cut-out edges, flat cel birds pasted on photographs | the keyframe re-rendered in the plate's light; `onModel` |
+ * | colour and light that do not match the plate | measured `lumaRatio` / `chromaShift` (recorded) |
  * | locked-off framings | `camera` vocabulary, `static` share in the cut, measured `cameraShift` / `zoom` on the take |
  * | motion that slides like a sticker | `sliding` question over four frames of the take |
  * | props and costumes that change between shots | `continuity` question over two shots that share a prop |
@@ -205,28 +205,33 @@ export function critiqueCut(film: StagedFilm): { findings: CutFinding[]; pass: b
 // ── Frame questions (a local vision model, Qwen2.5-VL 7B, read strictly) ───────────────────────────────────────────
 
 export type FrameCheck =
-  | "grounded" | "floatingShadow" | "shadowDirection" | "pasted" | "onModel" | "continuity" | "sliding"
+  | "grounded" | "floating" | "floatingShadow" | "onModel" | "continuity" | "sliding"
   | "static" | "colour" | "whiteout" | "scale";
 
 /**
+ * Calibrated on nine frames (six v2 frames with the anomalies, three v3 keyframes), Qwen2.5-VL 7B on MLX:
+ * - `grounded` (a shadow under the feet) catches 4 of 6 bad frames and passes the 3 good ones; `floating` adds the
+ *   owl hovering in front of its sill; together 5 of 6 (krizaka-ui tools/brand-films/v3/calibration.json).
+ * - `floatingShadow` flags a blob in the air but also read a wet reflection as one: asked only where no character
+ *   stands on a surface (a flying shot, v2's ellipses in the air).
+ * - Dropped: « do the shadows fall in the same direction » answered NO on all nine; « does it look pasted » answered
+ *   YES on all three good keyframes (a cartoon character is « pasted » to it). Shadows fall from the treatment's key by
+ *   construction (krizaka-ui stage.cast_shadow) and a person reviews them.
+ *
  * The questions, each with the answer that passes. `{character}`, `{surface}` and `{prop}` are filled per shot. A frame
  * passes a check only on a clear expected word: anything else (the other word, a hedge) fails it.
  */
 export const FRAME_QUESTIONS = {
   grounded: {
-    ask: "Look at {character}. Are its feet resting on {surface}, touching it, not floating above it or beside it? Answer YES or NO only.",
+    ask: "Does {character} cast a shadow on {surface} right under its feet? Answer YES or NO only.",
     pass: "YES",
+  },
+  floating: {
+    ask: "Is {character} floating in the air above or beside {surface} instead of standing on it? Answer YES or NO only.",
+    pass: "NO",
   },
   floatingShadow: {
     ask: "Is there a dark shadow shape floating in the air in this image, not lying on any surface? Answer YES or NO only.",
-    pass: "NO",
-  },
-  shadowDirection: {
-    ask: "Do the shadows cast by the cartoon characters fall in the same direction as the shadows cast by the other objects in this scene? Answer YES or NO only.",
-    pass: "YES",
-  },
-  pasted: {
-    ask: "Does any cartoon character in this image look cut out and pasted onto the picture: a hard outline, a halo around it, flat colours, or a light and colour that do not match the scene around it? Answer YES or NO only.",
     pass: "NO",
   },
   onModel: {
@@ -276,11 +281,11 @@ export function questionsFor(shot: StagedShot, described: Readonly<Record<string
   });
   const out: Question[] = [];
   for (const g of shot.staging) {
-    if (g.support === "ground") out.push(q("grounded", { character: described[g.character] ?? `the ${g.character}`, surface: g.surface ?? "the ground" }));
+    if (g.support !== "ground") continue;
+    const values = { character: described[g.character] ?? `the ${g.character}`, surface: g.surface ?? "the ground" };
+    out.push(q("grounded", values), q("floating", values));
   }
-  out.push(q("floatingShadow"));
-  if (shot.light.hard && shot.staging.some((g) => g.support === "ground")) out.push(q("shadowDirection"));
-  out.push(q("pasted"));
+  if (!shot.staging.some((g) => g.support === "ground")) out.push(q("floatingShadow"));
   return out;
 }
 
