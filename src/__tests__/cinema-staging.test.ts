@@ -126,6 +126,11 @@ describe("frame questions: grounded, floating, on-model, continuity, sliding (ca
     expect(air).toEqual(["floatingShadow"]);
   });
 
+  test("on-model compares a flat drawing with a 3D render: style, pose and light do not count, the species and features do", () => {
+    expect(FRAME_QUESTIONS.onModel.ask).toMatch(/flat reference drawing/);
+    expect(FRAME_QUESTIONS.onModel.ask).toMatch(/Differences of drawing style, pose and lighting do not matter/);
+  });
+
   test("the questions that did not discriminate on the calibration set are not asked", () => {
     expect(Object.keys(FRAME_QUESTIONS)).not.toContain("shadowDirection");
     expect(Object.keys(FRAME_QUESTIONS)).not.toContain("pasted");

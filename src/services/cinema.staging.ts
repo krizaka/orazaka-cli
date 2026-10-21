@@ -214,6 +214,9 @@ export type FrameCheck =
  *   owl hovering in front of its sill; together 5 of 6 (krizaka-ui tools/brand-films/v3/calibration.json).
  * - `floatingShadow` flags a blob in the air but also read a wet reflection as one: asked only where no character
  *   stands on a surface (a flying shot, v2's ellipses in the air).
+ * - `onModel` (nine pairs: five v3 characters against their own render, four against another bird's) answers right on
+ *   all nine once it says a flat drawing is compared with a 3D render; asked only « the same design », it refused three
+ *   of the five right characters for their 3D look.
  * - Dropped: « do the shadows fall in the same direction » answered NO on all nine; « does it look pasted » answered
  *   YES on all three good keyframes (a cartoon character is « pasted » to it). Shadows fall from the treatment's key by
  *   construction (krizaka-ui stage.cast_shadow) and a person reviews them.
@@ -235,7 +238,7 @@ export const FRAME_QUESTIONS = {
     pass: "NO",
   },
   onModel: {
-    ask: "The first image is a character's reference design. Is the character in the second image the same design: the same colours, the same body shape, the same face and features? Answer YES or NO only.",
+    ask: "The first image is a flat reference drawing of a cartoon character; the second image shows a character rendered in 3D. Is it the same character: the same kind of bird or animal, the same main colours and the same distinctive features (a visor, glasses, a crest, ear tufts, a long neck)? Differences of drawing style, pose and lighting do not matter. Answer YES or NO only.",
     pass: "YES",
   },
   continuity: {
