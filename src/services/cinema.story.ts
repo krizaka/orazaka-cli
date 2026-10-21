@@ -17,10 +17,12 @@ export const BEATS = ["hook", "journey", "turn", "payoff"] as const;
 export type Beat = (typeof BEATS)[number];
 
 /** The sounds the foley step can lay (orazaka-worker-media app/foley.py): beds, then events placed at a second of the shot. */
-export const SOUND_BEDS = ["rain", "storm", "wind", "wind-soft", "lake", "waves", "drizzle", "room", "dawn", "city", "rain-window", "drips"] as const;
+export const SOUND_BEDS = [
+  "rain", "storm", "wind", "wind-soft", "lake", "waves", "drizzle", "room", "dawn", "city", "rain-window", "drips", "tunnel", "crowd", "neon",
+] as const;
 export const SOUND_EVENTS = [
   "thunder", "gust", "flap", "whoosh", "steps", "rustle", "shake", "paper", "block", "hum", "ignite", "chime", "call",
-  "chirp", "splash", "splash-small", "coin", "parcel", "tap", "swell",
+  "chirp", "splash", "splash-small", "coin", "parcel", "tap", "swell", "train", "skate", "sparks", "impact", "slide", "riser",
 ] as const;
 export const SOUND_KINDS = [...SOUND_BEDS, ...SOUND_EVENTS] as const;
 export type SoundKind = (typeof SOUND_KINDS)[number];
