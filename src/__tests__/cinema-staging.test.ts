@@ -117,14 +117,18 @@ describe("the cut: no narrator, on the beat, kinetic, varied", () => {
   });
 });
 
-describe("frame questions: grounded, shadows, pasted, on-model, continuity, sliding", () => {
+describe("frame questions: grounded, floating, on-model, continuity, sliding (calibrated)", () => {
   test("a grounded character is asked whether it touches its surface; a flyer is not", () => {
     const parsed = parseStaging(film([shot(), shot({ slug: "fly", staging: [{ character: "pigeon", support: "air" }] })]));
     const ground = questionsFor(parsed.shots[0], { pigeon: "the sky-blue pigeon" }).map((q) => q.check);
     const air = questionsFor(parsed.shots[1], { pigeon: "the sky-blue pigeon" }).map((q) => q.check);
-    expect(ground).toEqual(expect.arrayContaining(["grounded", "floatingShadow", "shadowDirection", "pasted"]));
-    expect(air).not.toContain("grounded");
-    expect(air).toContain("floatingShadow");
+    expect(ground).toEqual(["grounded", "floating"]);
+    expect(air).toEqual(["floatingShadow"]);
+  });
+
+  test("the questions that did not discriminate on the calibration set are not asked", () => {
+    expect(Object.keys(FRAME_QUESTIONS)).not.toContain("shadowDirection");
+    expect(Object.keys(FRAME_QUESTIONS)).not.toContain("pasted");
   });
 
   test("the grounded question names the character and its surface; every question asks for YES or NO", () => {
@@ -145,7 +149,7 @@ describe("frame questions: grounded, shadows, pasted, on-model, continuity, slid
   test("the gate rejects every file with a failed check and needs a person's review", () => {
     const results = [
       { file: "03-t0.png", check: "grounded" as const, pass: true },
-      { file: "03-t0.png", check: "pasted" as const, pass: true },
+      { file: "03-t0.png", check: "floating" as const, pass: true },
       { file: "05-t0.mp4", check: "sliding" as const, pass: false },
     ];
     const g = frameGate(results, { by: "director", at: "2026-10-21" });
