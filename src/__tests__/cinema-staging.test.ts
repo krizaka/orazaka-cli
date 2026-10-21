@@ -23,6 +23,7 @@ import {
   questionsFor,
   scaleFinding,
 } from "../services/cinema.staging";
+import { SOUND_KINDS } from "../services/cinema.story";
 
 type Raw = Record<string, unknown>;
 
@@ -178,5 +179,11 @@ describe("measured checks: scale, static camera, colour and light, white-out", (
   test("a frame whited out for more than a moment is refused (the phoenix's burst)", () => {
     expect(measuredFindings({ camera: "orbit" }, { clippedSeconds: 0.6 }).map((x) => x.check)).toContain("whiteout");
     expect(measuredFindings({ camera: "orbit" }, { clippedSeconds: 0.1 })).toEqual([]);
+  });
+});
+
+describe("the underground sounds (orazaka-worker-media app/foley.py v3)", () => {
+  test("a treatment may ask for a tunnel, a crowd, a neon buzz, a train, a skateboard, sparks, an impact, a slide, a riser", () => {
+    for (const k of ["tunnel", "crowd", "neon", "train", "skate", "sparks", "impact", "slide", "riser"]) expect(SOUND_KINDS).toContain(k);
   });
 });
