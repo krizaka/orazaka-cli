@@ -73,9 +73,9 @@ describe("the frame check", () => {
   });
 
   test("the vision model is asked one question, yes or no", () => {
-    expect(CHILD_CHECK_PROMPT).toMatch(/child/);
-    expect(CHILD_CHECK_PROMPT).toMatch(/doll/);
-    expect(CHILD_CHECK_PROMPT).toMatch(/YES or NO/);
+    expect(CHILD_CHECK_PROMPT).toBe(
+      "Is there a doll or a human child anywhere in this image, even small or in the background? Answer YES or NO only.",
+    );
   });
 
   test("an answer is read strictly: anything but a clear NO flags the frame", () => {

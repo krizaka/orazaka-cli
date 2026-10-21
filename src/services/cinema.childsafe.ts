@@ -7,10 +7,16 @@
  * flagged frame and passes nothing a person has not reviewed. Pure: the caller runs the model and records the review.
  */
 
-/** The one question a vision model answers for each sampled frame. */
+/**
+ * The one question a vision model answers for each sampled frame. Measured on « Orochia : la première livraison » with
+ * Qwen2.5-VL 7B: it flags the doll keyframe and clears the clean ones; a longer question that excused the cartoon birds
+ * let LLaVA 1.6 miss the doll (krizaka-ui tools/brand-films/dawn/childsafe.py runs it).
+ */
 export const CHILD_CHECK_PROMPT =
-  "Look at this film frame. Is there any child, baby, child-like human figure, doll, puppet or toy anywhere in it — " +
-  "even small, blurred or in the background? The cartoon birds of the film are not toys. Answer YES or NO only.";
+  "Is there a doll or a human child anywhere in this image, even small or in the background? Answer YES or NO only.";
+
+/** The vision model the check was measured with (Apache-2.0, runs on a Mac through MLX). */
+export const CHILD_CHECK_MODEL = "Qwen2.5-VL-7B-Instruct";
 
 /** Frames sampled per take: never fewer than this, so a background object seen only for a moment is still seen. */
 // @fixed: a floor of the check's coverage, not a business parameter.
