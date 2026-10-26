@@ -22,6 +22,7 @@ import {
   GRADES,
   TITLE_STYLES,
   TRANSITIONS,
+  isCharacterId,
   motionPrompt,
   newProduction,
   seedFor,
@@ -129,6 +130,7 @@ export function parseTreatment(raw: unknown, language: "en" | "fr"): Script {
     const id = str(c?.id);
     const description = str(c?.description);
     if (!id || !description) throw new TreatmentError("every character has an id and a description");
+    if (!isCharacterId(id)) throw new TreatmentError(`character id "${id.slice(0, 60)}" is not a slug (letters, digits, - and _)`);
     return { id, description, ...(str(c.reference) ? { reference: str(c.reference) } : {}) };
   });
   const cast = new Set(characters.map((c) => c.id));

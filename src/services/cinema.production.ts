@@ -154,6 +154,13 @@ export interface Production {
 
 export class ScriptError extends Error {}
 
+/**
+ * A character's id names files on the operator's disk (`<dir>/sheets/<id>.png`), and it is written by a model (the
+ * script) or by a treatment the writer model drafted: a slug only, so no id can be a path (`../`, `/`, `\\`).
+ */
+export const CHARACTER_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/;
+export const isCharacterId = (id: string): boolean => CHARACTER_ID.test(id);
+
 /** A value as one line of text: a string as it is, an object or list the model wrote instead as its values joined. */
 const flatten = (value: unknown): string =>
   value !== null && typeof value === "object" ? Object.values(value as object).map(flatten).join(", ") : String(value ?? "");
@@ -219,7 +226,7 @@ export function parseScript(raw: string, brief: Brief): Script {
   if (shotsRaw.length < 2) throw new ScriptError("the script has fewer than two shots");
   const characters: Character[] = (Array.isArray(data.characters) ? data.characters : [])
     .map((c: Record<string, unknown>) => ({ id: text(c?.id, 40), description: text(c?.description, 600) }))
-    .filter((c) => c.id && c.description)
+    .filter((c) => isCharacterId(c.id) && c.description)
     .slice(0, 6);
   const known = new Set(characters.map((c) => c.id));
   const shots: ScriptShot[] = shotsRaw.slice(0, Math.max(brief.shots, 2)).map((s: Record<string, unknown>, i: number) => {
