@@ -14,6 +14,7 @@ import {
   podJobs,
   recordTake,
   replan,
+  ffmpegOperand,
   reviewArgs,
   sheetArgs,
 } from "../services/cinema.treatment";
@@ -228,5 +229,12 @@ describe("a chained shot can start from a chosen second of the previous take", (
     const bad = treatment();
     (bad.shots as Array<Record<string, unknown>>)[2].chainAt = 1;
     expect(() => planProduction(bad, { language: "en" })).toThrow(/chainAt is a second .* for a continuous shot only/);
+  });
+
+  test("a file name that starts with a dash is never an ffmpeg option", () => {
+    expect(ffmpegOperand("-f")).toBe("./-f");
+    expect(ffmpegOperand("take.mp4")).toBe("take.mp4");
+    expect(sheetArgs(["-evil.png"], "-out.png")).toEqual(expect.arrayContaining(["./-evil.png", "./-out.png"]));
+    expect(reviewArgs("-t.mp4", "s.png", "o.jpg")).toContain("./-t.mp4");
   });
 });
