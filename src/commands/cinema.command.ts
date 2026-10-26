@@ -59,7 +59,7 @@ import {
   nextStep,
 } from "../services/cinema.production";
 import measured from "../services/cinema-estimate.json";
-import { TreatmentError, planProduction, podJobs, recordTake, replan, reviewArgs, sheetArgs } from "../services/cinema.treatment";
+import { TreatmentError, ffmpegOperand, planProduction, podJobs, recordTake, replan, reviewArgs, sheetArgs } from "../services/cinema.treatment";
 
 const FILE = "production.json";
 const TERMINAL = new Set(["SUCCEEDED", "FAILED", "CANCELLED", "REJECTED", "TIMED_OUT"]);
@@ -417,7 +417,7 @@ const reviewCommand = new Command("review")
     const cast = path.join(out, `${path.basename(file, path.extname(file))}-cast.png`);
     // A shot without a cast (a landscape) is compared with its own first frame.
     if (renders.length > 0) execFileSync("ffmpeg", sheetArgs(renders, cast));
-    else execFileSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-frames:v", "1", cast]);
+    else execFileSync("ffmpeg", ["-v", "error", "-y", "-i", ffmpegOperand(file), "-frames:v", "1", ffmpegOperand(cast)]);
     const sheet = path.join(out, `${path.basename(file, path.extname(file))}.jpg`);
     execFileSync("ffmpeg", reviewArgs(file, cast, sheet));
     Logger.success(`review sheet: ${sheet}`);

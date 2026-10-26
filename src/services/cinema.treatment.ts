@@ -261,16 +261,21 @@ export function podJobs(production: Production): PodJob[] {
   });
 }
 
+/** A file name as an ffmpeg operand: one starting with "-" would be read as an option, so it is anchored at "./" (pure). */
+export function ffmpegOperand(file: string): string {
+  return file.startsWith("-") ? `./${file}` : file;
+}
+
 /** ffmpeg arguments of a cast's reference sheet: each render, 512 high, side by side on neutral grey (pure). */
 export function sheetArgs(renders: readonly string[], output: string): string[] {
   if (renders.length === 0) throw new TreatmentError("a reference sheet needs at least one render");
-  const inputs = renders.flatMap((r) => ["-i", r]);
+  const inputs = renders.flatMap((r) => ["-i", ffmpegOperand(r)]);
   const scaled = renders
     .map((_, i) => `color=0x808080:s=512x512[g${i}];[${i}:v]scale=-1:480[s${i}];[g${i}][s${i}]overlay=(W-w)/2:(H-h)/2:shortest=1[c${i}]`)
     .join(";");
   const join = renders.length > 1 ? `;${renders.map((_, i) => `[c${i}]`).join("")}hstack=inputs=${renders.length}[out]` : "";
   const last = renders.length > 1 ? "[out]" : "[c0]";
-  return ["-v", "error", "-y", ...inputs, "-filter_complex", `${scaled}${join}`, "-map", last, "-frames:v", "1", output];
+  return ["-v", "error", "-y", ...inputs, "-filter_complex", `${scaled}${join}`, "-map", last, "-frames:v", "1", ffmpegOperand(output)];
 }
 
 /**
@@ -282,7 +287,7 @@ export function reviewArgs(take: string, sheet: string, output: string, every = 
     `[0:v]select='not(mod(n\\,${every}))',scale=320:-2,tile=6x2:padding=4[frames];` +
     // Six 320-wide frames and five 4-px gaps make a 1940-wide strip: the reference sheet sits above it, 360 high, centred.
     `[1:v]scale=-2:360,pad=1940:376:(ow-iw)/2:8:color=0x202020[ref];[ref][frames]vstack[out]`;
-  return ["-v", "error", "-y", "-i", take, "-i", sheet, "-filter_complex", graph, "-map", "[out]", "-frames:v", "1", output];
+  return ["-v", "error", "-y", "-i", ffmpegOperand(take), "-i", ffmpegOperand(sheet), "-filter_complex", graph, "-map", "[out]", "-frames:v", "1", ffmpegOperand(output)];
 }
 
 /**
