@@ -70,6 +70,10 @@ describe("the planner: a treatment is a typed shot list, checked once", () => {
     };
     const shots = (t: Record<string, unknown>): Array<Record<string, unknown>> => t.shots as Array<Record<string, unknown>>;
     bad((t) => (shots(t)[1].model = "hunyuan-video"), /shot 2: model 'hunyuan-video' is not one of/);
+    // A character id names a file on disk (`<dir>/sheets/<id>.png`): a path is refused, never written outside the folder.
+    for (const id of ["../../.ssh/falcon", "/tmp/falcon", "a\\b", ".falcon"]) {
+      bad((t) => ((t.characters as Array<Record<string, unknown>>)[0].id = id), /is not a slug/);
+    }
     bad((t) => (shots(t)[0].characters = ["owl"]), /shot 1: character 'owl' is not in the cast/);
     bad((t) => (shots(t)[0].continuous = true), /shot 1 cannot continue a shot before it/);
     bad((t) => (shots(t)[2].seconds = 7), /shot 3: seconds must be between 1 and 5/);

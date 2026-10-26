@@ -71,6 +71,9 @@ describe("the script is parsed once", () => {
     expect(script.shots[0].transition).toBe("cut"); // the first shot is entered by nothing
     expect(script.shots[2].transition).toBe("cut"); // "spiral" is not a transition of the cut
     expect(script.shots[1].characters).toEqual(["volt"]);
+    // A model-written character id is a slug or it is dropped: it names a file on the operator's disk.
+    const traversal = { ...SCRIPT, characters: [...SCRIPT.characters, { id: "../../evil", description: "a path" }] };
+    expect(parseScript(JSON.stringify(traversal), BRIEF).characters.map((c) => c.id)).not.toContain("../../evil");
     expect(script.shots[2].seconds).toBe(5); // a 5-second clip cannot hold 9 seconds
     expect(script.shots[2].rampAt).toBeNull(); // no ramp inside a whole-shot slow motion
     expect(script.shots[1].rampAt).toBe(2);
