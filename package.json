@@ -44,7 +44,7 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --runInBand",
     "sonar": "npx -y sonar-scanner -Dsonar.token=$SONAR_TOKEN -Dsonar.branch.name=$(git rev-parse --abbrev-ref HEAD)",
-    "lint": "eslint src",
+    "lint": "eslint src && npm run format:check",
     "depcheck": "depcruise src --config .dependency-cruiser.cjs",
     "test:e2e": "npx vitest run --config vitest.config.ts",
     "validate": "npm rebuild && npm run lint && npm run depcheck && npm run build && npm run test:coverage",
