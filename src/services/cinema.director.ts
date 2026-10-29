@@ -7,7 +7,17 @@
  * It talks to the platform through a port (a fake in the tests, the REST API in the CLI).
  */
 
-import { type Critique, type Judgement, type Story, type Verdict, critiqueStory, judgePrompt, parseJudge, parseStory, verdict } from "./cinema.story";
+import {
+  type Critique,
+  type Judgement,
+  type Story,
+  type Verdict,
+  critiqueStory,
+  judgePrompt,
+  parseJudge,
+  parseStory,
+  verdict,
+} from "./cinema.story";
 import {
   KEYFRAME_NEGATIVE,
   extractJson,
@@ -149,7 +159,11 @@ async function runStep(
         return record;
       } catch (error: unknown) {
         // An answer the director cannot use is a failed step, said plainly: the next pass asks again.
-        const failed = { ...record, status: RunState.Failed, error: error instanceof ScriptError ? error.message : String(error) };
+        const failed = {
+          ...record,
+          status: RunState.Failed,
+          error: error instanceof ScriptError ? error.message : String(error),
+        };
         production.script = failed;
         return failed;
       }
@@ -256,7 +270,6 @@ async function runStep(
 
 // ── The treatment stage (orazaka#289): a brief becomes a story, judged before it becomes a shot list ────────────────
 
-
 export interface TreatmentDraft {
   /** The treatment as the writer gave it (the JSON `orazaka cinema plan` reads). */
   readonly treatment: Record<string, unknown>;
@@ -301,7 +314,8 @@ export async function writeTreatment(port: StudioPort, options: TreatmentOptions
     });
     const record = recordOf("cinematic-treatment", written);
     runs.push(record);
-    if (written.status !== RunState.Succeeded || !record.output) throw new ScriptError(`the treatment run ${written.id} did not succeed`);
+    if (written.status !== RunState.Succeeded || !record.output)
+      throw new ScriptError(`the treatment run ${written.id} did not succeed`);
     let treatment: Record<string, unknown>;
     let story: Story;
     try {
@@ -315,20 +329,27 @@ export async function writeTreatment(port: StudioPort, options: TreatmentOptions
     const rubric = critiqueStory(story, options.language);
     let judge: Judgement | undefined;
     if (!options.noJudge) {
-      const judged = await port.run("cinematic-critique", { treatment: judgePrompt(story, options.language), ...(options.model ? { model: options.model } : {}) });
+      const judged = await port.run("cinematic-critique", {
+        treatment: judgePrompt(story, options.language),
+        ...(options.model ? { model: options.model } : {}),
+      });
       const judgeRecord = recordOf("cinematic-critique", judged);
       runs.push(judgeRecord);
       if (judged.status === RunState.Succeeded && judgeRecord.output) {
         try {
           judge = parseJudge(judgeRecord.output, story.shots.length);
         } catch (error: unknown) {
-          options.log(`judge: unreadable answer (${error instanceof Error ? error.message : String(error)}) — the rubric decides this pass`);
+          options.log(
+            `judge: unreadable answer (${error instanceof Error ? error.message : String(error)}) — the rubric decides this pass`,
+          );
         }
       }
     }
     const decided = verdict(rubric, judge);
     last = { treatment, story, rubric, judge, verdict: decided, runs };
-    options.log(`treatment pass ${pass + 1}: ${decided.pass ? "accepted" : `rejected (${decided.reasons.length} reason(s))`}`);
+    options.log(
+      `treatment pass ${pass + 1}: ${decided.pass ? "accepted" : `rejected (${decided.reasons.length} reason(s))`}`,
+    );
     if (decided.pass) return last;
     notes = decided.notes;
   }

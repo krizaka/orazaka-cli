@@ -5,12 +5,7 @@
  * sampled frames by a vision model, then by a person. A take with one flagged frame is rejected; nothing passes unreviewed.
  */
 
-import {
-  CHILD_CHECK_PROMPT,
-  childGate,
-  parseChildCheck,
-  sampleTimes,
-} from "../services/cinema.childsafe";
+import { CHILD_CHECK_PROMPT, childGate, parseChildCheck, sampleTimes } from "../services/cinema.childsafe";
 import {
   type Brief,
   KEYFRAME_NEGATIVE,
@@ -38,8 +33,34 @@ const SCRIPT = {
   style: "warm violet light, anamorphic 35mm.",
   characters: [{ id: "flamingo", description: "a pink cartoon flamingo with a long curved neck" }],
   shots: [
-    { id: 1, keyframe: "A cosy bedroom studio at night", motion: "the flamingo taps a glowing orb", characters: ["flamingo"], seconds: 3, camera: "close", action: "she taps the orb", vfx: "", transition: "cut", speed: 1, rampAt: null, caption: "" },
-    { id: 2, keyframe: "Rooftops under rain", motion: "the view drifts over the roofs", characters: [], seconds: 3, camera: "wide", action: "rain", vfx: "", transition: "cut", speed: 1, rampAt: null, caption: "" },
+    {
+      id: 1,
+      keyframe: "A cosy bedroom studio at night",
+      motion: "the flamingo taps a glowing orb",
+      characters: ["flamingo"],
+      seconds: 3,
+      camera: "close",
+      action: "she taps the orb",
+      vfx: "",
+      transition: "cut",
+      speed: 1,
+      rampAt: null,
+      caption: "",
+    },
+    {
+      id: 2,
+      keyframe: "Rooftops under rain",
+      motion: "the view drifts over the roofs",
+      characters: [],
+      seconds: 3,
+      camera: "wide",
+      action: "rain",
+      vfx: "",
+      transition: "cut",
+      speed: 1,
+      rampAt: null,
+      caption: "",
+    },
   ],
 };
 
@@ -62,7 +83,8 @@ describe("every prompt carries the rule", () => {
   });
 
   test("the negative prompt names them too", () => {
-    for (const word of ["child", "children", "child-like figure", "doll", "toy"]) expect(KEYFRAME_NEGATIVE).toContain(word);
+    for (const word of ["child", "children", "child-like figure", "doll", "toy"])
+      expect(KEYFRAME_NEGATIVE).toContain(word);
   });
 });
 

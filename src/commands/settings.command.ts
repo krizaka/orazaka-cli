@@ -10,8 +10,7 @@ import { SettingsApi } from "../services/settings.api";
 import { Logger } from "../ui/logger";
 import { Box } from "../ui/box";
 
-export const settingsCommand = new Command("settings")
-  .description("Manage user settings and preferences");
+export const settingsCommand = new Command("settings").description("Manage user settings and preferences");
 
 settingsCommand
   .command("get")

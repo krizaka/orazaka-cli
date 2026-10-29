@@ -94,8 +94,7 @@ function runWorkerGate(root: string): void {
 
   if (!fs.existsSync(path.join(bin, "ruff"))) {
     logWarning(
-      "The worker virtualenv has no ruff/pytest. Run:\n" +
-        `  ${path.join(bin, "python")} -m pip install ruff pytest`,
+      "The worker virtualenv has no ruff/pytest. Run:\n" + `  ${path.join(bin, "python")} -m pip install ruff pytest`,
     );
     process.exitCode = 1;
     return;

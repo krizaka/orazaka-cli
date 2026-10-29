@@ -30,9 +30,7 @@ test("defaultImageModel returns the catalogue's default, or undefined", () => {
 });
 
 test("setDefaultImageModel refuses a name that is not a model name", () => {
-  expect(() => setDefaultImageModel("x'; DROP TABLE orazaka_models; --", {})).toThrow(
-    /Not a catalogue model name/,
-  );
+  expect(() => setDefaultImageModel("x'; DROP TABLE orazaka_models; --", {})).toThrow(/Not a catalogue model name/);
   expect(psql).not.toHaveBeenCalled();
 });
 

@@ -39,7 +39,10 @@ export interface ChildCheck {
 
 /** Reads a model's answer strictly: only a clear NO clears the frame; YES or anything unclear flags it. */
 export function parseChildCheck(raw: string): ChildCheck {
-  const word = raw.trim().toUpperCase().match(/^(YES|NO)\b/)?.[1];
+  const word = raw
+    .trim()
+    .toUpperCase()
+    .match(/^(YES|NO)\b/)?.[1];
   if (word === "NO") return { flagged: false, answer: "NO" };
   if (word === "YES") return { flagged: true, answer: "YES" };
   return { flagged: true, answer: "UNCLEAR" };

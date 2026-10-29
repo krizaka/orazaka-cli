@@ -23,11 +23,7 @@ const BLUEPRINT = {
 function bundleDir(manifest: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orazaka-pack-"));
   fs.mkdirSync(path.join(dir, "studios", "image-generation"), { recursive: true });
-  fs.writeFileSync(
-    path.join(dir, "studios", "image-generation", "blueprint.json"),
-    JSON.stringify(BLUEPRINT),
-    "utf-8",
-  );
+  fs.writeFileSync(path.join(dir, "studios", "image-generation", "blueprint.json"), JSON.stringify(BLUEPRINT), "utf-8");
   fs.writeFileSync(path.join(dir, "pack.yaml"), manifest, "utf-8");
   return dir;
 }

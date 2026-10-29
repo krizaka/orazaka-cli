@@ -15,7 +15,11 @@ import { WORKSPACE_MANIFEST } from "../utils/platform";
 export const WORKSPACE_REPOSITORY = "https://github.com/krizaka/orazaka.git";
 
 /** Runs a command; injectable so the sequence is testable without git or a network. */
-export type Runner = (cmd: string, args: readonly string[], cwd: string) => Pick<SpawnSyncReturns<Buffer>, "status" | "error">;
+export type Runner = (
+  cmd: string,
+  args: readonly string[],
+  cwd: string,
+) => Pick<SpawnSyncReturns<Buffer>, "status" | "error">;
 
 const inherit: Runner = (cmd, args, cwd) =>
   spawnSync(cmd, [...args], { cwd, stdio: "inherit", shell: process.platform === "win32" });

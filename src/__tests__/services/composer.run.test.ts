@@ -95,34 +95,32 @@ describe("runComposerStudio", () => {
   test("a capability no installed Studio runs is a named refusal, not a 404 from a POST", async () => {
     composer.mockResolvedValue([]);
 
-    await expect(
-      runComposerStudio({ capabilityKey: CAPABILITY.video, primary: "un plan large" }),
-    ).rejects.toThrow(/No Studio installed here runs orazaka\.core\.media\.video/);
+    await expect(runComposerStudio({ capabilityKey: CAPABILITY.video, primary: "un plan large" })).rejects.toThrow(
+      /No Studio installed here runs orazaka\.core\.media\.video/,
+    );
     expect(startStudioRun).not.toHaveBeenCalled();
   });
 
   test("a locked Studio says what is missing before anything is charged", async () => {
     composer.mockResolvedValue([entry({ available: false, lockedReason: "REQUIRES_PLAN" })]);
 
-    await expect(
-      runComposerStudio({ capabilityKey: CAPABILITY.image, primary: "x" }),
-    ).rejects.toThrow(/REQUIRES_PLAN/);
+    await expect(runComposerStudio({ capabilityKey: CAPABILITY.image, primary: "x" })).rejects.toThrow(/REQUIRES_PLAN/);
     expect(startStudioRun).not.toHaveBeenCalled();
   });
 
   test("a failed run surfaces the run's own error, not a job's", async () => {
     runDetail.mockResolvedValue(run({ status: "FAILED", errorMessage: "the accelerator is busy" }));
 
-    await expect(
-      runComposerStudio({ capabilityKey: CAPABILITY.image, primary: "x" }),
-    ).rejects.toThrow("the accelerator is busy");
+    await expect(runComposerStudio({ capabilityKey: CAPABILITY.image, primary: "x" })).rejects.toThrow(
+      "the accelerator is busy",
+    );
   });
 
   test("a parked run points at where the answer is given rather than polling forever", async () => {
     runDetail.mockResolvedValue(run({ status: "AWAITING_INPUT" }));
 
-    await expect(
-      runComposerStudio({ capabilityKey: CAPABILITY.image, primary: "x" }),
-    ).rejects.toThrow(/waiting for an answer/);
+    await expect(runComposerStudio({ capabilityKey: CAPABILITY.image, primary: "x" })).rejects.toThrow(
+      /waiting for an answer/,
+    );
   });
 });

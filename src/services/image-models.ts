@@ -58,8 +58,8 @@ const FLAG: Record<ImageModelFileRole, string> = {
 };
 
 /** Every recipe, in order of preference. */
-export const IMAGE_MODELS: readonly ImageModelRecipe[] = (catalogue.models as ImageModelRecipe[]).map(
-  (recipe) => Object.freeze(recipe),
+export const IMAGE_MODELS: readonly ImageModelRecipe[] = (catalogue.models as ImageModelRecipe[]).map((recipe) =>
+  Object.freeze(recipe),
 );
 
 /** @returns the recipe for a catalogue model name, or `undefined` when none is installable. */
@@ -99,13 +99,19 @@ export function sdServerArgs(
 ): string[] {
   const files = recipe.files.flatMap((file) => [FLAG[file.role], path.join(modelsDir, file.path)]);
   return [
-    "--listen-port", String(options.port),
+    "--listen-port",
+    String(options.port),
     ...files,
-    "--steps", String(recipe.launch.steps),
-    "--cfg-scale", String(recipe.launch.cfgScale),
-    "-W", String(recipe.launch.width),
-    "-H", String(recipe.launch.height),
-    "--seed", options.seed ?? "-1",
+    "--steps",
+    String(recipe.launch.steps),
+    "--cfg-scale",
+    String(recipe.launch.cfgScale),
+    "-W",
+    String(recipe.launch.width),
+    "-H",
+    String(recipe.launch.height),
+    "--seed",
+    options.seed ?? "-1",
     ...recipe.launch.flags,
   ];
 }
@@ -153,9 +159,7 @@ export async function pullImageModel(
     const digest = hash.digest("hex");
     if (digest !== file.sha256 || received !== file.bytes) {
       fs.rmSync(partial, { force: true });
-      throw new Error(
-        `${file.path} does not match its recipe (sha256 ${digest}, ${String(received)} bytes): removed`,
-      );
+      throw new Error(`${file.path} does not match its recipe (sha256 ${digest}, ${String(received)} bytes): removed`);
     }
     fs.renameSync(partial, target);
     pulled.push(file);

@@ -13,7 +13,7 @@ async function promptEmail(emailArg?: string): Promise<string> {
   const emailInput = await text({
     message: "Enter your account email:",
     placeholder: "username@orazaka.com",
-    validate: (val) => val.includes("@") ? undefined : "Invalid email address",
+    validate: (val) => (val.includes("@") ? undefined : "Invalid email address"),
   });
   if (isCancel(emailInput)) {
     throw new Error("CANCELLED");

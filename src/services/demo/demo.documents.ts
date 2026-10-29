@@ -57,8 +57,11 @@ export const DEMO_INVOICE_TOTALS = { subtotal, gst, qst, total: subtotal + gst +
 
 /** "1 295,00 $" — Québec French, as the supplier prints it (spaces, not U+202F: the PDF font is WinAnsi). */
 const money = (amount: number) =>
-  `${Math.floor(amount / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")},${String(amount % 100).padStart(2, "0")} $`;
-const row = (label: string, amount: number) => `${label} ${".".repeat(Math.max(3, 38 - label.length))} ${money(amount).padStart(12)}`;
+  `${Math.floor(amount / 100)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ")},${String(amount % 100).padStart(2, "0")} $`;
+const row = (label: string, amount: number) =>
+  `${label} ${".".repeat(Math.max(3, 38 - label.length))} ${money(amount).padStart(12)}`;
 
 /** The lines printed on the invoice. */
 export const DEMO_INVOICE_LINES = [
@@ -82,7 +85,9 @@ const pdfText = (line: string) => line.replace(/\\/g, "\\\\").replace(/\(/g, "\\
  * the demo needs no PDF library; byte offsets in the cross-reference table are computed, not guessed.
  */
 export function demoInvoicePdf(lines: readonly string[] = DEMO_INVOICE_LINES): Buffer {
-  const content = ["BT", "/F1 12 Tf", "72 760 Td", "16 TL", ...lines.map((line) => `(${pdfText(line)}) '`), "ET"].join("\n");
+  const content = ["BT", "/F1 12 Tf", "72 760 Td", "16 TL", ...lines.map((line) => `(${pdfText(line)}) '`), "ET"].join(
+    "\n",
+  );
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",

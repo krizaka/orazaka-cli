@@ -3,16 +3,10 @@
  * @description Tests for the CLI output rendering pipeline — text, image, audio, video.
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import * as os from 'node:os';
-import {
-  renderText,
-  renderImage,
-  renderAudio,
-  renderVideo,
-  renderTimeline,
-} from "../renderers";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
+import { renderText, renderImage, renderAudio, renderVideo, renderTimeline } from "../renderers";
 import type { TimelineMessage } from "../types/api.types";
 
 // ── Mock env module ──────────────────────────────────────────────────────────
@@ -98,10 +92,8 @@ describe("renderImage", () => {
     const fakeBuffer = Buffer.from("fake-image-data");
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      arrayBuffer: async () => fakeBuffer.buffer.slice(
-        fakeBuffer.byteOffset,
-        fakeBuffer.byteOffset + fakeBuffer.byteLength,
-      ),
+      arrayBuffer: async () =>
+        fakeBuffer.buffer.slice(fakeBuffer.byteOffset, fakeBuffer.byteOffset + fakeBuffer.byteLength),
     });
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "render-dl-"));
@@ -117,10 +109,8 @@ describe("renderImage", () => {
     const fakeBuffer = Buffer.from("relative-image");
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      arrayBuffer: async () => fakeBuffer.buffer.slice(
-        fakeBuffer.byteOffset,
-        fakeBuffer.byteOffset + fakeBuffer.byteLength,
-      ),
+      arrayBuffer: async () =>
+        fakeBuffer.buffer.slice(fakeBuffer.byteOffset, fakeBuffer.byteOffset + fakeBuffer.byteLength),
     });
 
     await renderImage("/uploads/test.png");
@@ -188,10 +178,8 @@ describe("renderAudio", () => {
     const fakeBuffer = Buffer.from("fake-audio-data");
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      arrayBuffer: async () => fakeBuffer.buffer.slice(
-        fakeBuffer.byteOffset,
-        fakeBuffer.byteOffset + fakeBuffer.byteLength,
-      ),
+      arrayBuffer: async () =>
+        fakeBuffer.buffer.slice(fakeBuffer.byteOffset, fakeBuffer.byteOffset + fakeBuffer.byteLength),
     });
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "audio-dl-"));
@@ -235,10 +223,8 @@ describe("renderVideo", () => {
     const fakeBuffer = Buffer.from("fake-video-data");
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      arrayBuffer: async () => fakeBuffer.buffer.slice(
-        fakeBuffer.byteOffset,
-        fakeBuffer.byteOffset + fakeBuffer.byteLength,
-      ),
+      arrayBuffer: async () =>
+        fakeBuffer.buffer.slice(fakeBuffer.byteOffset, fakeBuffer.byteOffset + fakeBuffer.byteLength),
     });
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "video-dl-"));
@@ -292,7 +278,6 @@ describe("renderTimeline", () => {
   });
 });
 
-
 // ── a platform asset (what a Studio run answers) ─────────────────────────────
 
 describe("renderVideo — an asset of the platform", () => {
@@ -300,7 +285,9 @@ describe("renderVideo — an asset of the platform", () => {
     mockFetch.mockResolvedValue({ ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer });
     const out = require("node:path").join(require("node:os").tmpdir(), `orazaka-asset-${Date.now()}.mp4`);
     await renderVideo("/api/v1/assets/job-1/video.mp4", out);
-    expect(mockFetch).toHaveBeenCalledWith("http://localhost:8080/api/v1/assets/job-1/video.mp4", { headers: { Authorization: "Bearer session-token" } });
+    expect(mockFetch).toHaveBeenCalledWith("http://localhost:8080/api/v1/assets/job-1/video.mp4", {
+      headers: { Authorization: "Bearer session-token" },
+    });
     expect(require("node:fs").readFileSync(out)).toEqual(Buffer.from([1, 2, 3]));
     require("node:fs").rmSync(out);
   });

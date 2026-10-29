@@ -38,27 +38,93 @@ const SCRIPT = {
   logline: "A hero lands.",
   grade: "neon-night",
   style: "wet neon streets, magenta and teal, anamorphic 35mm.",
-  characters: [{ id: "volt", description: "a woman in her thirties, short silver hair, matte-black armour with cyan seams" }],
+  characters: [
+    { id: "volt", description: "a woman in her thirties, short silver hair, matte-black armour with cyan seams" },
+  ],
   music: "dark synth, 120 bpm",
   ambience: "storm",
   voiceover: "The city sleeps. She does not.",
-  titles: [{ text: "NIGHTFALL", start: 0.5, end: 2.5, style: "hero" }, { text: "late", start: 99, end: 100, style: "end" }],
+  titles: [
+    { text: "NIGHTFALL", start: 0.5, end: 2.5, style: "hero" },
+    { text: "late", start: 99, end: 100, style: "end" },
+  ],
   shots: [
-    { id: 1, seconds: 5, characters: ["volt"], camera: "wide, slow push", action: "she stands", vfx: "", keyframe: "a figure on a rooftop", motion: "rain falls", transition: "dissolve", speed: 1, rampAt: null, caption: "" },
-    { id: 2, seconds: 5, characters: ["volt", "ghost"], camera: "low angle", lens: "24", lighting: "cyan rim light", atmosphere: "rain", action: "she lands", vfx: "cyan shockwave", keyframe: "landing", motion: "she lands hard", transition: "flash", speed: 1, rampAt: 2, caption: "Impact" },
-    { id: 3, seconds: 9, characters: [], camera: "close", action: "eyes glow", vfx: "", keyframe: "her eyes", motion: "eyes glow", transition: "spiral", speed: 0.5, rampAt: 3, caption: "", continuous: true },
-    { id: 4, seconds: 5, characters: [], camera: "", action: "", vfx: "", keyframe: "beyond the asked count", motion: "", transition: "cut", speed: 1, rampAt: null, caption: "" },
+    {
+      id: 1,
+      seconds: 5,
+      characters: ["volt"],
+      camera: "wide, slow push",
+      action: "she stands",
+      vfx: "",
+      keyframe: "a figure on a rooftop",
+      motion: "rain falls",
+      transition: "dissolve",
+      speed: 1,
+      rampAt: null,
+      caption: "",
+    },
+    {
+      id: 2,
+      seconds: 5,
+      characters: ["volt", "ghost"],
+      camera: "low angle",
+      lens: "24",
+      lighting: "cyan rim light",
+      atmosphere: "rain",
+      action: "she lands",
+      vfx: "cyan shockwave",
+      keyframe: "landing",
+      motion: "she lands hard",
+      transition: "flash",
+      speed: 1,
+      rampAt: 2,
+      caption: "Impact",
+    },
+    {
+      id: 3,
+      seconds: 9,
+      characters: [],
+      camera: "close",
+      action: "eyes glow",
+      vfx: "",
+      keyframe: "her eyes",
+      motion: "eyes glow",
+      transition: "spiral",
+      speed: 0.5,
+      rampAt: 3,
+      caption: "",
+      continuous: true,
+    },
+    {
+      id: 4,
+      seconds: 5,
+      characters: [],
+      camera: "",
+      action: "",
+      vfx: "",
+      keyframe: "beyond the asked count",
+      motion: "",
+      transition: "cut",
+      speed: 1,
+      rampAt: null,
+      caption: "",
+    },
   ],
 };
 
 describe("the script is parsed once", () => {
   test("an answer wrapped in prose or a code fence still yields its JSON", () => {
-    expect(extractJson("Here it is:\n```json\n{\"a\":1}\n```")).toEqual({ a: 1 });
+    expect(extractJson('Here it is:\n```json\n{"a":1}\n```')).toEqual({ a: 1 });
     expect(() => extractJson("no json")).toThrow(ScriptError);
   });
 
   test("a missing comma between members or a trailing comma is repaired, never more", () => {
-    expect(extractJson('{\n "a": "x"\n\n "b": [1, 2,],\n "c": {"d": 1}\n "e": true\n}')).toEqual({ a: "x", b: [1, 2], c: { d: 1 }, e: true });
+    expect(extractJson('{\n "a": "x"\n\n "b": [1, 2,],\n "c": {"d": 1}\n "e": true\n}')).toEqual({
+      a: "x",
+      b: [1, 2],
+      c: { d: 1 },
+      e: true,
+    });
     expect(() => extractJson('{"a": x}')).toThrow(ScriptError);
     expect(extractJson('{"v": "line one\nline two"}')).toEqual({ v: "line one line two" });
     expect(extractJson('{"lens": 35mm,\n "tempo": 68 BPM\n}')).toEqual({ lens: "35mm", tempo: "68 BPM" });
@@ -79,12 +145,18 @@ describe("the script is parsed once", () => {
     expect(script.shots[1].rampAt).toBe(2);
     expect(script.shots[2].continuous).toBe(true);
     expect(script.grade).toBe("neon-night");
-    expect(parseScript(JSON.stringify({ ...SCRIPT, title: "The **city** *breathes*" }), BRIEF).title).toBe("The city breathes");
-    expect(parseScript(JSON.stringify({ ...SCRIPT, music: { genre: "synthwave", tempo: "120 bpm" } }), BRIEF).music).toBe("synthwave, 120 bpm");
+    expect(parseScript(JSON.stringify({ ...SCRIPT, title: "The **city** *breathes*" }), BRIEF).title).toBe(
+      "The city breathes",
+    );
+    expect(
+      parseScript(JSON.stringify({ ...SCRIPT, music: { genre: "synthwave", tempo: "120 bpm" } }), BRIEF).music,
+    ).toBe("synthwave, 120 bpm");
   });
 
   test("a script without keyframes or shots is refused", () => {
-    expect(() => parseScript(JSON.stringify({ shots: [{ keyframe: "" }, { keyframe: "x" }] }), BRIEF)).toThrow(/no keyframe/);
+    expect(() => parseScript(JSON.stringify({ shots: [{ keyframe: "" }, { keyframe: "x" }] }), BRIEF)).toThrow(
+      /no keyframe/,
+    );
     expect(() => parseScript(JSON.stringify({ shots: [] }), BRIEF)).toThrow(/fewer than two/);
   });
 });
@@ -212,7 +284,10 @@ describe("the director", () => {
 
   test("a named voice model is asked for by name", async () => {
     const port = fakePort();
-    await direct(newProduction({ ...BRIEF, voiceModel: "kokoro-82m" }), port, { save: () => undefined, log: () => undefined });
+    await direct(newProduction({ ...BRIEF, voiceModel: "kokoro-82m" }), port, {
+      save: () => undefined,
+      log: () => undefined,
+    });
     expect(port.calls.find(([k]) => k === "speech-synthesis")?.[1].model).toBe("kokoro-82m");
   });
 
@@ -231,7 +306,12 @@ describe("the director", () => {
     const port = fakePort();
     await direct(made, port, { save: () => undefined, log: () => undefined });
     // Shot 3 is continuous: it started from shot 2's last frame, which the reshoot replaces (orazaka#259).
-    expect(port.calls.map(([k]) => k)).toEqual(["video-generation", "video-generation", "cinematic-cut", "video-sound"]);
+    expect(port.calls.map(([k]) => k)).toEqual([
+      "video-generation",
+      "video-generation",
+      "cinematic-cut",
+      "video-sound",
+    ]);
     expect(() => markReshoot(made, [9])).toThrow(/not in this production/);
   });
 
@@ -244,7 +324,14 @@ describe("the director", () => {
 });
 
 describe("the estimate, before anything runs", () => {
-  const credits = { "cinematic-script": 40, "image-generation": 200, "video-generation": 3600, "cinematic-cut": 900, "speech-synthesis": 40, "video-sound": 900 };
+  const credits = {
+    "cinematic-script": 40,
+    "image-generation": 200,
+    "video-generation": 3600,
+    "cinematic-cut": 900,
+    "speech-synthesis": 40,
+    "video-sound": 900,
+  };
   const measures = {
     script: { studioKey: "cinematic-script", seconds: 20, gpuUsd: 0 },
     character: { studioKey: "image-generation", seconds: 10, gpuUsd: 0.01 },

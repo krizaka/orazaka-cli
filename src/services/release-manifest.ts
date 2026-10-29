@@ -48,8 +48,16 @@ export interface ReleaseManifest {
   components: { name: string; repository: string; version: string; commit: string }[];
   images: ReleaseImage[];
   artefacts: ReleaseArtefact[];
-  models: { id: string; source: "huggingface" | "ollama"; repo: string; revision: string; licence: string;
-    commercialUse: true; downloadGb: number; hardware: ("metal" | "cuda" | "cpu")[] }[];
+  models: {
+    id: string;
+    source: "huggingface" | "ollama";
+    repo: string;
+    revision: string;
+    licence: string;
+    commercialUse: true;
+    downloadGb: number;
+    hardware: ("metal" | "cuda" | "cpu")[];
+  }[];
   packs: { key: string; version: string; distribution: "OSS" | "COMMERCIAL" }[];
 }
 
@@ -58,13 +66,28 @@ const SEMVER = { type: "string", pattern: SEMVER_PATTERN };
 const SHA256 = { type: "string", pattern: "^[0-9a-f]{64}$" };
 const list = (item: object) => ({ type: "array", items: item });
 const record = (required: string[], properties: Record<string, object>) => ({
-  type: "object", additionalProperties: false, required, properties,
+  type: "object",
+  additionalProperties: false,
+  required,
+  properties,
 });
 
 /** The shape. Every field is required: a release that does not know a value has not been built yet. */
 export const releaseManifestSchema = record(
-  ["schema", "version", "channel", "releasedAt", "upgradeFrom", "cli", "targets", "components", "images",
-    "artefacts", "models", "packs"],
+  [
+    "schema",
+    "version",
+    "channel",
+    "releasedAt",
+    "upgradeFrom",
+    "cli",
+    "targets",
+    "components",
+    "images",
+    "artefacts",
+    "models",
+    "packs",
+  ],
   {
     schema: { const: RELEASE_SCHEMA },
     version: SEMVER,
@@ -73,43 +96,53 @@ export const releaseManifestSchema = record(
     upgradeFrom: SEMVER,
     cli: record(["package", "version"], { package: { type: "string", minLength: 1 }, version: SEMVER }),
     targets: { type: "array", minItems: 1, uniqueItems: true, items: { enum: [...RELEASE_TARGETS] } },
-    components: list(record(["name", "repository", "version", "commit"], {
-      name: NAME,
-      repository: { type: "string", pattern: "^krizaka/[a-z0-9-]+$" },
-      version: { type: "string", minLength: 1 },
-      commit: { type: "string", pattern: "^[0-9a-f]{40}$" },
-    })),
-    images: list(record(["name", "ref", "digest", "platforms"], {
-      name: NAME,
-      // Pinned by digest, never by tag: the ref is the repository, the digest is what runs.
-      ref: { type: "string", pattern: "^[a-z0-9.-]+(:[0-9]+)?/[a-z0-9._/-]+$" },
-      digest: { type: "string", pattern: "^sha256:[0-9a-f]{64}$" },
-      platforms: { type: "array", minItems: 1, uniqueItems: true, items: { enum: ["linux/amd64", "linux/arm64"] } },
-      gpu: { enum: ["none", "cuda"] },
-    })),
-    artefacts: list(record(["name", "file", "sha256", "size", "target"], {
-      name: NAME,
-      file: { type: "string", minLength: 1 },
-      sha256: SHA256,
-      size: { type: "integer", minimum: 1 },
-      target: { enum: [...RELEASE_TARGETS] },
-    })),
-    models: list(record(["id", "source", "repo", "revision", "licence", "commercialUse", "downloadGb", "hardware"], {
-      id: { type: "string", minLength: 1 },
-      source: { enum: ["huggingface", "ollama"] },
-      repo: { type: "string", minLength: 1 },
-      revision: { type: "string", minLength: 1 },
-      licence: { type: "string", minLength: 1 },
-      // Only weights whose licence allows commercial use ship to a client (worker-media models.yaml).
-      commercialUse: { const: true },
-      downloadGb: { type: "number", exclusiveMinimum: 0 },
-      hardware: { type: "array", minItems: 1, uniqueItems: true, items: { enum: ["metal", "cuda", "cpu"] } },
-    })),
-    packs: list(record(["key", "version", "distribution"], {
-      key: NAME,
-      version: SEMVER,
-      distribution: { enum: ["OSS", "COMMERCIAL"] },
-    })),
+    components: list(
+      record(["name", "repository", "version", "commit"], {
+        name: NAME,
+        repository: { type: "string", pattern: "^krizaka/[a-z0-9-]+$" },
+        version: { type: "string", minLength: 1 },
+        commit: { type: "string", pattern: "^[0-9a-f]{40}$" },
+      }),
+    ),
+    images: list(
+      record(["name", "ref", "digest", "platforms"], {
+        name: NAME,
+        // Pinned by digest, never by tag: the ref is the repository, the digest is what runs.
+        ref: { type: "string", pattern: "^[a-z0-9.-]+(:[0-9]+)?/[a-z0-9._/-]+$" },
+        digest: { type: "string", pattern: "^sha256:[0-9a-f]{64}$" },
+        platforms: { type: "array", minItems: 1, uniqueItems: true, items: { enum: ["linux/amd64", "linux/arm64"] } },
+        gpu: { enum: ["none", "cuda"] },
+      }),
+    ),
+    artefacts: list(
+      record(["name", "file", "sha256", "size", "target"], {
+        name: NAME,
+        file: { type: "string", minLength: 1 },
+        sha256: SHA256,
+        size: { type: "integer", minimum: 1 },
+        target: { enum: [...RELEASE_TARGETS] },
+      }),
+    ),
+    models: list(
+      record(["id", "source", "repo", "revision", "licence", "commercialUse", "downloadGb", "hardware"], {
+        id: { type: "string", minLength: 1 },
+        source: { enum: ["huggingface", "ollama"] },
+        repo: { type: "string", minLength: 1 },
+        revision: { type: "string", minLength: 1 },
+        licence: { type: "string", minLength: 1 },
+        // Only weights whose licence allows commercial use ship to a client (worker-media models.yaml).
+        commercialUse: { const: true },
+        downloadGb: { type: "number", exclusiveMinimum: 0 },
+        hardware: { type: "array", minItems: 1, uniqueItems: true, items: { enum: ["metal", "cuda", "cpu"] } },
+      }),
+    ),
+    packs: list(
+      record(["key", "version", "distribution"], {
+        key: NAME,
+        version: SEMVER,
+        distribution: { enum: ["OSS", "COMMERCIAL"] },
+      }),
+    ),
   },
 );
 
@@ -139,11 +172,26 @@ export function isBundlePath(file: string): boolean {
 /** The rules the schema cannot say. Runs on a manifest whose shape is already valid. */
 function invariants(m: ReleaseManifest): string[] {
   const problems = [
-    ...duplicates(m.components.map((c) => c.name), "component"),
-    ...duplicates(m.images.map((i) => i.name), "image"),
-    ...duplicates(m.artefacts.map((a) => a.name), "artefact"),
-    ...duplicates(m.models.map((x) => x.id), "model"),
-    ...duplicates(m.packs.map((p) => p.key), "pack"),
+    ...duplicates(
+      m.components.map((c) => c.name),
+      "component",
+    ),
+    ...duplicates(
+      m.images.map((i) => i.name),
+      "image",
+    ),
+    ...duplicates(
+      m.artefacts.map((a) => a.name),
+      "artefact",
+    ),
+    ...duplicates(
+      m.models.map((x) => x.id),
+      "model",
+    ),
+    ...duplicates(
+      m.packs.map((p) => p.key),
+      "pack",
+    ),
   ];
   const prerelease = parseSemver(m.version)?.prerelease ?? "";
   if (m.channel === "stable" && prerelease !== "") {

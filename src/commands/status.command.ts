@@ -8,17 +8,8 @@ import { Command } from "commander";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import chalk from "chalk";
-import {
-  intro,
-  outro,
-  note,
-} from "../ui/prompts";
-import {
-  resolveWorkspaceRoot,
-  resolvePidFile,
-  resolveLogDir,
-  isAppleSilicon,
-} from "../ui/platform";
+import { intro, outro, note } from "../ui/prompts";
+import { resolveWorkspaceRoot, resolvePidFile, resolveLogDir, isAppleSilicon } from "../ui/platform";
 import { isPortInUse } from "../utils/health";
 import { readPidFile, isPidAlive } from "../utils/pid";
 import { PORTS } from "../utils/config";
@@ -116,16 +107,12 @@ export const statusCommand = new Command("status")
           currentCategory = r.category;
         }
 
-        const statusIcon = r.status === "running"
-          ? chalk.green("● UP  ")
-          : chalk.red("○ DOWN");
+        const statusIcon = r.status === "running" ? chalk.green("● UP  ") : chalk.red("○ DOWN");
 
         const portStr = chalk.gray(`:${String(r.port)}`);
         const pidStr = r.pid ? chalk.gray(`PID ${String(r.pid)}`) : "";
 
-        lines.push(
-          `  ${statusIcon} ${r.name.padEnd(18)} ${portStr.padEnd(16)} ${pidStr}`
-        );
+        lines.push(`  ${statusIcon} ${r.name.padEnd(18)} ${portStr.padEnd(16)} ${pidStr}`);
       }
 
       // Summary counts
@@ -134,7 +121,7 @@ export const statusCommand = new Command("status")
       lines.push("");
       lines.push(
         `${chalk.gray("Summary:")} ${chalk.green(String(running))}/${String(total)} services running` +
-        (isAppleSilicon() ? ` ${chalk.gray("| Apple Silicon ✔")}` : "")
+          (isAppleSilicon() ? ` ${chalk.gray("| Apple Silicon ✔")}` : ""),
       );
 
       await note(lines.join("\n"), "🥷 Orazaka Service Status");
@@ -167,7 +154,7 @@ export const statusCommand = new Command("status")
         const logFiles = fs.readdirSync(logDir).filter((f) => f.endsWith(".log"));
         if (logFiles.length > 0) {
           console.log(
-            `\n  ${chalk.gray("Logs:")} ${chalk.cyan(`npx orazaka logs`)} (${String(logFiles.length)} file(s) in ${path.relative(workspaceRoot, logDir)})`
+            `\n  ${chalk.gray("Logs:")} ${chalk.cyan(`npx orazaka logs`)} (${String(logFiles.length)} file(s) in ${path.relative(workspaceRoot, logDir)})`,
           );
         }
       }

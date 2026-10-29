@@ -11,8 +11,7 @@ import { McpApi } from "../services/mcp.api";
 import { Logger } from "../ui/logger";
 import { Box } from "../ui/box";
 
-export const mcpCommand = new Command("mcp")
-  .description("Manage your private dynamic MCP server connections");
+export const mcpCommand = new Command("mcp").description("Manage your private dynamic MCP server connections");
 
 mcpCommand
   .command("list")

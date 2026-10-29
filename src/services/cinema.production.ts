@@ -163,7 +163,11 @@ export const isCharacterId = (id: string): boolean => CHARACTER_ID.test(id);
 
 /** A value as one line of text: a string as it is, an object or list the model wrote instead as its values joined. */
 const flatten = (value: unknown): string =>
-  value !== null && typeof value === "object" ? Object.values(value as object).map(flatten).join(", ") : String(value ?? "");
+  value !== null && typeof value === "object"
+    ? Object.values(value as object)
+        .map(flatten)
+        .join(", ")
+    : String(value ?? "");
 /** Markdown emphasis a model adds (`**bold**`, `*italic*`) is not a word of the prompt nor of a title. */
 const text = (value: unknown, max = 1200): string =>
   flatten(value).replace(/\*+/g, "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -208,11 +212,11 @@ export function repairJson(body: string): string {
   // A bare value with units (`35mm`, `68 BPM`) is a string the model forgot to quote — looked for outside the strings only.
   const quoted = flat
     .split(/("(?:[^"\\]|\\.)*")/)
-    .map((part, i) => (i % 2 === 1 ? part : part.replace(/:\s*(-?\d[^",\n{}[\]]*?[A-Za-z%][^",\n{}[\]]*?)\s*(?=[,\n}\]])/g, ': "$1"')))
+    .map((part, i) =>
+      i % 2 === 1 ? part : part.replace(/:\s*(-?\d[^",\n{}[\]]*?[A-Za-z%][^",\n{}[\]]*?)\s*(?=[,\n}\]])/g, ': "$1"'),
+    )
     .join("");
-  return quoted
-    .replace(/("|\}|\]|\d|true|false|null)(\s*\n\s*)(?=["{[])/g, "$1,$2")
-    .replace(/,(\s*[}\]])/g, "$1");
+  return quoted.replace(/("|\}|\]|\d|true|false|null)(\s*\n\s*)(?=["{[])/g, "$1,$2").replace(/,(\s*[}\]])/g, "$1");
 }
 
 /**
@@ -229,32 +233,37 @@ export function parseScript(raw: string, brief: Brief): Script {
     .filter((c) => isCharacterId(c.id) && c.description)
     .slice(0, 6);
   const known = new Set(characters.map((c) => c.id));
-  const shots: ScriptShot[] = shotsRaw.slice(0, Math.max(brief.shots, 2)).map((s: Record<string, unknown>, i: number) => {
-    const keyframe = text(s?.keyframe);
-    if (!keyframe) throw new ScriptError(`shot ${i + 1} has no keyframe prompt`);
-    const seconds = clamp(Number(s?.seconds) || 5, 2, 5);
-    const speed = Number(s?.speed) === 0.5 ? 0.5 : 1;
-    const ramp = s?.rampAt === null || s?.rampAt === undefined ? null : Number(s.rampAt);
-    return {
-      id: i + 1,
-      seconds,
-      characters: (Array.isArray(s?.characters) ? s.characters : []).map((c) => text(c, 40)).filter((c) => known.has(c)),
-      camera: text(s?.camera, 300),
-      lens: text(s?.lens, 60),
-      lighting: text(s?.lighting, 300),
-      atmosphere: text(s?.atmosphere, 200),
-      action: text(s?.action, 500),
-      vfx: text(s?.vfx, 400),
-      keyframe,
-      motion: text(s?.motion, 800) || text(s?.action, 500),
-      transition: i === 0 ? "cut" : oneOf(s?.transition, TRANSITIONS, "cut"),
-      speed,
-      // A ramp needs room on both sides of it and is never combined with a whole-shot slow motion.
-      rampAt: speed === 1 && ramp !== null && Number.isFinite(ramp) && ramp > 0.6 && ramp < seconds - 0.6 ? ramp : null,
-      caption: text(s?.caption, 140),
-      continuous: s?.continuous === true && i > 0,
-    };
-  });
+  const shots: ScriptShot[] = shotsRaw
+    .slice(0, Math.max(brief.shots, 2))
+    .map((s: Record<string, unknown>, i: number) => {
+      const keyframe = text(s?.keyframe);
+      if (!keyframe) throw new ScriptError(`shot ${i + 1} has no keyframe prompt`);
+      const seconds = clamp(Number(s?.seconds) || 5, 2, 5);
+      const speed = Number(s?.speed) === 0.5 ? 0.5 : 1;
+      const ramp = s?.rampAt === null || s?.rampAt === undefined ? null : Number(s.rampAt);
+      return {
+        id: i + 1,
+        seconds,
+        characters: (Array.isArray(s?.characters) ? s.characters : [])
+          .map((c) => text(c, 40))
+          .filter((c) => known.has(c)),
+        camera: text(s?.camera, 300),
+        lens: text(s?.lens, 60),
+        lighting: text(s?.lighting, 300),
+        atmosphere: text(s?.atmosphere, 200),
+        action: text(s?.action, 500),
+        vfx: text(s?.vfx, 400),
+        keyframe,
+        motion: text(s?.motion, 800) || text(s?.action, 500),
+        transition: i === 0 ? "cut" : oneOf(s?.transition, TRANSITIONS, "cut"),
+        speed,
+        // A ramp needs room on both sides of it and is never combined with a whole-shot slow motion.
+        rampAt:
+          speed === 1 && ramp !== null && Number.isFinite(ramp) && ramp > 0.6 && ramp < seconds - 0.6 ? ramp : null,
+        caption: text(s?.caption, 140),
+        continuous: s?.continuous === true && i > 0,
+      };
+    });
   const titles: ScriptTitle[] = (Array.isArray(data.titles) ? data.titles : [])
     .map((t: Record<string, unknown>) => ({
       text: text(t?.text, 120),
@@ -305,7 +314,11 @@ export function direction(shot: ScriptShot, forMotion = false): string {
   return [
     shot.lens ? `${/mm/i.test(shot.lens) ? shot.lens : `${shot.lens}mm`} lens` : "",
     // In a motion prompt the word "camera" summoned a camera into the frame (gate, 2026-10-17): the view moves instead.
-    shot.camera ? (forMotion ? `the view: ${shot.camera.replace(/\bcamera\b/gi, "view")}` : `camera: ${shot.camera}`) : "",
+    shot.camera
+      ? forMotion
+        ? `the view: ${shot.camera.replace(/\bcamera\b/gi, "view")}`
+        : `camera: ${shot.camera}`
+      : "",
     shot.lighting ? `lighting: ${shot.lighting}` : "",
     shot.atmosphere ? `atmosphere: ${shot.atmosphere}` : "",
   ]
@@ -333,7 +346,10 @@ export function keyframePrompt(script: Script, shot: ScriptShot, aspect: Aspect)
       .map((id) => script.characters.find((c) => c.id === id)?.description)
       .filter(Boolean)
       .join("; ");
-    return text(`${shot.keyframe} ${described ? `Characters: ${described}. ` : ""}${script.style} ${script.keyframeKeep} ${NO_CHILDREN}`, 1900);
+    return text(
+      `${shot.keyframe} ${described ? `Characters: ${described}. ` : ""}${script.style} ${script.keyframeKeep} ${NO_CHILDREN}`,
+      1900,
+    );
   }
   const cast = shot.characters
     .map((id) => script.characters.find((c) => c.id === id))
@@ -407,8 +423,7 @@ export function editDecisionList(production: Production, script: Script): Record
 export function filmSeconds(script: Script): number {
   let total = 0;
   script.shots.forEach((shot, i) => {
-    const screen =
-      shot.rampAt !== null ? shot.rampAt + (shot.seconds - shot.rampAt) / 0.4 : shot.seconds / shot.speed;
+    const screen = shot.rampAt !== null ? shot.rampAt + (shot.seconds - shot.rampAt) / 0.4 : shot.seconds / shot.speed;
     total += screen - (i === 0 ? 0 : shot.transition === "cut" ? 1 / 30 : TRANSITION_SECONDS);
   });
   return Number(total.toFixed(2));
@@ -435,7 +450,8 @@ export function nextStep(production: Production): NextStep {
   }
   for (const shot of script.shots) {
     const state = production.shots.find((s) => s.id === shot.id);
-    if (!done(state?.keyframe) && !shot.continuous && !shot.chainFrom && !shot.reuse) return { kind: "keyframe", shot: shot.id };
+    if (!done(state?.keyframe) && !shot.continuous && !shot.chainFrom && !shot.reuse)
+      return { kind: "keyframe", shot: shot.id };
   }
   for (const shot of script.shots) {
     const state = production.shots.find((s) => s.id === shot.id);

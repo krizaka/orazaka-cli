@@ -8,12 +8,7 @@ import * as http from "node:http";
 import { exec } from "node:child_process";
 import { requireAuth } from "../../threads";
 import { SettingsApi } from "../../services/settings.api";
-import {
-  insertJob,
-  updateJobStatus,
-  getUnsyncedJobs,
-  markJobSynced,
-} from "../../services/local-store";
+import { insertJob, updateJobStatus, getUnsyncedJobs, markJobSynced } from "../../services/local-store";
 
 jest.mock("../../threads", () => ({
   requireAuth: jest.fn(),
@@ -147,12 +142,22 @@ describe("agent command listen", () => {
     let dataListener: ((chunk: string) => void) | undefined;
     const dummyReq = { on: jest.fn(), end: jest.fn() };
     mockHttpRequest.mockImplementation((url, options, cb) => {
-      cb({ statusCode: 200, setEncoding: jest.fn(), on: jest.fn((e, l) => { if (e === "data") dataListener = l; }) });
+      cb({
+        statusCode: 200,
+        setEncoding: jest.fn(),
+        on: jest.fn((e, l) => {
+          if (e === "data") dataListener = l;
+        }),
+      });
       return dummyReq;
     });
     mockFetch.mockResolvedValue({ ok: true });
     await agentCommand.parseAsync(["node", "orazaka", "listen"]);
-    dataListener?.("event: automation_payload\ndata: " + JSON.stringify({ jobId: "job-2", action: "shutdown -h now", payload: {} }) + "\n\n");
+    dataListener?.(
+      "event: automation_payload\ndata: " +
+        JSON.stringify({ jobId: "job-2", action: "shutdown -h now", payload: {} }) +
+        "\n\n",
+    );
     expect(exec).not.toHaveBeenCalled();
     expect(updateJobStatus).toHaveBeenCalledWith("job-2", "FAILED", expect.stringContaining("ADR-079"));
   });

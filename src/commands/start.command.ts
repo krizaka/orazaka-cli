@@ -15,17 +15,7 @@ import { execSync, spawn } from "node:child_process";
 import chalk from "chalk";
 import { format } from "date-fns";
 import { requireWorkspace } from "./workspace-guard";
-import {
-  intro,
-  outro,
-  logSuccess,
-  logWarning,
-  logError,
-  logStep,
-  logInfo,
-  createSpinner,
-  note,
-} from "../ui/prompts";
+import { intro, outro, logSuccess, logWarning, logError, logStep, logInfo, createSpinner, note } from "../ui/prompts";
 import {
   resolveWorkspaceRoot,
   resolveComposeFile,
@@ -51,502 +41,523 @@ const checkServiceHealth = isPortInUse;
 const waitForService = waitForPort;
 
 /** Services that can be started individually. */
-type ServiceName = "postgres" | "redis" | "rabbitmq" | "ollama" | "localai" | "image-gen" | "media-worker" | "router" | "ui";
+type ServiceName =
+  "postgres" | "redis" | "rabbitmq" | "ollama" | "localai" | "image-gen" | "media-worker" | "router" | "ui";
 
 export const startCommand = new Command("start")
-  .description("Start Orazaka infrastructure — dev mode (Docker middleware + AI engines) or full mode (also Router + UI)")
+  .description(
+    "Start Orazaka infrastructure — dev mode (Docker middleware + AI engines) or full mode (also Router + UI)",
+  )
   .option("--mode <mode>", "Startup mode: dev (default, infra + AI engines) or full (also Router + Next.js UI)", "dev")
-  .option("--only <service>", "Start only a specific service (postgres, redis, rabbitmq, ollama, localai, image-gen, media-worker)")
+  .option(
+    "--only <service>",
+    "Start only a specific service (postgres, redis, rabbitmq, ollama, localai, image-gen, media-worker)",
+  )
   .option("--skip-health", "Skip final health verification")
   .option("--wait-timeout <ms>", "Timeout for service startup (default: 60000ms)", "60000")
   .option("--allow-partial", "Allow partial startup (some services may fail)")
   .option("--verbose", "Show detailed startup logs")
   .option("--logs", "Tail log files after startup")
-  .action(async (options: {
-    mode?: string;
-    only?: string;
-    skipHealth?: boolean;
-    waitTimeout?: string;
-    allowPartial?: boolean;
-    verbose?: boolean;
-    logs?: boolean;
-  }) => {
-    const mode = (options.mode ?? "dev") as "dev" | "full";
-    const onlyService = options.only as ServiceName | undefined;
+  .action(
+    async (options: {
+      mode?: string;
+      only?: string;
+      skipHealth?: boolean;
+      waitTimeout?: string;
+      allowPartial?: boolean;
+      verbose?: boolean;
+      logs?: boolean;
+    }) => {
+      const mode = (options.mode ?? "dev") as "dev" | "full";
+      const onlyService = options.only as ServiceName | undefined;
 
-    await intro(chalk.cyan.bold(
-      mode === "dev"
-        ? "🥷 Orazaka Dev Infrastructure"
-        : "🥷 Orazaka Full Infrastructure Bootstrap"
-    ));
-
-    requireWorkspace("start");
-    const workspaceRoot = resolveWorkspaceRoot();
-    const pidFile = resolvePidFile();
-    const logDir = resolveLogDir();
-    ensureDir(logDir);
-    ensureDir(path.dirname(pidFile));
-
-    // Verify compose file
-    const composeFile = resolveComposeFile();
-    if (!fs.existsSync(composeFile)) {
-      await logError(
-        "docker-compose.yml not found.\n" +
-        `  Run ${chalk.cyan("npx orazaka init")} to generate it.`
+      await intro(
+        chalk.cyan.bold(mode === "dev" ? "🥷 Orazaka Dev Infrastructure" : "🥷 Orazaka Full Infrastructure Bootstrap"),
       );
-      process.exit(1);
-    }
 
-    const dockerComposeCmd = resolveDockerComposeCmd();
-    if (!dockerComposeCmd) {
-      await logError(
-        "Docker Compose not found.\n" +
-        `  Install Docker Desktop: ${chalk.cyan("https://www.docker.com/products/docker-desktop")}`
-      );
-      process.exit(1);
-    }
+      requireWorkspace("start");
+      const workspaceRoot = resolveWorkspaceRoot();
+      const pidFile = resolvePidFile();
+      const logDir = resolveLogDir();
+      ensureDir(logDir);
+      ensureDir(path.dirname(pidFile));
 
-    const dateStamp = format(new Date(), "yyyyMMdd_HHmmss");
-    const startedServices: string[] = [];
-    const spinner = await createSpinner();
-
-    // Helper: should we start this service?
-    const shouldStart = (service: ServiceName): boolean => {
-      if (onlyService) return onlyService === service;
-      return true;
-    };
-
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 1: Docker Middleware (Postgres, Redis, RabbitMQ)
-    // ═══════════════════════════════════════════════════════════
-    if (shouldStart("postgres") || shouldStart("redis") || shouldStart("rabbitmq")) {
-      await logStep("Phase 1: Docker Services (Postgres, Redis, RabbitMQ)");
-
-      const servicesToStart: string[] = [];
-      if (shouldStart("postgres")) servicesToStart.push("postgres");
-      if (shouldStart("redis")) servicesToStart.push("redis");
-      if (shouldStart("rabbitmq")) servicesToStart.push("rabbitmq");
-
-      // Check if any compose service names differ (handle both naming conventions)
-      const composeContent = fs.readFileSync(composeFile, "utf-8");
-      const actualServices: string[] = [];
-      for (const svc of servicesToStart) {
-        // Check for alternative names in compose file
-        if (svc === "postgres") {
-          if (composeContent.includes("db-vector:")) actualServices.push("db-vector");
-          else if (composeContent.includes("postgres:")) actualServices.push("postgres");
-          else actualServices.push(svc);
-        } else {
-          actualServices.push(svc);
-        }
+      // Verify compose file
+      const composeFile = resolveComposeFile();
+      if (!fs.existsSync(composeFile)) {
+        await logError("docker-compose.yml not found.\n" + `  Run ${chalk.cyan("npx orazaka init")} to generate it.`);
+        process.exit(1);
       }
-      // The local SMTP sink the notification service delivers e-mail to (inbox on :8025).
-      if (composeContent.includes("mailpit:")) actualServices.push("mailpit");
 
-      spinner.start("Launching Docker containers...");
-      try {
-        execSync(
-          `${dockerComposeCmd} -p orazaka -f "${composeFile}" up -d ${actualServices.join(" ")}`,
-          { stdio: options.verbose ? "inherit" : "ignore" }
+      const dockerComposeCmd = resolveDockerComposeCmd();
+      if (!dockerComposeCmd) {
+        await logError(
+          "Docker Compose not found.\n" +
+            `  Install Docker Desktop: ${chalk.cyan("https://www.docker.com/products/docker-desktop")}`,
         );
-        spinner.stop("Docker containers launched.");
-      } catch (err) {
-        spinner.stop("Failed to launch Docker containers", 1);
-        if (!options.allowPartial) {
-          const msg = err instanceof Error ? err.message : "Unknown error";
-          await logError(`Docker error: ${msg}`);
-          process.exit(1);
-        }
-        await logWarning("Continuing with partial startup...");
+        process.exit(1);
       }
 
-      // Health checks
-      spinner.start("Verifying Docker services...");
-      const dockerChecks = [
-        { port: PORTS.postgres, name: "PostgreSQL", service: "postgres" as ServiceName },
-        { port: PORTS.redis, name: "Redis", service: "redis" as ServiceName },
-        { port: PORTS.rabbitmq, name: "RabbitMQ", service: "rabbitmq" as ServiceName },
-      ];
+      const dateStamp = format(new Date(), "yyyyMMdd_HHmmss");
+      const startedServices: string[] = [];
+      const spinner = await createSpinner();
 
-      for (const check of dockerChecks) {
-        if (!shouldStart(check.service)) continue;
-        const healthy = await waitForService(check.port, 30);
-        if (healthy) {
-          await logSuccess(`✔ ${check.name} healthy (port ${String(check.port)})`);
-          startedServices.push(check.name);
-        } else {
-          await logWarning(`⚠ ${check.name} not responding`);
-          if (!options.allowPartial) process.exit(1);
-        }
-      }
-      spinner.stop();
+      // Helper: should we start this service?
+      const shouldStart = (service: ServiceName): boolean => {
+        if (onlyService) return onlyService === service;
+        return true;
+      };
 
-      if (shouldStart("db-vector" as ServiceName)) {
-        await applyRolePasswords(dockerComposeCmd);
-      }
-    }
+      // ═══════════════════════════════════════════════════════════
+      // PHASE 1: Docker Middleware (Postgres, Redis, RabbitMQ)
+      // ═══════════════════════════════════════════════════════════
+      if (shouldStart("postgres") || shouldStart("redis") || shouldStart("rabbitmq")) {
+        await logStep("Phase 1: Docker Services (Postgres, Redis, RabbitMQ)");
 
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 2: Ollama LLM Engine
-    // ═══════════════════════════════════════════════════════════
-    if (shouldStart("ollama")) {
-      await logStep("Phase 2: AI Engine (Ollama)");
+        const servicesToStart: string[] = [];
+        if (shouldStart("postgres")) servicesToStart.push("postgres");
+        if (shouldStart("redis")) servicesToStart.push("redis");
+        if (shouldStart("rabbitmq")) servicesToStart.push("rabbitmq");
 
-      const ollamaActive = await checkServiceHealth(PORTS.ollama);
-      if (ollamaActive) {
-        await logSuccess("✔ Ollama already active");
-        startedServices.push("Ollama");
-      } else {
-        await logWarning(`Ollama not active on port ${String(PORTS.ollama)}.`);
-        let started = false;
-
-        // Try macOS app first
-        if (process.platform === "darwin") {
-          try {
-            execSync("open -a Ollama", { stdio: "ignore" });
-            await logStep("Launched Ollama.app...");
-            started = true;
-          } catch { /* app not installed */ }
-        }
-
-        // Try CLI
-        if (!started && hasTool("ollama")) {
-          const ollamaProcess = spawnDetachedToLog("ollama", ["serve"], {
-            logFile: path.join(logDir, `${dateStamp}_ollama.log`),
-            pidFile,
-            pidName: "ollama",
-          });
-          await logStep(`Started ollama serve (PID ${String(ollamaProcess.pid)})`);
-          started = true;
-        }
-
-        if (started) {
-          spinner.start("Waiting for Ollama...");
-          const healthy = await waitForService(PORTS.ollama, 60);
-          spinner.stop();
-          if (healthy) {
-            await logSuccess("✔ Ollama online");
-            startedServices.push("Ollama");
+        // Check if any compose service names differ (handle both naming conventions)
+        const composeContent = fs.readFileSync(composeFile, "utf-8");
+        const actualServices: string[] = [];
+        for (const svc of servicesToStart) {
+          // Check for alternative names in compose file
+          if (svc === "postgres") {
+            if (composeContent.includes("db-vector:")) actualServices.push("db-vector");
+            else if (composeContent.includes("postgres:")) actualServices.push("postgres");
+            else actualServices.push(svc);
           } else {
-            await logWarning("⚠ Ollama not responding");
+            actualServices.push(svc);
+          }
+        }
+        // The local SMTP sink the notification service delivers e-mail to (inbox on :8025).
+        if (composeContent.includes("mailpit:")) actualServices.push("mailpit");
+
+        spinner.start("Launching Docker containers...");
+        try {
+          execSync(`${dockerComposeCmd} -p orazaka -f "${composeFile}" up -d ${actualServices.join(" ")}`, {
+            stdio: options.verbose ? "inherit" : "ignore",
+          });
+          spinner.stop("Docker containers launched.");
+        } catch (err) {
+          spinner.stop("Failed to launch Docker containers", 1);
+          if (!options.allowPartial) {
+            const msg = err instanceof Error ? err.message : "Unknown error";
+            await logError(`Docker error: ${msg}`);
+            process.exit(1);
+          }
+          await logWarning("Continuing with partial startup...");
+        }
+
+        // Health checks
+        spinner.start("Verifying Docker services...");
+        const dockerChecks = [
+          { port: PORTS.postgres, name: "PostgreSQL", service: "postgres" as ServiceName },
+          { port: PORTS.redis, name: "Redis", service: "redis" as ServiceName },
+          { port: PORTS.rabbitmq, name: "RabbitMQ", service: "rabbitmq" as ServiceName },
+        ];
+
+        for (const check of dockerChecks) {
+          if (!shouldStart(check.service)) continue;
+          const healthy = await waitForService(check.port, 30);
+          if (healthy) {
+            await logSuccess(`✔ ${check.name} healthy (port ${String(check.port)})`);
+            startedServices.push(check.name);
+          } else {
+            await logWarning(`⚠ ${check.name} not responding`);
             if (!options.allowPartial) process.exit(1);
           }
+        }
+        spinner.stop();
+
+        if (shouldStart("db-vector" as ServiceName)) {
+          await applyRolePasswords(dockerComposeCmd);
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // PHASE 2: Ollama LLM Engine
+      // ═══════════════════════════════════════════════════════════
+      if (shouldStart("ollama")) {
+        await logStep("Phase 2: AI Engine (Ollama)");
+
+        const ollamaActive = await checkServiceHealth(PORTS.ollama);
+        if (ollamaActive) {
+          await logSuccess("✔ Ollama already active");
+          startedServices.push("Ollama");
         } else {
-          await logWarning(
-            "⚠ Ollama not found.\n" +
-            `  Install: ${chalk.gray("https://ollama.ai")} or ${chalk.gray("brew install ollama")}`
-          );
-        }
-      }
+          await logWarning(`Ollama not active on port ${String(PORTS.ollama)}.`);
+          let started = false;
 
-      // Pull model if needed
-      if (hasTool("ollama") && (await checkServiceHealth(PORTS.ollama))) {
-        try {
-          const model = OLLAMA_MODEL;
-          const modelList = execSync("ollama list").toString();
-          if (!modelList.includes(model)) {
-            spinner.start(`Pulling model ${model}...`);
-            execSync(`ollama pull ${model}`, {
-              stdio: options.verbose ? "inherit" : "ignore",
+          // Try macOS app first
+          if (process.platform === "darwin") {
+            try {
+              execSync("open -a Ollama", { stdio: "ignore" });
+              await logStep("Launched Ollama.app...");
+              started = true;
+            } catch {
+              /* app not installed */
+            }
+          }
+
+          // Try CLI
+          if (!started && hasTool("ollama")) {
+            const ollamaProcess = spawnDetachedToLog("ollama", ["serve"], {
+              logFile: path.join(logDir, `${dateStamp}_ollama.log`),
+              pidFile,
+              pidName: "ollama",
             });
-            spinner.stop(`Model ${model} ready.`);
-          } else {
-            await logSuccess(`✔ Model ${model} available`);
+            await logStep(`Started ollama serve (PID ${String(ollamaProcess.pid)})`);
+            started = true;
           }
-        } catch {
-          await logWarning("Could not verify Ollama models.");
-        }
-      }
-    }
 
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 3: LocalAI Image Worker (macOS M1/M2/M3)
-    // ═══════════════════════════════════════════════════════════
-    if (shouldStart("localai")) {
-      await logStep("Phase 3: Image Generation (LocalAI)");
-
-      const imageWorkerPort = PORTS.localai;
-      const imageWorkerActive = await checkServiceHealth(imageWorkerPort);
-
-      if (imageWorkerActive) {
-        await logSuccess(`✔ Image Worker already active on port ${String(imageWorkerPort)}`);
-        startedServices.push("LocalAI");
-      } else if (process.platform === "darwin" && hasTool("local-ai")) {
-        const modelsPath = resolveModelsDir();
-
-        spinner.start("Launching LocalAI (Metal GPU on Apple Silicon)...");
-        try {
-          // LocalAI v3+/v4: the API server is started via the `run` subcommand
-          // with `--address` (the old top-level `--listen` flag no longer exists).
-          const localAiProcess = spawnDetachedToLog("local-ai", [
-            "run",
-            `--address=127.0.0.1:${String(imageWorkerPort)}`,
-            `--models-path=${modelsPath}`,
-            // LocalAI 4.x looks for its backends (piper, whisper) in ./backends relative to the
-            // directory it was started from; the CLI starts it from the workspace, where there are
-            // none, and every speech and transcription call answered "backend not found" (ADR-076).
-            `--backends-path=${path.join(modelsPath, "backends")}`,
-          ], {
-            logFile: path.join(logDir, `${dateStamp}_image-worker.log`),
-            env: { ...process.env, FORCE_CPU: "false" },
-            pidFile,
-            pidName: "image-worker",
-          });
-          spinner.stop(`LocalAI started (PID ${String(localAiProcess.pid)})`);
-
-          const healthy = await waitForService(imageWorkerPort, 45);
-          if (healthy) {
-            await logSuccess(`✔ Image Worker ready on port ${String(imageWorkerPort)}`);
-            startedServices.push("LocalAI");
+          if (started) {
+            spinner.start("Waiting for Ollama...");
+            const healthy = await waitForService(PORTS.ollama, 60);
+            spinner.stop();
+            if (healthy) {
+              await logSuccess("✔ Ollama online");
+              startedServices.push("Ollama");
+            } else {
+              await logWarning("⚠ Ollama not responding");
+              if (!options.allowPartial) process.exit(1);
+            }
           } else {
-            await logWarning("⚠ Image Worker not responding (image generation may fail)");
+            await logWarning(
+              "⚠ Ollama not found.\n" +
+                `  Install: ${chalk.gray("https://ollama.ai")} or ${chalk.gray("brew install ollama")}`,
+            );
           }
-        } catch (e) {
-          spinner.stop("Failed to start LocalAI", 1);
-          const msg = e instanceof Error ? e.message : String(e);
-          await logWarning(`⚠ LocalAI startup failed: ${msg}`);
         }
-      } else {
-        await logWarning(
-          "⚠ LocalAI not available (image generation disabled)\n" +
-          `  On macOS: ${chalk.gray("brew install localai")}\n` +
-          `  Or: ${chalk.gray("https://localai.io/docs/getting-started/")}`
-        );
-      }
-    }
 
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 3b: Image Generation Server (stable-diffusion.cpp — Metal, :8086)
-    // LocalAI (:8085) serves audio only; real image generation is the dedicated
-    // sd-server on :8086 (ai_providers.localai-image base-url). Without it, image
-    // jobs hit "connection refused" → SafeImageModel transparent-PNG fallback.
-    // ═══════════════════════════════════════════════════════════
-    if (shouldStart("image-gen")) {
-      await logStep("Phase 3b: Image Generation (stable-diffusion.cpp)");
-
-      const imageGenPort = PORTS.imageGen;
-      const imageGenActive = await checkServiceHealth(imageGenPort);
-
-      if (imageGenActive) {
-        await logSuccess(`✔ Image Gen Worker already active on port ${String(imageGenPort)}`);
-        startedServices.push("Image Gen");
-      } else {
-        // The catalogue's default image model is what this server serves — one model at a time,
-        // and never another one under its name (services/image-models.ts).
-        const modelsDir = resolveModelsDir();
-        const sdServerBin = path.join(modelsDir, "stable-diffusion.cpp", "build", "bin", "sd-server");
-        let catalogued: string | undefined;
-        try {
-          catalogued = defaultImageModel();
-        } catch {
-          catalogued = undefined;
-        }
-        const recipe = catalogued ? findImageModel(catalogued) : undefined;
-
-        if (recipe && isInstalled(recipe, modelsDir) && fs.existsSync(sdServerBin)) {
-          spinner.start(`Starting Image Gen Worker (${recipe.label}, stable-diffusion.cpp, Metal)...`);
+        // Pull model if needed
+        if (hasTool("ollama") && (await checkServiceHealth(PORTS.ollama))) {
           try {
-            const sdProcess = spawnDetachedToLog(
-              sdServerBin,
-              sdServerArgs(recipe, modelsDir, { port: imageGenPort, seed: process.env.IMAGE_GEN_SEED }),
+            const model = OLLAMA_MODEL;
+            const modelList = execSync("ollama list").toString();
+            if (!modelList.includes(model)) {
+              spinner.start(`Pulling model ${model}...`);
+              execSync(`ollama pull ${model}`, {
+                stdio: options.verbose ? "inherit" : "ignore",
+              });
+              spinner.stop(`Model ${model} ready.`);
+            } else {
+              await logSuccess(`✔ Model ${model} available`);
+            }
+          } catch {
+            await logWarning("Could not verify Ollama models.");
+          }
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // PHASE 3: LocalAI Image Worker (macOS M1/M2/M3)
+      // ═══════════════════════════════════════════════════════════
+      if (shouldStart("localai")) {
+        await logStep("Phase 3: Image Generation (LocalAI)");
+
+        const imageWorkerPort = PORTS.localai;
+        const imageWorkerActive = await checkServiceHealth(imageWorkerPort);
+
+        if (imageWorkerActive) {
+          await logSuccess(`✔ Image Worker already active on port ${String(imageWorkerPort)}`);
+          startedServices.push("LocalAI");
+        } else if (process.platform === "darwin" && hasTool("local-ai")) {
+          const modelsPath = resolveModelsDir();
+
+          spinner.start("Launching LocalAI (Metal GPU on Apple Silicon)...");
+          try {
+            // LocalAI v3+/v4: the API server is started via the `run` subcommand
+            // with `--address` (the old top-level `--listen` flag no longer exists).
+            const localAiProcess = spawnDetachedToLog(
+              "local-ai",
+              [
+                "run",
+                `--address=127.0.0.1:${String(imageWorkerPort)}`,
+                `--models-path=${modelsPath}`,
+                // LocalAI 4.x looks for its backends (piper, whisper) in ./backends relative to the
+                // directory it was started from; the CLI starts it from the workspace, where there are
+                // none, and every speech and transcription call answered "backend not found" (ADR-076).
+                `--backends-path=${path.join(modelsPath, "backends")}`,
+              ],
               {
-                logFile: path.join(logDir, `${dateStamp}_image-generation-worker.log`),
-                env: { ...process.env },
+                logFile: path.join(logDir, `${dateStamp}_image-worker.log`),
+                env: { ...process.env, FORCE_CPU: "false" },
                 pidFile,
-                pidName: "image-gen-worker",
+                pidName: "image-worker",
               },
             );
-            spinner.stop(`Image Gen Worker started (PID ${String(sdProcess.pid)})`);
+            spinner.stop(`LocalAI started (PID ${String(localAiProcess.pid)})`);
 
-            // A 4–7 GB model loads in ~10–15 s from an SSD; leave room for a cold disk cache.
-            const healthy = await waitForService(imageGenPort, 90);
+            const healthy = await waitForService(imageWorkerPort, 45);
             if (healthy) {
-              await logSuccess(`✔ Image Gen Worker ready on port ${String(imageGenPort)} — ${recipe.label}`);
-              startedServices.push("Image Gen");
+              await logSuccess(`✔ Image Worker ready on port ${String(imageWorkerPort)}`);
+              startedServices.push("LocalAI");
             } else {
-              await logWarning("⚠ Image Gen Worker not responding (image generation may fail)");
+              await logWarning("⚠ Image Worker not responding (image generation may fail)");
             }
           } catch (e) {
-            spinner.stop("Failed to start Image Gen Worker", 1);
+            spinner.stop("Failed to start LocalAI", 1);
             const msg = e instanceof Error ? e.message : String(e);
-            await logWarning(`⚠ Image Gen Worker startup failed: ${msg}`);
+            await logWarning(`⚠ LocalAI startup failed: ${msg}`);
           }
         } else {
-          const issues: string[] = [];
-          if (!catalogued) issues.push("the catalogue names no default image model (is the database up?)");
-          else if (!recipe) issues.push(`no install recipe for the catalogue's default '${catalogued}'`);
-          else if (!isInstalled(recipe, modelsDir)) issues.push(`${recipe.label} is not downloaded`);
-          if (!fs.existsSync(sdServerBin)) issues.push(`sd-server binary not found: ${sdServerBin}`);
           await logWarning(
-            `⚠ Image Gen Worker not available (${issues.join("; ")})\n` +
-            `  Setup: ${chalk.gray("orazaka models image list")} then ${chalk.gray("orazaka models image pull <id>")} ` +
-            `and ${chalk.gray("orazaka models image use <id>")}`
+            "⚠ LocalAI not available (image generation disabled)\n" +
+              `  On macOS: ${chalk.gray("brew install localai")}\n` +
+              `  Or: ${chalk.gray("https://localai.io/docs/getting-started/")}`,
           );
         }
       }
-    }
 
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 4: Media Worker (Python — orazaka-worker-media, MLX/Metal)
-    // ═══════════════════════════════════════════════════════════
-    if (shouldStart("media-worker")) {
-      await logStep("Phase 4: Media Generation Worker");
+      // ═══════════════════════════════════════════════════════════
+      // PHASE 3b: Image Generation Server (stable-diffusion.cpp — Metal, :8086)
+      // LocalAI (:8085) serves audio only; real image generation is the dedicated
+      // sd-server on :8086 (ai_providers.localai-image base-url). Without it, image
+      // jobs hit "connection refused" → SafeImageModel transparent-PNG fallback.
+      // ═══════════════════════════════════════════════════════════
+      if (shouldStart("image-gen")) {
+        await logStep("Phase 3b: Image Generation (stable-diffusion.cpp)");
 
-      const mediaWorkerPort = PORTS.mediaWorker;
-      const mediaWorkerActive = await checkServiceHealth(mediaWorkerPort);
+        const imageGenPort = PORTS.imageGen;
+        const imageGenActive = await checkServiceHealth(imageGenPort);
 
-      if (mediaWorkerActive) {
-        await logSuccess(`✔ Media Worker already active on port ${String(mediaWorkerPort)}`);
-        startedServices.push("Media Worker");
-      } else {
-        // Native Python media worker: orazaka-apps/workers/orazaka-worker-media
-        const mediaWorkerDir = path.join(workspaceRoot, "orazaka-apps", "workers", "orazaka-worker-media");
-        const mainPy = path.join(mediaWorkerDir, "app", "main.py");
-        const pythonCmd = resolveMediaWorkerPython(workspaceRoot);
-
-        if (fs.existsSync(mainPy) && pythonCmd) {
-          spinner.start("Starting Media Worker (Python)...");
+        if (imageGenActive) {
+          await logSuccess(`✔ Image Gen Worker already active on port ${String(imageGenPort)}`);
+          startedServices.push("Image Gen");
+        } else {
+          // The catalogue's default image model is what this server serves — one model at a time,
+          // and never another one under its name (services/image-models.ts).
+          const modelsDir = resolveModelsDir();
+          const sdServerBin = path.join(modelsDir, "stable-diffusion.cpp", "build", "bin", "sd-server");
+          let catalogued: string | undefined;
           try {
-            // app.consumer consumes orazaka.jobs.video AND serves the :8188 HTTP
-            // pipeline in-process (Phase 3b); the port comes from MEDIA_WORKER_PORT.
-            const mediaProcess = spawnDetachedToLog(pythonCmd, ["-u", "-m", "app.consumer"], {
-              logFile: path.join(logDir, `${dateStamp}_media-worker.log`),
-              env: {
-                ...process.env,
-                PYTHONPATH: mediaWorkerDir,
-              },
-              pidFile,
-              pidName: "media-worker",
-            });
-            spinner.stop(`Media Worker started (PID ${String(mediaProcess.pid)})`);
+            catalogued = defaultImageModel();
+          } catch {
+            catalogued = undefined;
+          }
+          const recipe = catalogued ? findImageModel(catalogued) : undefined;
 
-            const healthy = await waitForService(mediaWorkerPort, 30);
-            if (healthy) {
-              await logSuccess(`✔ Media Worker ready on port ${String(mediaWorkerPort)}`);
-              startedServices.push("Media Worker");
-            } else {
-              await logWarning("⚠ Media Worker not responding");
+          if (recipe && isInstalled(recipe, modelsDir) && fs.existsSync(sdServerBin)) {
+            spinner.start(`Starting Image Gen Worker (${recipe.label}, stable-diffusion.cpp, Metal)...`);
+            try {
+              const sdProcess = spawnDetachedToLog(
+                sdServerBin,
+                sdServerArgs(recipe, modelsDir, { port: imageGenPort, seed: process.env.IMAGE_GEN_SEED }),
+                {
+                  logFile: path.join(logDir, `${dateStamp}_image-generation-worker.log`),
+                  env: { ...process.env },
+                  pidFile,
+                  pidName: "image-gen-worker",
+                },
+              );
+              spinner.stop(`Image Gen Worker started (PID ${String(sdProcess.pid)})`);
+
+              // A 4–7 GB model loads in ~10–15 s from an SSD; leave room for a cold disk cache.
+              const healthy = await waitForService(imageGenPort, 90);
+              if (healthy) {
+                await logSuccess(`✔ Image Gen Worker ready on port ${String(imageGenPort)} — ${recipe.label}`);
+                startedServices.push("Image Gen");
+              } else {
+                await logWarning("⚠ Image Gen Worker not responding (image generation may fail)");
+              }
+            } catch (e) {
+              spinner.stop("Failed to start Image Gen Worker", 1);
+              const msg = e instanceof Error ? e.message : String(e);
+              await logWarning(`⚠ Image Gen Worker startup failed: ${msg}`);
             }
-          } catch (e) {
-            spinner.stop("Failed to start Media Worker", 1);
-            const msg = e instanceof Error ? e.message : String(e);
-            await logWarning(`⚠ Media Worker startup failed: ${msg}`);
-          }
-        } else {
-          const issues: string[] = [];
-          if (!fs.existsSync(mainPy)) issues.push("main.py not found at expected path");
-          if (!pythonCmd) issues.push("Python 3 not found");
-          await logWarning(
-            `⚠ Media Worker not available (${issues.join(", ")})\n` +
-            `  Setup: ${chalk.gray("npx orazaka install")} to configure the media worker environment`
-          );
-        }
-      }
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 5: Router + UI (full mode only)
-    // ═══════════════════════════════════════════════════════════
-    if (mode === "full" && !onlyService) {
-      // Router (Spring Boot ingress app — RouterApplication)
-      if (shouldStart("router")) {
-        await logStep("Phase 5a: Starting Router (Spring Boot)...");
-        const routerTargetDir = path.join(workspaceRoot, "orazaka-apps", "services", "orazaka-conversation-service", "target");
-        const routerJarName = fs.existsSync(routerTargetDir)
-          ? fs.readdirSync(routerTargetDir)
-              .find((f: string) => f.endsWith(".jar") && !f.endsWith("-sources.jar"))
-          : undefined;
-        const routerJar = path.join(routerTargetDir, routerJarName ?? "orazaka-conversation-service.jar");
-
-        if (fs.existsSync(routerJar)) {
-          spawnDetachedToLog("java", ["-jar", routerJar], {
-            logFile: path.join(logDir, `${dateStamp}_router.log`),
-            pidFile,
-            pidName: "router",
-          });
-
-          const healthy = await waitForService(PORTS.router, 60);
-          if (healthy) {
-            await logSuccess(`✔ Router ready on port ${String(PORTS.router)}`);
-            startedServices.push("Router");
           } else {
-            await logWarning("⚠ Router did not start in time");
+            const issues: string[] = [];
+            if (!catalogued) issues.push("the catalogue names no default image model (is the database up?)");
+            else if (!recipe) issues.push(`no install recipe for the catalogue's default '${catalogued}'`);
+            else if (!isInstalled(recipe, modelsDir)) issues.push(`${recipe.label} is not downloaded`);
+            if (!fs.existsSync(sdServerBin)) issues.push(`sd-server binary not found: ${sdServerBin}`);
+            await logWarning(
+              `⚠ Image Gen Worker not available (${issues.join("; ")})\n` +
+                `  Setup: ${chalk.gray("orazaka models image list")} then ${chalk.gray("orazaka models image pull <id>")} ` +
+                `and ${chalk.gray("orazaka models image use <id>")}`,
+            );
           }
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // PHASE 4: Media Worker (Python — orazaka-worker-media, MLX/Metal)
+      // ═══════════════════════════════════════════════════════════
+      if (shouldStart("media-worker")) {
+        await logStep("Phase 4: Media Generation Worker");
+
+        const mediaWorkerPort = PORTS.mediaWorker;
+        const mediaWorkerActive = await checkServiceHealth(mediaWorkerPort);
+
+        if (mediaWorkerActive) {
+          await logSuccess(`✔ Media Worker already active on port ${String(mediaWorkerPort)}`);
+          startedServices.push("Media Worker");
         } else {
-          await logWarning(
-            "⚠ Router JAR not found. Build first:\n" +
-            `  ${chalk.gray("./mvnw clean package -pl orazaka-apps/services/orazaka-conversation-service -am -DskipTests")}`
+          // Native Python media worker: orazaka-apps/workers/orazaka-worker-media
+          const mediaWorkerDir = path.join(workspaceRoot, "orazaka-apps", "workers", "orazaka-worker-media");
+          const mainPy = path.join(mediaWorkerDir, "app", "main.py");
+          const pythonCmd = resolveMediaWorkerPython(workspaceRoot);
+
+          if (fs.existsSync(mainPy) && pythonCmd) {
+            spinner.start("Starting Media Worker (Python)...");
+            try {
+              // app.consumer consumes orazaka.jobs.video AND serves the :8188 HTTP
+              // pipeline in-process (Phase 3b); the port comes from MEDIA_WORKER_PORT.
+              const mediaProcess = spawnDetachedToLog(pythonCmd, ["-u", "-m", "app.consumer"], {
+                logFile: path.join(logDir, `${dateStamp}_media-worker.log`),
+                env: {
+                  ...process.env,
+                  PYTHONPATH: mediaWorkerDir,
+                },
+                pidFile,
+                pidName: "media-worker",
+              });
+              spinner.stop(`Media Worker started (PID ${String(mediaProcess.pid)})`);
+
+              const healthy = await waitForService(mediaWorkerPort, 30);
+              if (healthy) {
+                await logSuccess(`✔ Media Worker ready on port ${String(mediaWorkerPort)}`);
+                startedServices.push("Media Worker");
+              } else {
+                await logWarning("⚠ Media Worker not responding");
+              }
+            } catch (e) {
+              spinner.stop("Failed to start Media Worker", 1);
+              const msg = e instanceof Error ? e.message : String(e);
+              await logWarning(`⚠ Media Worker startup failed: ${msg}`);
+            }
+          } else {
+            const issues: string[] = [];
+            if (!fs.existsSync(mainPy)) issues.push("main.py not found at expected path");
+            if (!pythonCmd) issues.push("Python 3 not found");
+            await logWarning(
+              `⚠ Media Worker not available (${issues.join(", ")})\n` +
+                `  Setup: ${chalk.gray("npx orazaka install")} to configure the media worker environment`,
+            );
+          }
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // PHASE 5: Router + UI (full mode only)
+      // ═══════════════════════════════════════════════════════════
+      if (mode === "full" && !onlyService) {
+        // Router (Spring Boot ingress app — RouterApplication)
+        if (shouldStart("router")) {
+          await logStep("Phase 5a: Starting Router (Spring Boot)...");
+          const routerTargetDir = path.join(
+            workspaceRoot,
+            "orazaka-apps",
+            "services",
+            "orazaka-conversation-service",
+            "target",
           );
+          const routerJarName = fs.existsSync(routerTargetDir)
+            ? fs.readdirSync(routerTargetDir).find((f: string) => f.endsWith(".jar") && !f.endsWith("-sources.jar"))
+            : undefined;
+          const routerJar = path.join(routerTargetDir, routerJarName ?? "orazaka-conversation-service.jar");
+
+          if (fs.existsSync(routerJar)) {
+            spawnDetachedToLog("java", ["-jar", routerJar], {
+              logFile: path.join(logDir, `${dateStamp}_router.log`),
+              pidFile,
+              pidName: "router",
+            });
+
+            const healthy = await waitForService(PORTS.router, 60);
+            if (healthy) {
+              await logSuccess(`✔ Router ready on port ${String(PORTS.router)}`);
+              startedServices.push("Router");
+            } else {
+              await logWarning("⚠ Router did not start in time");
+            }
+          } else {
+            await logWarning(
+              "⚠ Router JAR not found. Build first:\n" +
+                `  ${chalk.gray("./mvnw clean package -pl orazaka-apps/services/orazaka-conversation-service -am -DskipTests")}`,
+            );
+          }
+        }
+
+        // UI
+        if (shouldStart("ui")) {
+          await logStep("Phase 5b: Starting Next.js UI...");
+          const uiDir = path.join(workspaceRoot, "orazaka-apps", "ui");
+          if (fs.existsSync(uiDir)) {
+            const uiProcess = spawnDetachedToLog("npm", ["run", "dev"], {
+              cwd: uiDir,
+              logFile: path.join(logDir, `${dateStamp}_ui.log`),
+              pidFile,
+              pidName: "ui",
+            });
+            await logSuccess(`✔ UI started on port ${String(PORTS.web)} (PID ${String(uiProcess.pid)})`);
+            startedServices.push("Next.js UI");
+          } else {
+            await logWarning("⚠ UI directory not found");
+          }
         }
       }
 
-      // UI
-      if (shouldStart("ui")) {
-        await logStep("Phase 5b: Starting Next.js UI...");
-        const uiDir = path.join(workspaceRoot, "orazaka-apps", "ui");
-        if (fs.existsSync(uiDir)) {
-          const uiProcess = spawnDetachedToLog("npm", ["run", "dev"], {
-            cwd: uiDir,
-            logFile: path.join(logDir, `${dateStamp}_ui.log`),
-            pidFile,
-            pidName: "ui",
-          });
-          await logSuccess(`✔ UI started on port ${String(PORTS.web)} (PID ${String(uiProcess.pid)})`);
-          startedServices.push("Next.js UI");
-        } else {
-          await logWarning("⚠ UI directory not found");
-        }
+      // ═══════════════════════════════════════════════════════════
+      // SUMMARY
+      // ═══════════════════════════════════════════════════════════
+      const summaryLines = [
+        `${chalk.green("✔")} Services: ${startedServices.length > 0 ? startedServices.join(", ") : chalk.yellow("none")}`,
+        `${chalk.yellow("📍")} Logs: ${chalk.cyan(path.relative(workspaceRoot, logDir))}`,
+        `${chalk.yellow("📋")} PIDs: ${chalk.cyan(path.relative(workspaceRoot, pidFile))}`,
+      ];
+
+      if (mode === "dev") {
+        summaryLines.push(
+          "",
+          `${chalk.cyan.bold("Dev mode — infra + AI engines are up. Now run the apps:")}`,
+          `  ${chalk.white("→")} ${chalk.cyan("All apps at once")}: ${chalk.gray("npx orazaka dev")} ${chalk.dim("(spawns Router + Web + Mobile)")}`,
+          `  ${chalk.white("→")} ${chalk.cyan("Router in IDE")}: Run/Debug ${chalk.yellow("RouterApplication")} in IntelliJ, then ${chalk.gray("npx orazaka dev --skip-router")}`,
+          "",
+          `${chalk.gray("Tip:")} Use ${chalk.cyan("npx orazaka logs")} to tail all service logs`,
+          `${chalk.gray("Tip:")} Use ${chalk.cyan("npx orazaka status")} to check service health`,
+        );
       }
-    }
 
-    // ═══════════════════════════════════════════════════════════
-    // SUMMARY
-    // ═══════════════════════════════════════════════════════════
-    const summaryLines = [
-      `${chalk.green("✔")} Services: ${startedServices.length > 0 ? startedServices.join(", ") : chalk.yellow("none")}`,
-      `${chalk.yellow("📍")} Logs: ${chalk.cyan(path.relative(workspaceRoot, logDir))}`,
-      `${chalk.yellow("📋")} PIDs: ${chalk.cyan(path.relative(workspaceRoot, pidFile))}`,
-    ];
-
-    if (mode === "dev") {
-      summaryLines.push(
-        "",
-        `${chalk.cyan.bold("Dev mode — infra + AI engines are up. Now run the apps:")}`,
-        `  ${chalk.white("→")} ${chalk.cyan("All apps at once")}: ${chalk.gray("npx orazaka dev")} ${chalk.dim("(spawns Router + Web + Mobile)")}`,
-        `  ${chalk.white("→")} ${chalk.cyan("Router in IDE")}: Run/Debug ${chalk.yellow("RouterApplication")} in IntelliJ, then ${chalk.gray("npx orazaka dev --skip-router")}`,
-        "",
-        `${chalk.gray("Tip:")} Use ${chalk.cyan("npx orazaka logs")} to tail all service logs`,
-        `${chalk.gray("Tip:")} Use ${chalk.cyan("npx orazaka status")} to check service health`,
+      await note(
+        summaryLines.join("\n"),
+        mode === "dev" ? "🛠  Dev Infrastructure Ready" : "🚀 Full Infrastructure Ready",
       );
-    }
 
-    await note(summaryLines.join("\n"), mode === "dev" ? "🛠  Dev Infrastructure Ready" : "🚀 Full Infrastructure Ready");
+      // Tail logs if requested
+      if (options.logs) {
+        await logInfo("Tailing logs (Ctrl+C to stop)...\n");
+        try {
+          const logFiles = fs
+            .readdirSync(logDir)
+            .filter((f: string) => f.startsWith(dateStamp))
+            .map((f: string) => path.join(logDir, f));
 
-    // Tail logs if requested
-    if (options.logs) {
-      await logInfo("Tailing logs (Ctrl+C to stop)...\n");
-      try {
-        const logFiles = fs.readdirSync(logDir)
-          .filter((f: string) => f.startsWith(dateStamp))
-          .map((f: string) => path.join(logDir, f));
-
-        if (logFiles.length > 0) {
-          const tail = spawn("tail", ["-f", ...logFiles], {
-            stdio: "inherit",
-          });
-          await new Promise<void>((resolve) => {
-            tail.on("exit", () => resolve());
-          });
+          if (logFiles.length > 0) {
+            const tail = spawn("tail", ["-f", ...logFiles], {
+              stdio: "inherit",
+            });
+            await new Promise<void>((resolve) => {
+              tail.on("exit", () => resolve());
+            });
+          }
+        } catch {
+          /* ignore */
         }
-      } catch { /* ignore */ }
-    }
+      }
 
-    await outro(chalk.cyan(mode === "dev"
-      ? "Dev infrastructure ready! Run `npx orazaka dev` (or start RouterApplication in IntelliJ) 🚀"
-      : `Full infrastructure ready! Open http://localhost:${String(PORTS.web)} 🚀`
-    ));
-  });
-
+      await outro(
+        chalk.cyan(
+          mode === "dev"
+            ? "Dev infrastructure ready! Run `npx orazaka dev` (or start RouterApplication in IntelliJ) 🚀"
+            : `Full infrastructure ready! Open http://localhost:${String(PORTS.web)} 🚀`,
+        ),
+      );
+    },
+  );
 
 /**
  * Sets each context role's password from the environment.

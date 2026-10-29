@@ -26,18 +26,26 @@ describe("startWhenFree", () => {
 
   test("a platform restarting (5xx) is waited for too", async () => {
     let calls = 0;
-    const run = await startWhenFree(async () => {
-      calls += 1;
-      if (calls === 1) throw new Error("Internal Server Error");
-      return "run-2";
-    }, async () => undefined, 60_000, 10);
+    const run = await startWhenFree(
+      async () => {
+        calls += 1;
+        if (calls === 1) throw new Error("Internal Server Error");
+        return "run-2";
+      },
+      async () => undefined,
+      60_000,
+      10,
+    );
     expect(run).toBe("run-2");
   });
 
   test("any other refusal is thrown at once", async () => {
-    const failing = startWhenFree(async () => {
-      throw new Error("No such studio: x");
-    }, async () => undefined);
+    const failing = startWhenFree(
+      async () => {
+        throw new Error("No such studio: x");
+      },
+      async () => undefined,
+    );
     await expect(failing).rejects.toThrow("No such studio");
   });
 });
@@ -51,9 +59,13 @@ describe("isAssetId", () => {
 
 describe("the measured estimate", () => {
   test("every step the director runs has a measured time, and a shot costs GPU", () => {
-    const measured = require("../services/cinema-estimate.json") as { measured: string; steps: Record<string, { seconds: number; gpuUsd: number }> };
+    const measured = require("../services/cinema-estimate.json") as {
+      measured: string;
+      steps: Record<string, { seconds: number; gpuUsd: number }>;
+    };
     expect(measured.measured).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    for (const step of ["script", "keyframe", "video", "cut", "voice", "sound"]) expect(measured.steps[step]).toBeDefined();
+    for (const step of ["script", "keyframe", "video", "cut", "voice", "sound"])
+      expect(measured.steps[step]).toBeDefined();
     expect(measured.steps.video.seconds).toBeGreaterThan(0);
     expect(measured.steps.video.gpuUsd).toBeGreaterThan(0);
   });

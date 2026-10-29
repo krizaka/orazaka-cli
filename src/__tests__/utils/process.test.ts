@@ -34,11 +34,7 @@ describe("spawnDetachedToLog", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orazaka-spawn-"));
     const logFile = path.join(dir, "worker.log");
 
-    const child = spawnDetachedToLog(
-      process.execPath,
-      ["-e", "process.stdout.write('hello-spawn')"],
-      { logFile },
-    );
+    const child = spawnDetachedToLog(process.execPath, ["-e", "process.stdout.write('hello-spawn')"], { logFile });
     expect(child).toBeDefined();
 
     await new Promise((r) => setTimeout(r, 700));

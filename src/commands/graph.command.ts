@@ -30,9 +30,7 @@ export const graphCommand = new Command("graph")
         items.push("No active capabilities returned by the engine.");
       } else {
         for (const node of visibleNodes) {
-          const stateTag = node.state.type === "ACTIVE"
-            ? chalk.green("● ACTIVE ")
-            : chalk.red("○ LOCKED ");
+          const stateTag = node.state.type === "ACTIVE" ? chalk.green("● ACTIVE ") : chalk.red("○ LOCKED ");
 
           items.push(`${stateTag} ${chalk.bold(node.id)}`);
 
@@ -40,7 +38,6 @@ export const graphCommand = new Command("graph")
             const reasonText = chalk.gray(`Reason: ${node.state.reason}`);
             items.push(`           ${reasonText}`);
           }
-
         }
       }
 

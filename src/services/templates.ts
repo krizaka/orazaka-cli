@@ -70,12 +70,7 @@ export function scanWorkspaceStructure(workspaceRoot: string): {
  * Safely writes a file, creating directories as needed.
  * Returns a GeneratedFile descriptor.
  */
-function writeFile(
-  filePath: string,
-  content: string,
-  workspaceRoot: string,
-  description: string,
-): GeneratedFile {
+function writeFile(filePath: string, content: string, workspaceRoot: string, description: string): GeneratedFile {
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -104,10 +99,7 @@ function writeFile(
 // 1. Interceptor Template
 // ═══════════════════════════════════════════════════════════════
 
-export function generateInterceptor(
-  ctx: TemplateContext,
-  workspaceRoot: string,
-): GenerationResult {
+export function generateInterceptor(ctx: TemplateContext, workspaceRoot: string): GenerationResult {
   const name = pascalCase(ctx.moduleName);
   const kebab = kebabCase(ctx.moduleName);
   const pkg = kebab.replace(/-/g, "");
@@ -120,9 +112,10 @@ export function generateInterceptor(
   const srcTest = path.join(moduleDir, "src", "test", "java", "com", "orazaka", "interceptor", pkg);
 
   // pom.xml
-  files.push(writeFile(
-    path.join(moduleDir, "pom.xml"),
-    `<?xml version="1.0" encoding="UTF-8"?>
+  files.push(
+    writeFile(
+      path.join(moduleDir, "pom.xml"),
+      `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -179,14 +172,16 @@ export function generateInterceptor(
 
 </project>
 `,
-    workspaceRoot,
-    "Maven module definition",
-  ));
+      workspaceRoot,
+      "Maven module definition",
+    ),
+  );
 
   // Interceptor implementation
-  files.push(writeFile(
-    path.join(srcMain, `${name}Interceptor.java`),
-    `package com.krizaka.orazaka.interceptor.${pkg};
+  files.push(
+    writeFile(
+      path.join(srcMain, `${name}Interceptor.java`),
+      `package com.krizaka.orazaka.interceptor.${pkg};
 
 import com.krizaka.orazaka.core.application.interceptor.PromptContextInterceptor;
 import org.slf4j.Logger;
@@ -231,14 +226,16 @@ public final class ${name}Interceptor implements PromptContextInterceptor {
     }
 }
 `,
-    workspaceRoot,
-    "Interceptor implementation (PromptContextInterceptor SPI)",
-  ));
+      workspaceRoot,
+      "Interceptor implementation (PromptContextInterceptor SPI)",
+    ),
+  );
 
   // Auto-configuration
-  files.push(writeFile(
-    path.join(srcMain, `${name}AutoConfiguration.java`),
-    `package com.krizaka.orazaka.interceptor.${pkg};
+  files.push(
+    writeFile(
+      path.join(srcMain, `${name}AutoConfiguration.java`),
+      `package com.krizaka.orazaka.interceptor.${pkg};
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -260,23 +257,27 @@ public class ${name}AutoConfiguration {
     }
 }
 `,
-    workspaceRoot,
-    "Spring Boot auto-configuration (SPI registration)",
-  ));
+      workspaceRoot,
+      "Spring Boot auto-configuration (SPI registration)",
+    ),
+  );
 
   // META-INF/spring.factories or spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
   const importsDir = path.join(moduleDir, "src", "main", "resources", "META-INF", "spring");
-  files.push(writeFile(
-    path.join(importsDir, "org.springframework.boot.autoconfigure.AutoConfiguration.imports"),
-    `com.krizaka.orazaka.interceptor.${pkg}.${name}AutoConfiguration\n`,
-    workspaceRoot,
-    "Spring Boot auto-configuration SPI import",
-  ));
+  files.push(
+    writeFile(
+      path.join(importsDir, "org.springframework.boot.autoconfigure.AutoConfiguration.imports"),
+      `com.krizaka.orazaka.interceptor.${pkg}.${name}AutoConfiguration\n`,
+      workspaceRoot,
+      "Spring Boot auto-configuration SPI import",
+    ),
+  );
 
   // Test
-  files.push(writeFile(
-    path.join(srcTest, `${name}InterceptorTest.java`),
-    `package com.krizaka.orazaka.interceptor.${pkg};
+  files.push(
+    writeFile(
+      path.join(srcTest, `${name}InterceptorTest.java`),
+      `package com.krizaka.orazaka.interceptor.${pkg};
 
 import org.junit.jupiter.api.Test;
 
@@ -300,9 +301,10 @@ class ${name}InterceptorTest {
     }
 }
 `,
-    workspaceRoot,
-    "Unit test for interceptor",
-  ));
+      workspaceRoot,
+      "Unit test for interceptor",
+    ),
+  );
 
   return {
     files,
@@ -319,26 +321,38 @@ class ${name}InterceptorTest {
 // 2. Business Feature (full-stack: service + controller + hook)
 // ═══════════════════════════════════════════════════════════════
 
-export function generateBusinessFeature(
-  ctx: TemplateContext,
-  workspaceRoot: string,
-): GenerationResult {
+export function generateBusinessFeature(ctx: TemplateContext, workspaceRoot: string): GenerationResult {
   const name = pascalCase(ctx.moduleName);
   const camel = camelCase(ctx.moduleName);
   const kebab = kebabCase(ctx.moduleName);
   const files: GeneratedFile[] = [];
 
   const struct = scanWorkspaceStructure(workspaceRoot);
-  const coreSrc = path.join(struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
-    "src", "main", "java", "com", "orazaka", "core");
-  const conversationSrc = path.join(struct.conversationDir ?? path.join(workspaceRoot, "orazaka-apps", "services", "orazaka-conversation-service"),
-    "src", "main", "java", "com", "orazaka", "router");
+  const coreSrc = path.join(
+    struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
+    "src",
+    "main",
+    "java",
+    "com",
+    "orazaka",
+    "core",
+  );
+  const conversationSrc = path.join(
+    struct.conversationDir ?? path.join(workspaceRoot, "orazaka-apps", "services", "orazaka-conversation-service"),
+    "src",
+    "main",
+    "java",
+    "com",
+    "orazaka",
+    "router",
+  );
   const uiDir = struct.uiDir ?? path.join(workspaceRoot, "orazaka-apps", "ui");
 
   // Service interface (core)
-  files.push(writeFile(
-    path.join(coreSrc, "application", "service", `${name}Service.java`),
-    `package com.krizaka.orazaka.core.application.service;
+  files.push(
+    writeFile(
+      path.join(coreSrc, "application", "service", `${name}Service.java`),
+      `package com.krizaka.orazaka.core.application.service;
 
 /**
  * ${name}Service: ${ctx.description}
@@ -357,14 +371,16 @@ public interface ${name}Service {
     String execute(String userId, String input);
 }
 `,
-    workspaceRoot,
-    "Service interface (orazaka-core)",
-  ));
+      workspaceRoot,
+      "Service interface (orazaka-core)",
+    ),
+  );
 
   // Service implementation (core)
-  files.push(writeFile(
-    path.join(coreSrc, "application", "service", `${name}ServiceImpl.java`),
-    `package com.krizaka.orazaka.core.application.service;
+  files.push(
+    writeFile(
+      path.join(coreSrc, "application", "service", `${name}ServiceImpl.java`),
+      `package com.krizaka.orazaka.core.application.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -389,14 +405,16 @@ final class ${name}ServiceImpl implements ${name}Service {
     }
 }
 `,
-    workspaceRoot,
-    "Service implementation (package-private, orazaka-core)",
-  ));
+      workspaceRoot,
+      "Service implementation (package-private, orazaka-core)",
+    ),
+  );
 
   // REST controller (gateway)
-  files.push(writeFile(
-    path.join(conversationSrc, "infrastructure", "adapter", "rest", `${name}Controller.java`),
-    `package com.krizaka.orazaka.conversationservice.infrastructure.adapter.rest;
+  files.push(
+    writeFile(
+      path.join(conversationSrc, "infrastructure", "adapter", "rest", `${name}Controller.java`),
+      `package com.krizaka.orazaka.conversationservice.infrastructure.adapter.rest;
 
 import com.krizaka.orazaka.core.application.service.${name}Service;
 import org.springframework.web.bind.annotation.*;
@@ -429,15 +447,17 @@ public final class ${name}Controller {
     }
 }
 `,
-    workspaceRoot,
-    "REST controller (orazaka-conversation-service/adapter/rest/)",
-  ));
+      workspaceRoot,
+      "REST controller (orazaka-conversation-service/adapter/rest/)",
+    ),
+  );
 
   // React hook (UI)
   const hookName = `use${name}`;
-  files.push(writeFile(
-    path.join(uiDir, "src", "hooks", `${hookName}.ts`),
-    `import { useState, useCallback } from "react";
+  files.push(
+    writeFile(
+      path.join(uiDir, "src", "hooks", `${hookName}.ts`),
+      `import { useState, useCallback } from "react";
 
 /**
  * ${hookName}: Client hook for ${ctx.description}
@@ -477,14 +497,16 @@ export function ${hookName}() {
   return { execute, loading, error, data };
 }
 `,
-    workspaceRoot,
-    `React hook (orazaka-ui/src/hooks/${hookName}.ts)`,
-  ));
+      workspaceRoot,
+      `React hook (orazaka-ui/src/hooks/${hookName}.ts)`,
+    ),
+  );
 
   // Next.js server action (BFF proxy)
-  files.push(writeFile(
-    path.join(uiDir, "src", "app", "api", kebab, "execute", "route.ts"),
-    `import { NextRequest, NextResponse } from "next/server";
+  files.push(
+    writeFile(
+      path.join(uiDir, "src", "app", "api", kebab, "execute", "route.ts"),
+      `import { NextRequest, NextResponse } from "next/server";
 
 /**
  * BFF proxy for ${ctx.description}.
@@ -521,9 +543,10 @@ export async function POST(request: NextRequest) {
   }
 }
 `,
-    workspaceRoot,
-    "Next.js API route (BFF proxy — browser never hits Gateway directly)",
-  ));
+      workspaceRoot,
+      "Next.js API route (BFF proxy — browser never hits Gateway directly)",
+    ),
+  );
 
   return {
     files,
@@ -540,22 +563,27 @@ export async function POST(request: NextRequest) {
 // 3. Technical Feature (infra-level: config + properties)
 // ═══════════════════════════════════════════════════════════════
 
-export function generateTechnicalFeature(
-  ctx: TemplateContext,
-  workspaceRoot: string,
-): GenerationResult {
+export function generateTechnicalFeature(ctx: TemplateContext, workspaceRoot: string): GenerationResult {
   const name = pascalCase(ctx.moduleName);
   const kebab = kebabCase(ctx.moduleName);
   const files: GeneratedFile[] = [];
 
   const struct = scanWorkspaceStructure(workspaceRoot);
-  const coreSrc = path.join(struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
-    "src", "main", "java", "com", "orazaka", "core");
+  const coreSrc = path.join(
+    struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
+    "src",
+    "main",
+    "java",
+    "com",
+    "orazaka",
+    "core",
+  );
 
   // Properties record
-  files.push(writeFile(
-    path.join(coreSrc, "infrastructure", "config", `${name}Properties.java`),
-    `package com.krizaka.orazaka.core.infrastructure.config;
+  files.push(
+    writeFile(
+      path.join(coreSrc, "infrastructure", "config", `${name}Properties.java`),
+      `package com.krizaka.orazaka.core.infrastructure.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -583,14 +611,16 @@ public record ${name}Properties(
     }
 }
 `,
-    workspaceRoot,
-    "Configuration properties record (self-validating)",
-  ));
+      workspaceRoot,
+      "Configuration properties record (self-validating)",
+    ),
+  );
 
   // Configuration class
-  files.push(writeFile(
-    path.join(coreSrc, "infrastructure", "config", `${name}Configuration.java`),
-    `package com.krizaka.orazaka.core.infrastructure.config;
+  files.push(
+    writeFile(
+      path.join(coreSrc, "infrastructure", "config", `${name}Configuration.java`),
+      `package com.krizaka.orazaka.core.infrastructure.config;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -605,15 +635,27 @@ import org.springframework.context.annotation.Configuration;
 public class ${name}Configuration {
 }
 `,
-    workspaceRoot,
-    "Spring configuration class",
-  ));
+      workspaceRoot,
+      "Spring configuration class",
+    ),
+  );
 
   // Test
-  files.push(writeFile(
-    path.join(struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
-      "src", "test", "java", "com", "orazaka", "core", "infrastructure", "config", `${name}PropertiesTest.java`),
-    `package com.krizaka.orazaka.core.infrastructure.config;
+  files.push(
+    writeFile(
+      path.join(
+        struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
+        "src",
+        "test",
+        "java",
+        "com",
+        "orazaka",
+        "core",
+        "infrastructure",
+        "config",
+        `${name}PropertiesTest.java`,
+      ),
+      `package com.krizaka.orazaka.core.infrastructure.config;
 
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -636,9 +678,10 @@ class ${name}PropertiesTest {
     }
 }
 `,
-    workspaceRoot,
-    "Properties validation test",
-  ));
+      workspaceRoot,
+      "Properties validation test",
+    ),
+  );
 
   return {
     files,
@@ -654,22 +697,27 @@ class ${name}PropertiesTest {
 // 4. External API Connector
 // ═══════════════════════════════════════════════════════════════
 
-export function generateApiConnector(
-  ctx: TemplateContext,
-  workspaceRoot: string,
-): GenerationResult {
+export function generateApiConnector(ctx: TemplateContext, workspaceRoot: string): GenerationResult {
   const name = pascalCase(ctx.moduleName);
   const kebab = kebabCase(ctx.moduleName);
   const files: GeneratedFile[] = [];
 
   const struct = scanWorkspaceStructure(workspaceRoot);
-  const coreSrc = path.join(struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
-    "src", "main", "java", "com", "orazaka", "core");
+  const coreSrc = path.join(
+    struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
+    "src",
+    "main",
+    "java",
+    "com",
+    "orazaka",
+    "core",
+  );
 
   // Client interface (port)
-  files.push(writeFile(
-    path.join(coreSrc, "domain", "port", `${name}Client.java`),
-    `package com.krizaka.orazaka.core.domain.port;
+  files.push(
+    writeFile(
+      path.join(coreSrc, "domain", "port", `${name}Client.java`),
+      `package com.krizaka.orazaka.core.domain.port;
 
 /**
  * ${name}Client: Outbound port for ${ctx.description}.
@@ -697,14 +745,16 @@ public interface ${name}Client {
     boolean isHealthy();
 }
 `,
-    workspaceRoot,
-    "Client interface (outbound port)",
-  ));
+      workspaceRoot,
+      "Client interface (outbound port)",
+    ),
+  );
 
   // RestClient implementation
-  files.push(writeFile(
-    path.join(coreSrc, "infrastructure", "adapter", "client", `${name}RestClient.java`),
-    `package com.krizaka.orazaka.core.infrastructure.adapter.client;
+  files.push(
+    writeFile(
+      path.join(coreSrc, "infrastructure", "adapter", "client", `${name}RestClient.java`),
+      `package com.krizaka.orazaka.core.infrastructure.adapter.client;
 
 import com.krizaka.orazaka.core.domain.port.${name}Client;
 import com.krizaka.orazaka.core.infrastructure.config.${name}ConnectorProperties;
@@ -757,14 +807,16 @@ final class ${name}RestClient implements ${name}Client {
     }
 }
 `,
-    workspaceRoot,
-    "RestClient adapter (ERR-120 compliant)",
-  ));
+      workspaceRoot,
+      "RestClient adapter (ERR-120 compliant)",
+    ),
+  );
 
   // Properties
-  files.push(writeFile(
-    path.join(coreSrc, "infrastructure", "config", `${name}ConnectorProperties.java`),
-    `package com.krizaka.orazaka.core.infrastructure.config;
+  files.push(
+    writeFile(
+      path.join(coreSrc, "infrastructure", "config", `${name}ConnectorProperties.java`),
+      `package com.krizaka.orazaka.core.infrastructure.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -787,15 +839,28 @@ public record ${name}ConnectorProperties(
     }
 }
 `,
-    workspaceRoot,
-    "Connector configuration properties",
-  ));
+      workspaceRoot,
+      "Connector configuration properties",
+    ),
+  );
 
   // Test
-  files.push(writeFile(
-    path.join(struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
-      "src", "test", "java", "com", "orazaka", "core", "infrastructure", "adapter", "client", `${name}RestClientTest.java`),
-    `package com.krizaka.orazaka.core.infrastructure.adapter.client;
+  files.push(
+    writeFile(
+      path.join(
+        struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
+        "src",
+        "test",
+        "java",
+        "com",
+        "orazaka",
+        "core",
+        "infrastructure",
+        "adapter",
+        "client",
+        `${name}RestClientTest.java`,
+      ),
+      `package com.krizaka.orazaka.core.infrastructure.adapter.client;
 
 import com.krizaka.orazaka.core.infrastructure.config.${name}ConnectorProperties;
 import org.junit.jupiter.api.Test;
@@ -811,9 +876,10 @@ class ${name}RestClientTest {
     }
 }
 `,
-    workspaceRoot,
-    "RestClient unit test",
-  ));
+      workspaceRoot,
+      "RestClient unit test",
+    ),
+  );
 
   return {
     files,
@@ -830,10 +896,7 @@ class ${name}RestClientTest {
 // 5. Configuration / Env Var Module
 // ═══════════════════════════════════════════════════════════════
 
-export function generateConfiguration(
-  ctx: TemplateContext,
-  workspaceRoot: string,
-): GenerationResult {
+export function generateConfiguration(ctx: TemplateContext, workspaceRoot: string): GenerationResult {
   const name = pascalCase(ctx.moduleName);
   const kebab = kebabCase(ctx.moduleName);
   const envPrefix = kebab.toUpperCase().replace(/-/g, "_");

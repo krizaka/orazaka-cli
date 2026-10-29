@@ -48,7 +48,12 @@ export function getToolVersion(tool: string): string {
     };
 
     const cmd = versionFlags[tool] ?? `${tool} --version`;
-    return execSync(cmd, { stdio: ["pipe", "pipe", "pipe"] }).toString().trim().split("\n")[0] ?? "Installed";
+    return (
+      execSync(cmd, { stdio: ["pipe", "pipe", "pipe"] })
+        .toString()
+        .trim()
+        .split("\n")[0] ?? "Installed"
+    );
   } catch {
     return "Installed";
   }
@@ -329,7 +334,8 @@ export const DB_ROLES = {
 export const DB_ROLE_CONTEXTS = Object.keys(DB_ROLES) as (keyof typeof DB_ROLES)[];
 
 /** A value that is not a password: blank, or the template's placeholder. */
-const isPlaceholderPassword = (v: string | undefined): boolean => v === undefined || v === "" || /^CHANGE_?ME$/i.test(v);
+const isPlaceholderPassword = (v: string | undefined): boolean =>
+  v === undefined || v === "" || /^CHANGE_?ME$/i.test(v);
 
 /**
  * Gives every `<CTX>_DB_PASSWORD` a strong random value when it is missing, blank or still the template's

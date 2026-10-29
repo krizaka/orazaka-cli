@@ -5,14 +5,14 @@
  * Threads and messages are persisted to ~/.orazaka-threads/.
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import * as os from 'node:os';
-import * as crypto from 'node:crypto';
-import type { ChatThread, StoredMessage, CliConfig } from './types/local.types';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
+import * as crypto from "node:crypto";
+import type { ChatThread, StoredMessage, CliConfig } from "./types/local.types";
 
-const CONFIG_PATH = path.join(os.homedir(), '.orazaka-cli.json');
-const THREADS_DIR = path.join(os.homedir(), '.orazaka-threads');
+const CONFIG_PATH = path.join(os.homedir(), ".orazaka-cli.json");
+const THREADS_DIR = path.join(os.homedir(), ".orazaka-threads");
 
 // ── Config Persistence ───────────────────────────────────────────────────────
 
@@ -24,8 +24,8 @@ const THREADS_DIR = path.join(os.homedir(), '.orazaka-threads');
 export function loadConfig(): CliConfig | null {
   if (!fs.existsSync(CONFIG_PATH)) return null;
   try {
-    const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-    if (raw && typeof raw.token === 'string' && typeof raw.username === 'string') {
+    const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
+    if (raw && typeof raw.token === "string" && typeof raw.username === "string") {
       return {
         token: raw.token,
         username: raw.username,
@@ -45,7 +45,7 @@ export function loadConfig(): CliConfig | null {
  * @param config - The config object to write.
  */
 export function saveConfig(config: CliConfig): void {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), "utf-8");
 }
 
 /**
@@ -76,7 +76,7 @@ export function createThread(title?: string): ChatThread {
   const config = requireAuth();
   const thread: ChatThread = {
     conversationId: crypto.randomUUID(),
-    title: title || 'New Memory Block',
+    title: title || "New Memory Block",
     updatedAt: Date.now(),
   };
   const updated: CliConfig = {
@@ -151,7 +151,7 @@ export function loadMessages(threadId: string): StoredMessage[] {
   const fp = threadFilePath(threadId);
   if (!fs.existsSync(fp)) return [];
   try {
-    return JSON.parse(fs.readFileSync(fp, 'utf-8'));
+    return JSON.parse(fs.readFileSync(fp, "utf-8"));
   } catch {
     return [];
   }
@@ -167,5 +167,5 @@ export function appendMessage(threadId: string, message: StoredMessage): void {
   fs.mkdirSync(THREADS_DIR, { recursive: true });
   const messages = loadMessages(threadId);
   messages.push(message);
-  fs.writeFileSync(threadFilePath(threadId), JSON.stringify(messages, null, 2), 'utf-8');
+  fs.writeFileSync(threadFilePath(threadId), JSON.stringify(messages, null, 2), "utf-8");
 }

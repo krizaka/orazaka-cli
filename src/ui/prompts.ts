@@ -5,10 +5,7 @@
  * Exposes a rich set of interactive primitives for premium CLI UX.
  */
 
-type ClackPrompts = typeof import(
-  "@clack/prompts",
-  { with: { "resolution-mode": "import" } }
-);
+type ClackPrompts = typeof import("@clack/prompts", { with: { "resolution-mode": "import" } });
 
 let cache: ClackPrompts | null = null;
 let loader: () => Promise<ClackPrompts> = () => import("@clack/prompts");

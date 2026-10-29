@@ -43,12 +43,20 @@ async function seed(opts: { fresh?: boolean; runs?: boolean; withVideo?: boolean
   }
 }
 
-export const demoCommand = new Command("demo").description("Demonstration persona on the local stack (never on a deployed one)");
+export const demoCommand = new Command("demo").description(
+  "Demonstration persona on the local stack (never on a deployed one)",
+);
 
 demoCommand
   .command("seed")
   .description("Create or refresh Eric, the demo persona: account, onboarding, plan, packs and Studios (replayable)")
   .option("--fresh", "Delete Eric's conversations first, for a demo that starts from a clean history")
-  .option("--runs", "Also run Eric's demo work on this stack: a product photo, a voice-over, a prospect dossier, a lease check, an invoice check")
-  .option("--with-video", "With --runs, also generate a few seconds of video (loads a video model: one heavy job, never by default)")
+  .option(
+    "--runs",
+    "Also run Eric's demo work on this stack: a product photo, a voice-over, a prospect dossier, a lease check, an invoice check",
+  )
+  .option(
+    "--with-video",
+    "With --runs, also generate a few seconds of video (loads a video model: one heavy job, never by default)",
+  )
   .action(seed);

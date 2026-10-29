@@ -15,15 +15,9 @@ import * as http from "node:http";
 import * as https from "node:https";
 import { requireAuth, saveConfig } from "../threads";
 import { SettingsApi } from "../services/settings.api";
-import { ROUTER_URL } from '../utils/config';
+import { ROUTER_URL } from "../utils/config";
 import { createSpinner } from "../ui/prompts";
-import {
-  insertJob,
-  updateJobStatus,
-  getUnsyncedJobs,
-  markJobSynced,
-  getDb,
-} from "../services/local-store";
+import { insertJob, updateJobStatus, getUnsyncedJobs, markJobSynced, getDb } from "../services/local-store";
 
 let isReconnecting = false;
 let reconnectTimer: NodeJS.Timeout | null = null;
@@ -46,7 +40,7 @@ async function postJobReport(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "X-User-Id": userId,
       },
       body: JSON.stringify({
@@ -63,9 +57,7 @@ async function postJobReport(
       return true;
     } else {
       console.warn(
-        chalk.yellow(
-          `⚠️  Failed to sync report for job ${jobId}. Status: ${response.status}. Retrying later.`,
-        ),
+        chalk.yellow(`⚠️  Failed to sync report for job ${jobId}. Status: ${response.status}. Retrying later.`),
       );
       return false;
     }
@@ -117,11 +109,7 @@ function handleSseEvent(eventStr: string, userId: string, token: string): void {
         payload: Record<string, unknown>;
       };
 
-      console.log(
-        chalk.cyan(
-          `\n📥 Received automation job payload: [Job ID: ${data.jobId}] [Action: ${data.action}]`,
-        ),
-      );
+      console.log(chalk.cyan(`\n📥 Received automation job payload: [Job ID: ${data.jobId}] [Action: ${data.action}]`));
 
       // Recorded in the local SQLite queue (so the refusal is reported even after a disconnection), never executed.
       insertJob(data.jobId, data.payload, "REFUSED");
@@ -158,8 +146,8 @@ function listenToAgentStream(userId: string, token: string): void {
     method: "GET",
     headers: {
       "X-User-Id": userId,
-      "Authorization": `Bearer ${token}`,
-      "Accept": "text/event-stream",
+      Authorization: `Bearer ${token}`,
+      Accept: "text/event-stream",
     },
   };
 
@@ -235,51 +223,47 @@ function startHeartbeatSync(userId: string, token: string): void {
   }, 15000);
 }
 
-export const agentCommand = new Command("agent")
-  .description("Manage Orazaka local executing agent")
-  .addCommand(
-    new Command("listen")
-      .description("Start CLI agent listener and reverse tunnel")
-      .action(async () => {
-        const config = requireAuth();
-        let userId = config.userId;
+export const agentCommand = new Command("agent").description("Manage Orazaka local executing agent").addCommand(
+  new Command("listen").description("Start CLI agent listener and reverse tunnel").action(async () => {
+    const config = requireAuth();
+    let userId = config.userId;
 
-        if (!userId) {
-          const s = await createSpinner();
-          s.start("Fetching user profile ID to configure CLI Agent...");
-          try {
-            const me = await SettingsApi.getMe();
-            userId = me.id;
-            saveConfig({
-              ...config,
-              userId,
-            });
-            s.stop("User ID retrieved and configured.");
-          } catch (err: unknown) {
-            s.stop("Failed to retrieve user ID", 1);
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error(chalk.red(`Error: ${msg}`));
-            process.exit(1);
-          }
-        }
-
-        // Initialize local SQLite table
-        getDb();
-
-        console.log(chalk.cyan("🥷 Starting Orazaka Local Agent Listener..."));
-        console.log(chalk.gray(`Gateway: ${ROUTER_URL}`));
-        console.log(chalk.gray(`User ID: ${userId}`));
-
-        // Connect and start polling heartbeat sync
-        listenToAgentStream(userId, config.token);
-        startHeartbeatSync(userId, config.token);
-
-        // Keep process alive
-        process.on("SIGINT", () => {
-          console.log(chalk.yellow("\nStopping Agent Listener..."));
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          if (heartbeatTimer) clearInterval(heartbeatTimer);
-          process.exit(0);
+    if (!userId) {
+      const s = await createSpinner();
+      s.start("Fetching user profile ID to configure CLI Agent...");
+      try {
+        const me = await SettingsApi.getMe();
+        userId = me.id;
+        saveConfig({
+          ...config,
+          userId,
         });
-      }),
-  );
+        s.stop("User ID retrieved and configured.");
+      } catch (err: unknown) {
+        s.stop("Failed to retrieve user ID", 1);
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(chalk.red(`Error: ${msg}`));
+        process.exit(1);
+      }
+    }
+
+    // Initialize local SQLite table
+    getDb();
+
+    console.log(chalk.cyan("🥷 Starting Orazaka Local Agent Listener..."));
+    console.log(chalk.gray(`Gateway: ${ROUTER_URL}`));
+    console.log(chalk.gray(`User ID: ${userId}`));
+
+    // Connect and start polling heartbeat sync
+    listenToAgentStream(userId, config.token);
+    startHeartbeatSync(userId, config.token);
+
+    // Keep process alive
+    process.on("SIGINT", () => {
+      console.log(chalk.yellow("\nStopping Agent Listener..."));
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      process.exit(0);
+    });
+  }),
+);

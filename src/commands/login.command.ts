@@ -3,14 +3,14 @@ import { intro, outro, text, password, createSpinner, isCancel } from "../ui/pro
 import chalk from "chalk";
 import { AuthApi } from "../services/auth.api";
 import { saveConfig } from "../threads";
-import * as crypto from 'node:crypto';
+import * as crypto from "node:crypto";
 
 async function promptEmail(emailArg?: string): Promise<string> {
   if (emailArg) return emailArg;
   const emailInput = await text({
     message: "Enter your email:",
     placeholder: "username@orazaka.com",
-    validate: (val) => val.includes("@") ? undefined : "Invalid email address",
+    validate: (val) => (val.includes("@") ? undefined : "Invalid email address"),
   });
   if (isCancel(emailInput)) {
     throw new Error("CANCELLED");

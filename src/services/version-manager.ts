@@ -105,13 +105,10 @@ export class VersionManager {
    */
   private async fetchLatestVersion(): Promise<string | null> {
     try {
-      const result = execSync(
-        `npm view ${PACKAGE_NAME} version --json 2>/dev/null || echo null`,
-        {
-          timeout: 3000,
-          encoding: "utf-8",
-        }
-      ).trim();
+      const result = execSync(`npm view ${PACKAGE_NAME} version --json 2>/dev/null || echo null`, {
+        timeout: 3000,
+        encoding: "utf-8",
+      }).trim();
 
       if (result === "null" || !result) {
         return null;
@@ -211,78 +208,45 @@ export class VersionManager {
 
     if (versionInfo.isCritical) {
       // Critical update: Red box
+      lines.push(chalk.red.bold("╭──────────────────────────────────────────────────────────────╮"));
       lines.push(
-        chalk.red.bold(
-          "╭──────────────────────────────────────────────────────────────╮"
-        )
+        chalk.red.bold("│") +
+          chalk.red("  ⚠️  CRITICAL UPDATE AVAILABLE                              ") +
+          chalk.red.bold("│"),
       );
       lines.push(
         chalk.red.bold("│") +
-          chalk.red(
-            "  ⚠️  CRITICAL UPDATE AVAILABLE                              "
-          ) +
-          chalk.red.bold("│")
+          chalk.red(`  Your version: ${versionInfo.current.padEnd(8)} Latest: ${versionInfo.latest} `) +
+          chalk.red.bold("│"),
       );
       lines.push(
         chalk.red.bold("│") +
-          chalk.red(
-            `  Your version: ${versionInfo.current.padEnd(8)} Latest: ${versionInfo.latest} `
-          ) +
-          chalk.red.bold("│")
+          chalk.red("                                                              ") +
+          chalk.red.bold("│"),
       );
       lines.push(
         chalk.red.bold("│") +
-          chalk.red(
-            "                                                              "
-          ) +
-          chalk.red.bold("│")
+          chalk.red("  Update immediately to get critical fixes and features:    ") +
+          chalk.red.bold("│"),
       );
       lines.push(
-        chalk.red.bold("│") +
-          chalk.red(
-            "  Update immediately to get critical fixes and features:    "
-          ) +
-          chalk.red.bold("│")
+        chalk.red.bold("│") + chalk.red(`  $ npm install -g ${PACKAGE_NAME}@latest`.padEnd(62)) + chalk.red.bold("│"),
       );
-      lines.push(
-        chalk.red.bold("│") +
-          chalk.red(`  $ npm install -g ${PACKAGE_NAME}@latest`.padEnd(62)) +
-          chalk.red.bold("│")
-      );
-      lines.push(
-        chalk.red.bold(
-          "╰──────────────────────────────────────────────────────────────╯"
-        )
-      );
+      lines.push(chalk.red.bold("╰──────────────────────────────────────────────────────────────╯"));
     } else {
       // Regular update: Yellow box
+      lines.push(chalk.yellow("╭──────────────────────────────────────────────────────────────╮"));
       lines.push(
-        chalk.yellow(
-          "╭──────────────────────────────────────────────────────────────╮"
-        )
+        chalk.yellow("│") +
+          chalk.yellow("  📦 New version available: " + versionInfo.latest.padEnd(35) + " ") +
+          chalk.yellow("│"),
       );
       lines.push(
         chalk.yellow("│") +
-          chalk.yellow(
-            "  📦 New version available: " +
-              versionInfo.latest.padEnd(35) +
-              " "
-          ) +
-          chalk.yellow("│")
+          chalk.yellow(`  Run: $ npm install -g ${PACKAGE_NAME}@${versionInfo.latest}`.padEnd(62) + " ") +
+          chalk.yellow("│"),
       );
-      lines.push(
-        chalk.yellow("│") +
-          chalk.yellow(
-            `  Run: $ npm install -g ${PACKAGE_NAME}@${versionInfo.latest}`.padEnd(62) +
-              " "
-          ) +
-          chalk.yellow("│")
-      );
-      lines.push(
-        chalk.yellow(
-          "╰──────────────────────────────────────────────────────────────╯"
-        )
-      );
+      lines.push(chalk.yellow("╰──────────────────────────────────────────────────────────────╯"));
     }
 
     lines.push("");

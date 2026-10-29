@@ -22,7 +22,10 @@ describe("TableFormatter.render", () => {
   test("renders a table with header and rows", () => {
     TableFormatter.render(
       ["Name", "Age"],
-      [["Alice", "30"], ["Bob", "25"]],
+      [
+        ["Alice", "30"],
+        ["Bob", "25"],
+      ],
       { colWidths: [15, 10] },
     );
 
@@ -41,11 +44,7 @@ describe("TableFormatter.render", () => {
   });
 
   test("uses custom head color", () => {
-    TableFormatter.render(
-      ["Status"],
-      [["OK"]],
-      { headColor: "green", colWidths: [15] },
-    );
+    TableFormatter.render(["Status"], [["OK"]], { headColor: "green", colWidths: [15] });
 
     expect(consoleSpy).toHaveBeenCalledTimes(1);
     const output = consoleSpy.mock.calls[0][0] as string;
@@ -53,11 +52,7 @@ describe("TableFormatter.render", () => {
   });
 
   test("accepts custom column widths", () => {
-    TableFormatter.render(
-      ["ID", "Value"],
-      [["1", "Test"]],
-      { colWidths: [10, 30] },
-    );
+    TableFormatter.render(["ID", "Value"], [["1", "Test"]], { colWidths: [10, 30] });
 
     expect(consoleSpy).toHaveBeenCalledTimes(1);
     const output = consoleSpy.mock.calls[0][0] as string;
@@ -66,11 +61,7 @@ describe("TableFormatter.render", () => {
   });
 
   test("uses cyan as default head color", () => {
-    TableFormatter.render(
-      ["Default"],
-      [["row"]],
-      { colWidths: [15] },
-    );
+    TableFormatter.render(["Default"], [["row"]], { colWidths: [15] });
 
     expect(consoleSpy).toHaveBeenCalledTimes(1);
     const output = consoleSpy.mock.calls[0][0] as string;

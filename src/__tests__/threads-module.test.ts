@@ -3,9 +3,9 @@
  * @description Tests for threads.ts module functions using fs mocks.
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import * as os from 'node:os';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 
 // ── Mock fs for isolated config/thread testing ───────────────────────────────
 
@@ -80,9 +80,7 @@ describe("loadConfig", () => {
 
   test("generates activeThreadId when missing from config", () => {
     mockFs.existsSync.mockReturnValue(true);
-    mockFs.readFileSync.mockReturnValue(
-      JSON.stringify({ token: "t", username: "u", threads: [] }),
-    );
+    mockFs.readFileSync.mockReturnValue(JSON.stringify({ token: "t", username: "u", threads: [] }));
 
     const result = loadConfig();
     expect(result).not.toBeNull();
@@ -156,9 +154,7 @@ describe("loadMessages", () => {
   test("returns parsed messages from file", () => {
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        { role: "user", content: "hi", kind: "text", timestamp: 1000 },
-      ]),
+      JSON.stringify([{ role: "user", content: "hi", kind: "text", timestamp: 1000 }]),
     );
 
     const msgs = loadMessages("thread-123");
@@ -183,10 +179,7 @@ describe("appendMessage", () => {
     const msg = { role: "user" as const, content: "test", kind: "text" as const, timestamp: Date.now() };
     appendMessage("thread-1", msg);
 
-    expect(mockFs.mkdirSync).toHaveBeenCalledWith(
-      path.join("/mock/home", ".orazaka-threads"),
-      { recursive: true },
-    );
+    expect(mockFs.mkdirSync).toHaveBeenCalledWith(path.join("/mock/home", ".orazaka-threads"), { recursive: true });
     expect(mockFs.writeFileSync).toHaveBeenCalled();
   });
 });
@@ -209,9 +202,7 @@ describe("updateThreadTitle", () => {
     updateThreadTitle("t1", "New Title");
 
     expect(mockFs.writeFileSync).toHaveBeenCalled();
-    const written = JSON.parse(
-      (mockFs.writeFileSync as jest.Mock).mock.calls[0][1] as string,
-    );
+    const written = JSON.parse((mockFs.writeFileSync as jest.Mock).mock.calls[0][1] as string);
     expect(written.threads[0].title).toBe("New Title");
     expect(written.threads[1].title).toBe("Untouched");
   });
@@ -356,9 +347,7 @@ describe("switchThread", () => {
     switchThread("t1");
 
     expect(mockFs.writeFileSync).toHaveBeenCalled();
-    const written = JSON.parse(
-      (mockFs.writeFileSync as jest.Mock).mock.calls[0][1] as string,
-    );
+    const written = JSON.parse((mockFs.writeFileSync as jest.Mock).mock.calls[0][1] as string);
     expect(written.activeThreadId).toBe("t1");
   });
 

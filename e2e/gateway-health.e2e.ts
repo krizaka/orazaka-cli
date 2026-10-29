@@ -14,8 +14,7 @@ import * as path from "node:path";
  *   (Injected by Maven frontend-maven-plugin from .env)
  */
 
-const ROUTER_URL =
-  process.env.GATEWAY_TARGET_URL ?? "http://localhost:8080";
+const ROUTER_URL = process.env.GATEWAY_TARGET_URL ?? "http://localhost:8080";
 
 describe("Tier 2 — CLI Gateway Integration", () => {
   it("should reach gateway /actuator/health and receive UP status", async () => {
@@ -63,4 +62,3 @@ describe("Tier 2 — CLI Gateway Integration", () => {
     expect(result.stdout).toContain("Login successful");
   });
 });
-

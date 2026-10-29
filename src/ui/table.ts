@@ -15,11 +15,7 @@ export const TableFormatter = {
   /**
    * Formats and prints a structured ASCII table to console.
    */
-  render: (
-    head: string[],
-    rows: string[][],
-    options: TableOptions = {},
-  ): void => {
+  render: (head: string[], rows: string[][], options: TableOptions = {}): void => {
     const headColorChalk = chalk[options.headColor || "cyan"].bold;
     const styledHead = head.map((h) => headColorChalk(h));
 

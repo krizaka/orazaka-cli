@@ -19,7 +19,7 @@ async function promptEmail(emailArg?: string): Promise<string> {
   if (emailArg) return emailArg;
   const emailInput = await text({
     message: "Enter Email:",
-    validate: (val) => val.includes("@") ? undefined : "Invalid email address",
+    validate: (val) => (val.includes("@") ? undefined : "Invalid email address"),
   });
   if (isCancel(emailInput)) {
     throw new Error("CANCELLED");
@@ -41,7 +41,7 @@ async function promptPassword(): Promise<string> {
 async function promptConfirmPassword(pwdInput: string): Promise<string> {
   const pwdConfirm = await password({
     message: "Confirm Password:",
-    validate: (val) => val === pwdInput ? undefined : "Passwords do not match",
+    validate: (val) => (val === pwdInput ? undefined : "Passwords do not match"),
   });
   if (isCancel(pwdConfirm)) {
     throw new Error("CANCELLED");

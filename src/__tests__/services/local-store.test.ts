@@ -20,14 +20,7 @@ jest.mock("node:os", () => {
   };
 });
 
-import {
-  getDb,
-  closeDb,
-  insertJob,
-  updateJobStatus,
-  getUnsyncedJobs,
-  markJobSynced,
-} from "../../services/local-store";
+import { getDb, closeDb, insertJob, updateJobStatus, getUnsyncedJobs, markJobSynced } from "../../services/local-store";
 
 describe("local-store persistence engine", () => {
   beforeEach(() => {
@@ -61,9 +54,7 @@ describe("local-store persistence engine", () => {
     expect(db).toBeDefined();
 
     // Verify schema table existence
-    const stmt = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='orazaka_local_jobs'",
-    );
+    const stmt = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='orazaka_local_jobs'");
     const row = stmt.get() as { name: string } | undefined;
     expect(row).toBeDefined();
     expect(row?.name).toBe("orazaka_local_jobs");
@@ -86,9 +77,7 @@ describe("local-store persistence engine", () => {
     expect(unsynced.length).toBe(0);
 
     const db = getDb();
-    const stmt = db.prepare(
-      "SELECT * FROM orazaka_local_jobs WHERE job_id = ?",
-    );
+    const stmt = db.prepare("SELECT * FROM orazaka_local_jobs WHERE job_id = ?");
     const row = stmt.get(jobId) as
       | {
           job_id: string;
@@ -124,9 +113,7 @@ describe("local-store persistence engine", () => {
     insertJob(jobId, { cmd: "test" });
 
     const db = getDb();
-    const stmt = db.prepare(
-      "SELECT user_approval_state FROM orazaka_local_jobs WHERE job_id = ?",
-    );
+    const stmt = db.prepare("SELECT user_approval_state FROM orazaka_local_jobs WHERE job_id = ?");
     const row = stmt.get(jobId) as { user_approval_state: string };
     expect(row.user_approval_state).toBe("APPROVED");
   });
@@ -212,9 +199,7 @@ describe("local-store persistence engine", () => {
     expect(unsyncedIds).not.toContain("j-pending");
     expect(unsyncedIds).not.toContain("j-completed-synced");
 
-    const completedJob = unsynced.find(
-      (j) => j.jobId === "j-completed-unsynced",
-    );
+    const completedJob = unsynced.find((j) => j.jobId === "j-completed-unsynced");
     expect(completedJob?.status).toBe("COMPLETED");
     expect(completedJob?.executionLogs).toBe("log-success");
     expect(completedJob?.retryCount).toBe(0);

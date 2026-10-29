@@ -57,7 +57,9 @@ export function detectDockerCompose(): {
       const version = getToolVersion("docker-compose");
       return { available: true, command: "docker-compose", version };
     }
-  } catch { /* docker-compose standalone not available */ }
+  } catch {
+    /* docker-compose standalone not available */
+  }
 
   try {
     if (hasTool("docker")) {
@@ -65,7 +67,9 @@ export function detectDockerCompose(): {
       const version = getToolVersion("docker");
       return { available: true, command: "docker compose", version };
     }
-  } catch { /* docker compose plugin not available */ }
+  } catch {
+    /* docker compose plugin not available */
+  }
 
   return { available: false, command: null, version: null };
 }
@@ -117,7 +121,9 @@ export async function runDiagnostics(): Promise<DiagnosticReport> {
         ],
       });
     }
-  } catch { /* version parse failed, skip check */ }
+  } catch {
+    /* version parse failed, skip check */
+  }
 
   // 2. Check Docker availability
   const dockerStatus = detectDockerCompose();
@@ -156,10 +162,7 @@ export async function runDiagnostics(): Promise<DiagnosticReport> {
         severity: "warning",
         title: "Java version may not be compatible",
         description: `Found: ${javaVersion}. Orazaka requires Java 21+.`,
-        suggestions: [
-          "Install Java 21+: https://adoptium.net",
-          "Set JAVA_HOME to the Java 21 installation",
-        ],
+        suggestions: ["Install Java 21+: https://adoptium.net", "Set JAVA_HOME to the Java 21 installation"],
       });
     }
   }
@@ -201,10 +204,7 @@ export async function runDiagnostics(): Promise<DiagnosticReport> {
       severity: "warning",
       title: "Git not found",
       description: "Git is recommended for version control.",
-      suggestions: [
-        "Install Git from https://git-scm.com",
-        "On macOS: brew install git",
-      ],
+      suggestions: ["Install Git from https://git-scm.com", "On macOS: brew install git"],
     });
   }
 
@@ -216,7 +216,8 @@ export async function runDiagnostics(): Promise<DiagnosticReport> {
         code: "LOCALAI_MISSING_M1",
         severity: "warning",
         title: "LocalAI not found (Image generation unavailable)",
-        description: "On macOS M1/M2/M3, LocalAI is recommended for GPU-accelerated image generation. Image synthesis will fail without it.",
+        description:
+          "On macOS M1/M2/M3, LocalAI is recommended for GPU-accelerated image generation. Image synthesis will fail without it.",
         suggestions: [
           "Install LocalAI: https://localai.io/docs/getting-started/",
           "On macOS: brew install localai",
@@ -256,10 +257,7 @@ export async function runDiagnostics(): Promise<DiagnosticReport> {
       severity: "warning",
       title: ".env file not found",
       description: "No environment configuration found.",
-      suggestions: [
-        "Run: npx orazaka init",
-        "Or manually create a .env file with required variables",
-      ],
+      suggestions: ["Run: npx orazaka init", "Or manually create a .env file with required variables"],
       autoFixable: true,
     });
   }
@@ -272,10 +270,7 @@ export async function runDiagnostics(): Promise<DiagnosticReport> {
       severity: "warning",
       title: "docker-compose.yml not found",
       description: "Docker Compose configuration is missing.",
-      suggestions: [
-        "Run: npx orazaka init",
-        "Or restore the file from version control",
-      ],
+      suggestions: ["Run: npx orazaka init", "Or restore the file from version control"],
       autoFixable: true,
     });
   }

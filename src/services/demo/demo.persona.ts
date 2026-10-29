@@ -83,28 +83,41 @@ export interface DemoRun {
 export const DEMO_RUNS: readonly DemoRun[] = [
   {
     studioKey: "image-generation",
-    inputs: { prompt: "Studio product photo of a hand-glazed ceramic table lamp, warm amber glow, dark slate plinth, deep ink-blue background, soft rim light" },
+    inputs: {
+      prompt:
+        "Studio product photo of a hand-glazed ceramic table lamp, warm amber glow, dark slate plinth, deep ink-blue background, soft rim light",
+    },
   },
   {
     studioKey: "speech-synthesis",
-    inputs: { text: "Meet Ember, our new table lamp. Shaped by hand in Montréal, glazed in amber, and lit to make an evening feel like home." },
+    inputs: {
+      text: "Meet Ember, our new table lamp. Shaped by hand in Montréal, glazed in amber, and lit to make an evening feel like home.",
+    },
   },
   {
     studioKey: "lead-research",
     inputs: {
-      prospects: ["Maison Lumière, concept store, Montréal", "Auberge des Érables, boutique hotel, Québec City", "Atelier Nord, interior architects, Toronto"],
+      prospects: [
+        "Maison Lumière, concept store, Montréal",
+        "Auberge des Érables, boutique hotel, Québec City",
+        "Atelier Nord, interior architects, Toronto",
+      ],
       offer: "Hand-glazed ceramic lamps made to order, delivered in four weeks",
       icp: "Boutique hotels and interior architects furnishing 10 to 60 rooms",
     },
   },
   { studioKey: "compliance-check", inputs: { document: DEMO_LEASE, jurisdiction: "FR" } },
-  { studioKey: "document-authenticity", inputs: () => ({ documentBase64: demoInvoicePdf().toString("base64"), expectedIssuer: "Emaux & Terres" }) },
+  {
+    studioKey: "document-authenticity",
+    inputs: () => ({ documentBase64: demoInvoicePdf().toString("base64"), expectedIssuer: "Emaux & Terres" }),
+  },
   {
     studioKey: "video-generation",
     // The text-to-video pipeline by name: the catalogue's default video model is an image-to-video one, which starts
     // from a still and refuses this machine's memory without it.
     inputs: {
-      prompt: "Slow orbit around a glowing amber ceramic table lamp on a dark slate plinth, soft light, ink-blue background",
+      prompt:
+        "Slow orbit around a glowing amber ceramic table lamp on a dark slate plinth, soft light, ink-blue background",
       durationSeconds: 4,
       model: "ByteDance/AnimateDiff-Lightning",
     },

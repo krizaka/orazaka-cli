@@ -8,13 +8,7 @@ import { Command } from "commander";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import chalk from "chalk";
-import {
-  intro,
-  outro,
-  logWarning,
-  logInfo,
-  note,
-} from "../ui/prompts";
+import { intro, outro, logWarning, logInfo, note } from "../ui/prompts";
 import { resolveLogDir, resolveWorkspaceRoot } from "../ui/platform";
 
 /** Color map for service log prefixes. */
@@ -57,12 +51,7 @@ export const logsCommand = new Command("logs")
   .option("--list", "List all available log files with sizes")
   .option("--since <duration>", "Show logs from last N hours (e.g., 1h, 30m)", "24h")
   .option("--tail <lines>", "Number of lines to show from end of file", "50")
-  .action(async (options: {
-    service?: string;
-    list?: boolean;
-    since?: string;
-    tail?: string;
-  }) => {
+  .action(async (options: { service?: string; list?: boolean; since?: string; tail?: string }) => {
     const logDir = resolveLogDir();
     const workspaceRoot = resolveWorkspaceRoot();
 
@@ -70,13 +59,14 @@ export const logsCommand = new Command("logs")
       await intro(chalk.cyan.bold("🥷 Orazaka Logs"));
       await logWarning(
         `Log directory not found: ${chalk.gray(path.relative(workspaceRoot, logDir))}\n` +
-        `  Run ${chalk.cyan("npx orazaka start")} first to generate logs.`
+          `  Run ${chalk.cyan("npx orazaka start")} first to generate logs.`,
       );
       await outro("No logs available.");
       return;
     }
 
-    const allFiles = fs.readdirSync(logDir)
+    const allFiles = fs
+      .readdirSync(logDir)
       .filter((f) => f.endsWith(".log"))
       .sort()
       .reverse(); // Most recent first
@@ -106,7 +96,7 @@ export const logsCommand = new Command("logs")
         const ageStr = age < 60 ? `${String(age)}m ago` : `${Math.round(age / 60)}h ago`;
 
         lines.push(
-          `${colorFn(`[${label}]`)} ${chalk.white(file.padEnd(45))} ${chalk.gray(formatFileSize(stats.size).padStart(10))} ${chalk.gray(ageStr)}`
+          `${colorFn(`[${label}]`)} ${chalk.white(file.padEnd(45))} ${chalk.gray(formatFileSize(stats.size).padStart(10))} ${chalk.gray(ageStr)}`,
         );
       }
 
@@ -121,9 +111,7 @@ export const logsCommand = new Command("logs")
     // ─── Filter by service ──────────────────────────────────────
     let targetFiles = allFiles;
     if (options.service) {
-      targetFiles = allFiles.filter((f) =>
-        f.toLowerCase().includes(options.service!.toLowerCase())
-      );
+      targetFiles = allFiles.filter((f) => f.toLowerCase().includes(options.service!.toLowerCase()));
 
       if (targetFiles.length === 0) {
         await intro(chalk.cyan.bold("🥷 Orazaka Logs"));
@@ -171,7 +159,8 @@ export const logsCommand = new Command("logs")
     console.log("");
 
     // Show last N lines from each file
-    for (const file of targetFiles.slice(0, 5)) { // Max 5 files to avoid flooding
+    for (const file of targetFiles.slice(0, 5)) {
+      // Max 5 files to avoid flooding
       const filePath = path.join(logDir, file);
       const colorFn = getServiceColor(file);
       const label = getServiceLabel(file);
@@ -188,7 +177,9 @@ export const logsCommand = new Command("logs")
           }
           console.log("");
         }
-      } catch { /* skip unreadable files */ }
+      } catch {
+        /* skip unreadable files */
+      }
     }
 
     // Start watching for new content
@@ -228,11 +219,15 @@ export const logsCommand = new Command("logs")
               }
               filePositions.set(filePath, newStats.size);
             }
-          } catch { /* ignore read errors during watch */ }
+          } catch {
+            /* ignore read errors during watch */
+          }
         });
 
         watchers.push(watcher);
-      } catch { /* skip files that can't be watched */ }
+      } catch {
+        /* skip files that can't be watched */
+      }
     }
 
     // Keep process alive until Ctrl+C

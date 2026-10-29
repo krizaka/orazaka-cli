@@ -8,22 +8,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { execSync } from "node:child_process";
 import chalk from "chalk";
-import {
-  intro,
-  outro,
-  confirm,
-  logSuccess,
-  logWarning,
-  createSpinner,
-  note,
-  handleCancel,
-} from "../ui/prompts";
-import {
-  resolveWorkspaceRoot,
-  resolveComposeFile,
-  resolvePidFile,
-  resolveDockerComposeCmd,
-} from "../ui/platform";
+import { intro, outro, confirm, logSuccess, logWarning, createSpinner, note, handleCancel } from "../ui/prompts";
+import { resolveWorkspaceRoot, resolveComposeFile, resolvePidFile, resolveDockerComposeCmd } from "../ui/platform";
 import { ALL_PORTS } from "../utils/config";
 import { readPidFile } from "../utils/pid";
 
@@ -94,7 +80,11 @@ export const stopCommand = new Command("stop")
         if (terminateProcess(pid, name)) stoppedCount++;
       }
 
-      try { fs.unlinkSync(pidFile); } catch { /* Ignore */ }
+      try {
+        fs.unlinkSync(pidFile);
+      } catch {
+        /* Ignore */
+      }
       spinner.stop(`Terminated ${String(stoppedCount)} tracked process(es).`);
     }
 
@@ -104,7 +94,9 @@ export const stopCommand = new Command("stop")
 
       for (const port of ALL_PORTS) {
         try {
-          const pidsStr = execSync(`lsof -i :${String(port)} -t 2>/dev/null`).toString().trim();
+          const pidsStr = execSync(`lsof -i :${String(port)} -t 2>/dev/null`)
+            .toString()
+            .trim();
           if (pidsStr) {
             for (const pidStr of pidsStr.split("\n")) {
               const pid = parseInt(pidStr.trim(), 10);
@@ -112,8 +104,12 @@ export const stopCommand = new Command("stop")
 
               let procName = "";
               try {
-                procName = execSync(`ps -p ${String(pid)} -o comm= 2>/dev/null`).toString().trim();
-              } catch { /* Ignore */ }
+                procName = execSync(`ps -p ${String(pid)} -o comm= 2>/dev/null`)
+                  .toString()
+                  .trim();
+              } catch {
+                /* Ignore */
+              }
 
               // Skip Docker daemon
               if (procName.includes("Docker") || procName.includes("com.docker")) continue;
@@ -121,10 +117,14 @@ export const stopCommand = new Command("stop")
               try {
                 process.kill(pid, 9);
                 stoppedCount++;
-              } catch { /* Ignore */ }
+              } catch {
+                /* Ignore */
+              }
             }
           }
-        } catch { /* No process on port */ }
+        } catch {
+          /* No process on port */
+        }
       }
       spinner.stop("Port sweep complete.");
     }
@@ -160,7 +160,9 @@ export const stopCommand = new Command("stop")
             TRUNCATE TABLE password_resets CASCADE;
             TRUNCATE TABLE orazaka_ai_mcp_servers CASCADE;
             TRUNCATE TABLE orazaka_ai_rag_stores CASCADE;
-          `.replace(/\s+/g, " ").trim();
+          `
+            .replace(/\s+/g, " ")
+            .trim();
 
           const dbUser = process.env.SPRING_DATASOURCE_USERNAME ?? "orazaka_admin";
           const dbName = process.env.POSTGRES_DB ?? "orazaka_db";
@@ -175,9 +177,16 @@ export const stopCommand = new Command("stop")
     // ─── 3: Process pattern sweep (Unix only) ───────────────
     if (process.platform !== "win32") {
       const patterns = [
-        "ollama", "orazaka-worker-media", "orazaka-automation-worker",
-        "orazaka-worker-automation", "orazaka-workers/automation",
-        "sd-server", "stable-diffusion", "next-dev", "next-server", "orazaka-conversation-service",
+        "ollama",
+        "orazaka-worker-media",
+        "orazaka-automation-worker",
+        "orazaka-worker-automation",
+        "orazaka-workers/automation",
+        "sd-server",
+        "stable-diffusion",
+        "next-dev",
+        "next-server",
+        "orazaka-conversation-service",
       ];
 
       for (const pattern of patterns) {
@@ -187,11 +196,17 @@ export const stopCommand = new Command("stop")
             for (const pidStr of pidsStr.split("\n")) {
               const pid = parseInt(pidStr.trim(), 10);
               if (!isNaN(pid) && pid !== process.pid) {
-                try { process.kill(pid, 9); } catch { /* Ignore */ }
+                try {
+                  process.kill(pid, 9);
+                } catch {
+                  /* Ignore */
+                }
               }
             }
           }
-        } catch { /* Ignore */ }
+        } catch {
+          /* Ignore */
+        }
       }
     }
 
@@ -219,10 +234,7 @@ export const stopCommand = new Command("stop")
     // ─── 5: Clean local directories ─────────────────────────
     if (options.purge) {
       spinner.start("Cleaning local directories...");
-      const dirsToClean = [
-        path.join(workspaceRoot, "var", "orazaka-uploads"),
-        path.join(workspaceRoot, "var", "temp"),
-      ];
+      const dirsToClean = [path.join(workspaceRoot, "var", "orazaka-uploads"), path.join(workspaceRoot, "var", "temp")];
 
       for (const dir of dirsToClean) {
         if (fs.existsSync(dir)) {
@@ -250,7 +262,11 @@ export const stopCommand = new Command("stop")
       try {
         execSync("purge", { stdio: "ignore" });
       } catch {
-        try { execSync("sudo -n purge", { stdio: "ignore" }); } catch { /* Ignore */ }
+        try {
+          execSync("sudo -n purge", { stdio: "ignore" });
+        } catch {
+          /* Ignore */
+        }
       }
     }
 
@@ -264,10 +280,7 @@ export const stopCommand = new Command("stop")
       summaryLines.push(`${chalk.red("⏹")} Database data purged`);
       summaryLines.push(`${chalk.red("⏹")} Upload and temp directories cleaned`);
     }
-    summaryLines.push(
-      "",
-      `To restart: ${chalk.cyan("npx orazaka start")}`,
-    );
+    summaryLines.push("", `To restart: ${chalk.cyan("npx orazaka start")}`);
 
     await note(summaryLines.join("\n"), "Teardown Complete");
     await outro(chalk.red("All services stopped."));

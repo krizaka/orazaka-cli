@@ -62,22 +62,33 @@ export interface PlanOptions {
   readonly seed?: number;
 }
 
-function shotOf(raw: Raw, index: number, cast: ReadonlySet<string>, cues: Record<string, Raw>, language: "en" | "fr"): ScriptShot {
+function shotOf(
+  raw: Raw,
+  index: number,
+  cast: ReadonlySet<string>,
+  cues: Record<string, Raw>,
+  language: "en" | "fr",
+): ScriptShot {
   const id = index + 1;
   const where = `shot ${id}`;
   const seconds = Number(raw.seconds);
-  if (!Number.isFinite(seconds) || seconds < 1 || seconds > 5) throw new TreatmentError(`${where}: seconds must be between 1 and 5 (one clip)`);
+  if (!Number.isFinite(seconds) || seconds < 1 || seconds > 5)
+    throw new TreatmentError(`${where}: seconds must be between 1 and 5 (one clip)`);
   const characters = Array.isArray(raw.characters) ? raw.characters.map(String) : [];
-  for (const c of characters) if (!cast.has(c)) throw new TreatmentError(`${where}: character '${c}' is not in the cast`);
+  for (const c of characters)
+    if (!cast.has(c)) throw new TreatmentError(`${where}: character '${c}' is not in the cast`);
   const keyframe = str(raw.keyframe);
   const motion = str(raw.motion);
   const reuse = str(raw.reuse);
   const chainRaw = raw.chainFrom as Raw | undefined;
-  const chainFrom = chainRaw ? { shot: Number(chainRaw.shot), ...(chainRaw.at !== undefined ? { at: Number(chainRaw.at) } : {}) } : undefined;
+  const chainFrom = chainRaw
+    ? { shot: Number(chainRaw.shot), ...(chainRaw.at !== undefined ? { at: Number(chainRaw.at) } : {}) }
+    : undefined;
   if (chainFrom && !(Number.isInteger(chainFrom.shot) && chainFrom.shot >= 1 && chainFrom.shot < id)) {
     throw new TreatmentError(`${where}: chainFrom names a shot before it`);
   }
-  if (chainFrom?.at !== undefined && !(chainFrom.at >= 0 && chainFrom.at <= 5)) throw new TreatmentError(`${where}: chainFrom.at is a second (0 to 5)`);
+  if (chainFrom?.at !== undefined && !(chainFrom.at >= 0 && chainFrom.at <= 5))
+    throw new TreatmentError(`${where}: chainFrom.at is a second (0 to 5)`);
   // A kept take needs neither prompt; a shot chained from another take needs no keyframe of its own.
   if (!keyframe && !reuse && !chainFrom) throw new TreatmentError(`${where}: a keyframe prompt is required`);
   if (!motion && !reuse) throw new TreatmentError(`${where}: a motion prompt is required`);
@@ -89,10 +100,13 @@ function shotOf(raw: Raw, index: number, cast: ReadonlySet<string>, cues: Record
     throw new TreatmentError(`${where}: chainAt is a second (0 to 5) of the previous take, for a continuous shot only`);
   }
   const speed = raw.speed === undefined ? 1 : Number(raw.speed);
-  if (!Number.isFinite(speed) || speed < 0.25 || speed > 2) throw new TreatmentError(`${where}: speed must be between 0.25 and 2`);
+  if (!Number.isFinite(speed) || speed < 0.25 || speed > 2)
+    throw new TreatmentError(`${where}: speed must be between 0.25 and 2`);
   const ramp = raw.rampAt === null || raw.rampAt === undefined ? null : Number(raw.rampAt);
   if (ramp !== null && !(ramp > 0.6 && ramp < seconds - 0.6 && speed === 1)) {
-    throw new TreatmentError(`${where}: a ramp sits inside the shot (0.6 s from each end) and never with a whole-shot speed`);
+    throw new TreatmentError(
+      `${where}: a ramp sits inside the shot (0.6 s from each end) and never with a whole-shot speed`,
+    );
   }
   const cueId = str(raw.caption);
   const cue = cues[cueId];
@@ -130,13 +144,15 @@ export function parseTreatment(raw: unknown, language: "en" | "fr"): Script {
     const id = str(c?.id);
     const description = str(c?.description);
     if (!id || !description) throw new TreatmentError("every character has an id and a description");
-    if (!isCharacterId(id)) throw new TreatmentError(`character id "${id.slice(0, 60)}" is not a slug (letters, digits, - and _)`);
+    if (!isCharacterId(id))
+      throw new TreatmentError(`character id "${id.slice(0, 60)}" is not a slug (letters, digits, - and _)`);
     return { id, description, ...(str(c.reference) ? { reference: str(c.reference) } : {}) };
   });
   const cast = new Set(characters.map((c) => c.id));
   const shotsRaw = Array.isArray(t.shots) ? (t.shots as Raw[]) : [];
   if (shotsRaw.length < 2) throw new TreatmentError("a treatment has at least two shots");
-  if (shotsRaw.some((s, i) => Number(s?.id) !== i + 1)) throw new TreatmentError(`shots are numbered 1 to ${shotsRaw.length} in order`);
+  if (shotsRaw.some((s, i) => Number(s?.id) !== i + 1))
+    throw new TreatmentError(`shots are numbered 1 to ${shotsRaw.length} in order`);
   const cues = (t.cues && typeof t.cues === "object" ? t.cues : {}) as Record<string, Raw>;
   const shots = shotsRaw.map((s, i) => shotOf(s, i, cast, cues, language));
   const titles: ScriptTitle[] = (Array.isArray(t.titles) ? (t.titles as Raw[]) : []).map((x) => ({
@@ -180,7 +196,11 @@ export function planProduction(raw: unknown, options: PlanOptions): Production {
   // A kept take (`reuse`) is done from the start: its file is the take, nothing is made or paid for it.
   production.shots = script.shots.map((s) =>
     s.reuse
-      ? { id: s.id, attempt: 0, video: { runId: `reuse:${s.reuse}`, studioKey: "reuse", status: RunState.Succeeded, output: s.reuse } }
+      ? {
+          id: s.id,
+          attempt: 0,
+          video: { runId: `reuse:${s.reuse}`, studioKey: "reuse", status: RunState.Succeeded, output: s.reuse },
+        }
       : { id: s.id, attempt: 0 },
   );
   return production;
@@ -273,11 +293,27 @@ export function sheetArgs(renders: readonly string[], output: string): string[] 
   if (renders.length === 0) throw new TreatmentError("a reference sheet needs at least one render");
   const inputs = renders.flatMap((r) => ["-i", ffmpegOperand(r)]);
   const scaled = renders
-    .map((_, i) => `color=0x808080:s=512x512[g${i}];[${i}:v]scale=-1:480[s${i}];[g${i}][s${i}]overlay=(W-w)/2:(H-h)/2:shortest=1[c${i}]`)
+    .map(
+      (_, i) =>
+        `color=0x808080:s=512x512[g${i}];[${i}:v]scale=-1:480[s${i}];[g${i}][s${i}]overlay=(W-w)/2:(H-h)/2:shortest=1[c${i}]`,
+    )
     .join(";");
-  const join = renders.length > 1 ? `;${renders.map((_, i) => `[c${i}]`).join("")}hstack=inputs=${renders.length}[out]` : "";
+  const join =
+    renders.length > 1 ? `;${renders.map((_, i) => `[c${i}]`).join("")}hstack=inputs=${renders.length}[out]` : "";
   const last = renders.length > 1 ? "[out]" : "[c0]";
-  return ["-v", "error", "-y", ...inputs, "-filter_complex", `${scaled}${join}`, "-map", last, "-frames:v", "1", ffmpegOperand(output)];
+  return [
+    "-v",
+    "error",
+    "-y",
+    ...inputs,
+    "-filter_complex",
+    `${scaled}${join}`,
+    "-map",
+    last,
+    "-frames:v",
+    "1",
+    ffmpegOperand(output),
+  ];
 }
 
 /**
@@ -289,14 +325,35 @@ export function reviewArgs(take: string, sheet: string, output: string, every = 
     `[0:v]select='not(mod(n\\,${every}))',scale=320:-2,tile=6x2:padding=4[frames];` +
     // Six 320-wide frames and five 4-px gaps make a 1940-wide strip: the reference sheet sits above it, 360 high, centred.
     `[1:v]scale=-2:360,pad=1940:376:(ow-iw)/2:8:color=0x202020[ref];[ref][frames]vstack[out]`;
-  return ["-v", "error", "-y", "-i", ffmpegOperand(take), "-i", ffmpegOperand(sheet), "-filter_complex", graph, "-map", "[out]", "-frames:v", "1", ffmpegOperand(output)];
+  return [
+    "-v",
+    "error",
+    "-y",
+    "-i",
+    ffmpegOperand(take),
+    "-i",
+    ffmpegOperand(sheet),
+    "-filter_complex",
+    graph,
+    "-map",
+    "[out]",
+    "-frames:v",
+    "1",
+    ffmpegOperand(output),
+  ];
 }
 
 /**
  * Records a take a GPU host made outside the Studio (`podJobs`): the shot's video, with where the file is and how long it
  * took, so the production knows it is done and a later reshoot of it, or of the shot it is chained to, is counted (pure).
  */
-export function recordTake(production: Production, shotId: number, output: string, seconds?: number, host = "pod"): Production {
+export function recordTake(
+  production: Production,
+  shotId: number,
+  output: string,
+  seconds?: number,
+  host = "pod",
+): Production {
   const state = production.shots.find((s) => s.id === shotId);
   if (!state) throw new TreatmentError(`shot ${shotId} is not in this production`);
   const record = {

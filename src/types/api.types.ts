@@ -26,20 +26,20 @@ export interface RegisterResult {
 
 // ── Operation Graph (SDUI) ───────────────────────────────────────────────────
 
-export type NodeStateType = 'ACTIVE' | 'LOCKED' | 'INVISIBLE';
+export type NodeStateType = "ACTIVE" | "LOCKED" | "INVISIBLE";
 
 export interface ActiveNodeState {
-  readonly type: 'ACTIVE';
+  readonly type: "ACTIVE";
 }
 
 export interface LockedNodeState {
-  readonly type: 'LOCKED';
+  readonly type: "LOCKED";
   readonly reason: string;
   readonly lockedAt?: string;
 }
 
 export interface InvisibleNodeState {
-  readonly type: 'INVISIBLE';
+  readonly type: "INVISIBLE";
 }
 
 export type NodeState = ActiveNodeState | LockedNodeState | InvisibleNodeState;
@@ -67,30 +67,26 @@ export interface OperationNode {
 // ── Timeline & Rendering ─────────────────────────────────────────────────────
 
 export interface TextTimelineMessage {
-  readonly kind: 'text';
+  readonly kind: "text";
   readonly content: string;
 }
 
 export interface ImageTimelineMessage {
-  readonly kind: 'image';
+  readonly kind: "image";
   readonly content: string;
 }
 
 export interface AudioTimelineMessage {
-  readonly kind: 'audio';
+  readonly kind: "audio";
   readonly content: string;
 }
 
 export interface VideoTimelineMessage {
-  readonly kind: 'video';
+  readonly kind: "video";
   readonly content: string;
 }
 
-export type TimelineMessage =
-  | TextTimelineMessage
-  | ImageTimelineMessage
-  | AudioTimelineMessage
-  | VideoTimelineMessage;
+export type TimelineMessage = TextTimelineMessage | ImageTimelineMessage | AudioTimelineMessage | VideoTimelineMessage;
 
 // ── Capability Descriptors ───────────────────────────────────────────────────
 
@@ -99,8 +95,8 @@ export interface CapabilityDescriptor {
   readonly flag: string;
   readonly argName: string;
   readonly description: string;
-  readonly renderKind: TimelineMessage['kind'];
-  readonly responseField: 'content' | 'analysis';
+  readonly renderKind: TimelineMessage["kind"];
+  readonly responseField: "content" | "analysis";
   readonly processExtraParams?: (
     val: string,
     conversationId?: string,

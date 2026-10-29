@@ -46,9 +46,9 @@ import { demoCommand } from "./commands/demo.command";
 import { releaseCommand } from "./commands/release.command";
 
 function getVersion(): string {
-    const pkgPath = path.resolve(__dirname, "..", "package.json");
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as { version?: string };
-    return pkg?.version ?? "UNKNOWN";
+  const pkgPath = path.resolve(__dirname, "..", "package.json");
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as { version?: string };
+  return pkg?.version ?? "UNKNOWN";
 }
 
 const VERSION = getVersion();

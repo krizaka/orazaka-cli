@@ -187,18 +187,11 @@ export const initCommand = new Command("init")
   .option("-y, --yes", "Non-interactive mode with defaults")
   .option("--skip-validation", "Skip diagnostic checks")
   .option("--dir <path>", "Target directory (default: current directory)")
-  .action(async (options: {
-    force?: boolean;
-    yes?: boolean;
-    skipValidation?: boolean;
-    dir?: string;
-  }) => {
+  .action(async (options: { force?: boolean; yes?: boolean; skipValidation?: boolean; dir?: string }) => {
     await intro(chalk.cyan.bold("🥷 Orazaka Workspace Initialization"));
 
     // ─── Resolve target directory ─────────────────────────────
-    let targetDir = options.dir
-      ? path.resolve(options.dir)
-      : process.cwd();
+    let targetDir = options.dir ? path.resolve(options.dir) : process.cwd();
 
     // ─── Smart workspace detection ────────────────────────────
     const detection = detectOrazakaWorkspace(targetDir);
@@ -343,7 +336,7 @@ export const initCommand = new Command("init")
           `  ${chalk.white("4.")} ${chalk.cyan("npx orazaka dev")}            — Spawn Router + Web + Mobile`,
           `  ${chalk.white("5.")} ${chalk.gray("(or debug RouterApplication in IntelliJ + ")}${chalk.cyan("npx orazaka dev --skip-router")}${chalk.gray(")")}`,
         ].join("\n"),
-        "✨ Workspace Ready"
+        "✨ Workspace Ready",
       );
 
       await outro(chalk.green("Happy building! 🚀"));
@@ -389,8 +382,7 @@ export const initCommand = new Command("init")
 
     if (envExists && !options.force) {
       await logWarning(
-        ".env already exists. Use " + chalk.cyan("--force") + " to regenerate.\n" +
-        "  Merging missing keys only..."
+        ".env already exists. Use " + chalk.cyan("--force") + " to regenerate.\n" + "  Merging missing keys only...",
       );
       const added = mergeEnvFile(envFile, getRequiredEnvDefaults());
       if (added.length > 0) {
@@ -435,7 +427,7 @@ export const initCommand = new Command("init")
         `  ${chalk.white("2.")} ${chalk.cyan("npx orazaka doctor")}    — Run diagnostics`,
         `  ${chalk.white("3.")} ${chalk.cyan("npx orazaka start")}     — Launch infrastructure`,
       ].join("\n"),
-      "✨ Initialization Complete"
+      "✨ Initialization Complete",
     );
 
     await outro(chalk.green("Workspace ready. Happy building! 🚀"));

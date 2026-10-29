@@ -15,11 +15,7 @@ export const Box = {
   /**
    * Renders a box with a title and a list of key-value pairs or content lines.
    */
-  render: (
-    title: string,
-    content: Array<string | { key: string; value: string }>,
-    options: BoxOptions = {},
-  ): void => {
+  render: (title: string, content: Array<string | { key: string; value: string }>, options: BoxOptions = {}): void => {
     const width = options.width || 60;
     const borderChalk = chalk[options.borderColor || "cyan"];
     const titleChalk = chalk[options.titleColor || "white"].bold;

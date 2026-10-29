@@ -14,7 +14,7 @@ export default tseslint.config(
       // --- CORE SECURITY AND STRUCTURAL TYPING ---
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
-      
+
       // --- MONOREPO SYNTAX GOUVERNANCE MATRIX ---
       "no-restricted-syntax": [
         "error",
@@ -24,7 +24,7 @@ export default tseslint.config(
           message:
             "Traditional TypeScript enums are strictly banned in Orazaka. Use 'export const MyValues = [...] as const' paired with 'export type MyType = typeof MyValues[number]' to maintain pure, tree-shakable, structural Type-Safe compliance.",
         },
-        
+
         // 2. Temporal Invariant: Forbidding mutation of native Date instances
         {
           selector:
@@ -32,7 +32,7 @@ export default tseslint.config(
           message:
             "Mutating native JavaScript Date instances via set* methods is strictly forbidden in Orazaka. Use date-fns instead.",
         },
-        
+
         // 3. Naming Invariant [ERR-104]: Forbidding redundant prefixes
         {
           selector:
@@ -84,5 +84,5 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
       "no-restricted-syntax": "off", // Disable constraints within testing boundaries
     },
-  }
+  },
 );

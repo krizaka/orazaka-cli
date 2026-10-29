@@ -6,16 +6,7 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import {
-  intro,
-  outro,
-  logSuccess,
-  logError,
-  logInfo,
-  note,
-  confirm,
-  createSpinner,
-} from "../ui/prompts";
+import { intro, outro, logSuccess, logError, logInfo, note, confirm, createSpinner } from "../ui/prompts";
 import { TableFormatter } from "../ui/table";
 import { runDiagnostics, autoFixIssues, checkHttpEndpoint } from "../services/diagnostics";
 import { PORTS } from "../utils/config";
@@ -45,7 +36,7 @@ export const doctorCommand = new Command("doctor")
           `${chalk.yellow("Memory")}         ${report.systemInfo.totalMemoryGb} GB`,
           `${chalk.yellow("Node.js")}        ${report.systemInfo.nodeVersion}`,
         ].join("\n"),
-        "System Information"
+        "System Information",
       );
     }
 
@@ -61,12 +52,7 @@ export const doctorCommand = new Command("doctor")
               ? chalk.yellow("⚠")
               : chalk.blue("ℹ");
 
-        issueRows.push([
-          statusIcon,
-          chalk.gray(issue.code),
-          issue.title,
-          chalk.yellow(issue.severity),
-        ]);
+        issueRows.push([statusIcon, chalk.gray(issue.code), issue.title, chalk.yellow(issue.severity)]);
       }
 
       console.log("\n");
@@ -88,10 +74,10 @@ export const doctorCommand = new Command("doctor")
           report.issues
             .map(
               (issue) =>
-                `${chalk.bold(issue.code)}: ${issue.title}\n${issue.description}\n\nRun with ${chalk.cyan("--verbose")} to see suggestions.`
+                `${chalk.bold(issue.code)}: ${issue.title}\n${issue.description}\n\nRun with ${chalk.cyan("--verbose")} to see suggestions.`,
             )
             .join("\n\n"),
-          "Detected Issues"
+          "Detected Issues",
         );
       }
 
@@ -119,7 +105,7 @@ export const doctorCommand = new Command("doctor")
       if (report.criticalCount > 0) {
         await logError(
           `${report.criticalCount} critical issue(s) detected.\n` +
-          `Run with ${chalk.cyan("--verbose")} to see detailed suggestions.`
+            `Run with ${chalk.cyan("--verbose")} to see detailed suggestions.`,
         );
         process.exit(1);
       }

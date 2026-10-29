@@ -43,7 +43,12 @@ const CONFIG_CATEGORIES: ConfigCategory[] = [
     hint: "Router port, CORS origins, UI URL",
     keys: [
       { key: "PORT", label: "Router Port", defaultValue: "8080", hint: "HTTP port for the Spring Boot Router" },
-      { key: "GATEWAY_CORS_ALLOWED_ORIGINS", label: "CORS Origins", defaultValue: "http://localhost:3000", hint: "Comma-separated allowed origins" },
+      {
+        key: "GATEWAY_CORS_ALLOWED_ORIGINS",
+        label: "CORS Origins",
+        defaultValue: "http://localhost:3000",
+        hint: "Comma-separated allowed origins",
+      },
       { key: "UI_URL", label: "Frontend URL", defaultValue: "http://localhost:3000", hint: "Next.js UI base URL" },
     ],
   },
@@ -69,15 +74,18 @@ const CONFIG_CATEGORIES: ConfigCategory[] = [
   {
     label: "🔴 Redis",
     hint: "Cache connection URL",
-    keys: [
-      { key: "REDIS_URL", label: "Redis URL", defaultValue: "redis://localhost:6379" },
-    ],
+    keys: [{ key: "REDIS_URL", label: "Redis URL", defaultValue: "redis://localhost:6379" }],
   },
   {
     label: "🤖 AI Provider",
     hint: "Ollama settings, default models",
     keys: [
-      { key: "DEFAULT_PROVIDER", label: "Default Provider", defaultValue: "ollama", hint: "ollama | openai | anthropic" },
+      {
+        key: "DEFAULT_PROVIDER",
+        label: "Default Provider",
+        defaultValue: "ollama",
+        hint: "ollama | openai | anthropic",
+      },
       { key: "OLLAMA_BASE_URL", label: "Ollama Base URL", defaultValue: "http://localhost:11434" },
       { key: "OLLAMA_MODEL", label: "Chat Model", defaultValue: "phi3:mini" },
       { key: "OLLAMA_EMBEDDING_MODEL", label: "Embedding Model", defaultValue: "nomic-embed-text:latest" },
@@ -99,8 +107,20 @@ const CONFIG_CATEGORIES: ConfigCategory[] = [
     label: "🔐 Security",
     hint: "Encryption keys and salt",
     keys: [
-      { key: "CRYPTO_KEY", label: "Encryption Key", defaultValue: "", sensitive: true, hint: "Auto-generated during init" },
-      { key: "CRYPTO_SALT", label: "Encryption Salt", defaultValue: "", sensitive: true, hint: "Auto-generated during init" },
+      {
+        key: "CRYPTO_KEY",
+        label: "Encryption Key",
+        defaultValue: "",
+        sensitive: true,
+        hint: "Auto-generated during init",
+      },
+      {
+        key: "CRYPTO_SALT",
+        label: "Encryption Salt",
+        defaultValue: "",
+        sensitive: true,
+        hint: "Auto-generated during init",
+      },
     ],
   },
 ];
@@ -118,7 +138,9 @@ export const configCommand = new Command("config")
     if (!envExists) {
       await logWarning(
         "No .env file found in the current directory.\n" +
-        "  Run " + chalk.cyan("npx orazaka init") + " first to generate a secure environment configuration."
+          "  Run " +
+          chalk.cyan("npx orazaka init") +
+          " first to generate a secure environment configuration.",
       );
       await outro("Configuration wizard aborted.");
       return;
@@ -132,9 +154,8 @@ export const configCommand = new Command("config")
         const lines: string[] = [];
         for (const k of category.keys) {
           const value = currentEnv[k.key] ?? chalk.gray("(not set)");
-          const displayValue = k.sensitive && currentEnv[k.key]
-            ? chalk.gray("●".repeat(Math.min(value.length, 16)))
-            : chalk.white(value);
+          const displayValue =
+            k.sensitive && currentEnv[k.key] ? chalk.gray("●".repeat(Math.min(value.length, 16))) : chalk.white(value);
           lines.push(`${chalk.yellow(k.key.padEnd(35))} ${displayValue}`);
         }
         await note(lines.join("\n"), category.label);
@@ -178,7 +199,12 @@ export const configCommand = new Command("config")
           placeholder: k.defaultValue,
           defaultValue: currentValue,
           validate: (val: string) => {
-            if (k.key === "PORT" || k.key === "RABBITMQ_PORT" || k.key === "VIDEO_WORKER_PORT" || k.key === "IMAGE_WORKER_PORT") {
+            if (
+              k.key === "PORT" ||
+              k.key === "RABBITMQ_PORT" ||
+              k.key === "VIDEO_WORKER_PORT" ||
+              k.key === "IMAGE_WORKER_PORT"
+            ) {
               const num = parseInt(val, 10);
               if (isNaN(num) || num < 1 || num > 65535) {
                 return "Port must be a number between 1 and 65535";
