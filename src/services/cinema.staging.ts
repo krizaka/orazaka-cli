@@ -1,7 +1,7 @@
 /**
  * @file cinema.staging.ts
  * @description The v3 gates of a cinematic short (orazaka#289, ADR-080 v3): what a frame-by-frame audit of « le relais »
- * and « Orochia : la première livraison » found wrong, each turned into a check.
+ * and « la première livraison » found wrong, each turned into a check.
  *
  * | Anomaly found | Where it is caught |
  * | --- | --- |

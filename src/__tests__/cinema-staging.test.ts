@@ -1,7 +1,7 @@
 /**
  * @file cinema-staging.test.ts
  * @description The v3 gates of the cinema pack (orazaka#289, ADR-080 v3). Oussama's review of « le relais » and
- * « Orochia : la première livraison » named the anomalies a frame-by-frame audit confirmed: birds without contact shadows
+ * « la première livraison » named the anomalies a frame-by-frame audit confirmed: birds without contact shadows
  * or with shadows floating in the air, shadows against the light, birds floating beside the surface they should stand on,
  * wrong scale against the set, cut-out edges and flat cel birds on photographic plates, locked-off framings, motion that
  * slides like a sticker, colour and light that do not match the plate, props and costumes that change between shots,

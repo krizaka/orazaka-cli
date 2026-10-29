@@ -1,6 +1,6 @@
 /**
  * @file cinema-childsafe.test.ts
- * @description The hard rule of every Orochia or brand film (orazaka#289, ADR-080 v2.8): no children, no child-like
+ * @description The hard rule of every brand film (orazaka#289, ADR-080 v2.8): no children, no child-like
  * figures, no dolls or toys — said in every plate, keyframe, character and shot prompt, and checked on the takes'
  * sampled frames by a vision model, then by a person. A take with one flagged frame is rejected; nothing passes unreviewed.
  */

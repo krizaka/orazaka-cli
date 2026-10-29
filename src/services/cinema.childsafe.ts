@@ -1,6 +1,6 @@
 /**
  * @file cinema.childsafe.ts
- * @description The hard rule of every Orochia or brand film (orazaka#289, ADR-080 v2.8): no children, no child-like
+ * @description The hard rule of every brand film (orazaka#289, ADR-080 v2.8): no children, no child-like
  * figures, no dolls or toys. The prompts say it (NO_CHILDREN in cinema.production.ts); this module checks the takes.
  * Frames are sampled across each take (`sampleTimes`), a vision model answers one question per frame
  * (`CHILD_CHECK_PROMPT`, read strictly by `parseChildCheck`), and the gate (`childGate`) rejects every take with a
@@ -8,7 +8,7 @@
  */
 
 /**
- * The one question a vision model answers for each sampled frame. Measured on « Orochia : la première livraison » with
+ * The one question a vision model answers for each sampled frame. Measured on « la première livraison » with
  * Qwen2.5-VL 7B: it flags the doll keyframe and clears the clean ones; a longer question that excused the cartoon birds
  * let LLaVA 1.6 miss the doll (krizaka-ui tools/brand-films/dawn/childsafe.py runs it).
  */
