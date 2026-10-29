@@ -10,39 +10,162 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { intro, outro, logWarning, logInfo, note } from "../ui/prompts";
 import { resolveLogDir, resolveWorkspaceRoot } from "../ui/platform";
+import {
+  appendedLines,
+  filterByService,
+  formatAge,
+  formatFileSize,
+  getServiceColor,
+  getServiceLabel,
+  lastLines,
+  parseSinceMs,
+  readRange,
+} from "./logs.steps";
 
-/** Color map for service log prefixes. */
-const SERVICE_COLORS: Record<string, (s: string) => string> = {
-  router: chalk.cyan,
-  gateway: chalk.cyan, // legacy log filename alias
-  ollama: chalk.green,
-  "media-worker": chalk.magenta,
-  "video-worker": chalk.magenta, // legacy log filename alias
-  "image-worker": chalk.yellow,
-  ui: chalk.blue,
-  docker: chalk.gray,
-};
+type LogsOptions = { service?: string; list?: boolean; since?: string; tail?: string };
 
-function getServiceColor(filename: string): (s: string) => string {
-  for (const [key, colorFn] of Object.entries(SERVICE_COLORS)) {
-    if (filename.toLowerCase().includes(key)) return colorFn;
+/** At most this many files are tailed, to avoid flooding the terminal. */
+const MAX_TAILED_FILES = 5;
+
+const TITLE = chalk.cyan.bold("🥷 Orazaka Logs");
+
+/** Nothing to show: a title, a warning (and an optional hint), a closing line. */
+async function bail(warning: string, closing: string, hint?: string): Promise<void> {
+  await intro(TITLE);
+  await logWarning(warning);
+  if (hint) await logInfo(hint);
+  await outro(closing);
+}
+
+/** The `.log` files of a directory, most recent name first. */
+function listLogFiles(logDir: string): string[] {
+  return fs
+    .readdirSync(logDir)
+    .filter((f) => f.endsWith(".log"))
+    .sort()
+    .reverse();
+}
+
+function describeLogFile(logDir: string, file: string): { line: string; size: number } {
+  const stats = fs.statSync(path.join(logDir, file));
+  const colorFn = getServiceColor(file);
+  const label = getServiceLabel(file);
+  const ageStr = formatAge(stats.mtimeMs, Date.now());
+  const line = `${colorFn(`[${label}]`)} ${chalk.white(file.padEnd(45))} ${chalk.gray(formatFileSize(stats.size).padStart(10))} ${chalk.gray(ageStr)}`;
+  return { line, size: stats.size };
+}
+
+async function showListing(logDir: string, allFiles: string[]): Promise<void> {
+  await intro(chalk.cyan.bold("🥷 Orazaka Logs — File Listing"));
+
+  const described = allFiles.map((file) => describeLogFile(logDir, file));
+  const totalSize = described.reduce((sum, { size }) => sum + size, 0);
+  const lines = [
+    ...described.map(({ line }) => line),
+    "",
+    `${chalk.gray("Total:")} ${String(allFiles.length)} file(s), ${formatFileSize(totalSize)}`,
+  ];
+
+  await note(lines.join("\n"), "Available Log Files");
+  await outro(`Tail logs: ${chalk.cyan("npx orazaka logs")} or ${chalk.cyan("npx orazaka logs --service router")}`);
+}
+
+/** The files modified within the last `sinceMs`. */
+function filterBySince(logDir: string, files: string[], sinceMs: number): string[] {
+  const cutoff = Date.now() - sinceMs;
+  return files.filter((f) => fs.statSync(path.join(logDir, f)).mtimeMs >= cutoff);
+}
+
+function printHeader(fileCount: number): void {
+  console.log("");
+  console.log(chalk.cyan.bold("🥷 Orazaka Logs — Real-time Stream"));
+  console.log(chalk.gray(`  Tailing ${String(fileCount)} file(s) | Ctrl+C to stop`));
+  console.log(chalk.gray("  ─".repeat(30)));
+  console.log("");
+}
+
+/** Shows the last lines of one file under a rule; unreadable files are skipped. */
+function printRecentLines(logDir: string, file: string, tailLines: number): void {
+  const colorFn = getServiceColor(file);
+  const label = getServiceLabel(file);
+
+  try {
+    const lines = lastLines(fs.readFileSync(path.join(logDir, file), "utf-8"), tailLines);
+    if (lines.length === 0) return;
+    console.log(colorFn(`── ${label} (${file}) ${"─".repeat(Math.max(0, 50 - file.length))}`));
+    for (const line of lines) {
+      console.log(`${colorFn(`[${label}]`)} ${line}`);
+    }
+    console.log("");
+  } catch {
+    /* skip unreadable files */
   }
-  return chalk.white;
 }
 
-function getServiceLabel(filename: string): string {
-  if (filename.includes("router") || filename.includes("gateway")) return "ROUTER ";
-  if (filename.includes("ollama")) return "OLLAMA ";
-  if (filename.includes("media") || filename.includes("video")) return "MEDIA  ";
-  if (filename.includes("image")) return "IMAGE  ";
-  if (filename.includes("ui")) return "UI     ";
-  return "LOG    ";
+/** Prints what was appended to a file since the last position and moves the position on. */
+function printAppended(filePath: string, positions: Map<string, number>, print: (line: string) => void): void {
+  try {
+    const size = fs.statSync(filePath).size;
+    const previous = positions.get(filePath) ?? 0;
+    if (size <= previous) return;
+
+    for (const line of appendedLines(readRange(filePath, previous, size))) {
+      print(line);
+    }
+    positions.set(filePath, size);
+  } catch {
+    /* ignore read errors during watch */
+  }
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${String(bytes)} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+/** Watches one file for appended lines; undefined when it cannot be watched. */
+function watchLogFile(logDir: string, file: string, positions: Map<string, number>): fs.FSWatcher | undefined {
+  const filePath = path.join(logDir, file);
+  const colorFn = getServiceColor(file);
+  const label = getServiceLabel(file);
+
+  try {
+    positions.set(filePath, fs.statSync(filePath).size);
+    return fs.watch(filePath, (eventType) => {
+      if (eventType !== "change") return;
+      printAppended(filePath, positions, (line) => console.log(`${colorFn(`[${label}]`)} ${line}`));
+    });
+  } catch {
+    /* skip files that can't be watched */
+    return undefined;
+  }
+}
+
+/** Keeps the process alive until Ctrl+C, then closes the watchers. */
+function waitForInterrupt(watchers: fs.FSWatcher[]): Promise<void> {
+  return new Promise<void>((resolve) => {
+    process.on("SIGINT", () => {
+      for (const watcher of watchers) {
+        watcher.close();
+      }
+      console.log("\n" + chalk.gray("Log streaming stopped."));
+      resolve();
+    });
+  });
+}
+
+async function streamLogs(logDir: string, files: string[], tailLines: number): Promise<void> {
+  printHeader(files.length);
+
+  const tailed = files.slice(0, MAX_TAILED_FILES);
+  for (const file of tailed) {
+    printRecentLines(logDir, file, tailLines);
+  }
+
+  console.log(chalk.gray("  ═══ Watching for new log entries... ═══"));
+  console.log("");
+
+  const positions = new Map<string, number>();
+  const watchers = tailed
+    .map((file) => watchLogFile(logDir, file, positions))
+    .filter((watcher): watcher is fs.FSWatcher => watcher !== undefined);
+
+  await waitForInterrupt(watchers);
 }
 
 export const logsCommand = new Command("logs")
@@ -51,193 +174,45 @@ export const logsCommand = new Command("logs")
   .option("--list", "List all available log files with sizes")
   .option("--since <duration>", "Show logs from last N hours (e.g., 1h, 30m)", "24h")
   .option("--tail <lines>", "Number of lines to show from end of file", "50")
-  .action(async (options: { service?: string; list?: boolean; since?: string; tail?: string }) => {
+  .action(async (options: LogsOptions) => {
     const logDir = resolveLogDir();
-    const workspaceRoot = resolveWorkspaceRoot();
 
     if (!fs.existsSync(logDir)) {
-      await intro(chalk.cyan.bold("🥷 Orazaka Logs"));
-      await logWarning(
-        `Log directory not found: ${chalk.gray(path.relative(workspaceRoot, logDir))}\n` +
+      const relative = path.relative(resolveWorkspaceRoot(), logDir);
+      await bail(
+        `Log directory not found: ${chalk.gray(relative)}\n` +
           `  Run ${chalk.cyan("npx orazaka start")} first to generate logs.`,
+        "No logs available.",
       );
-      await outro("No logs available.");
       return;
     }
 
-    const allFiles = fs
-      .readdirSync(logDir)
-      .filter((f) => f.endsWith(".log"))
-      .sort()
-      .reverse(); // Most recent first
-
+    const allFiles = listLogFiles(logDir); // Most recent first
     if (allFiles.length === 0) {
-      await intro(chalk.cyan.bold("🥷 Orazaka Logs"));
-      await logWarning("No log files found.");
-      await outro("No logs available.");
+      await bail("No log files found.", "No logs available.");
       return;
     }
 
-    // ─── List mode ──────────────────────────────────────────────
     if (options.list) {
-      await intro(chalk.cyan.bold("🥷 Orazaka Logs — File Listing"));
-
-      const lines: string[] = [];
-      let totalSize = 0;
-
-      for (const file of allFiles) {
-        const filePath = path.join(logDir, file);
-        const stats = fs.statSync(filePath);
-        totalSize += stats.size;
-
-        const colorFn = getServiceColor(file);
-        const label = getServiceLabel(file);
-        const age = Math.round((Date.now() - stats.mtimeMs) / (1000 * 60));
-        const ageStr = age < 60 ? `${String(age)}m ago` : `${Math.round(age / 60)}h ago`;
-
-        lines.push(
-          `${colorFn(`[${label}]`)} ${chalk.white(file.padEnd(45))} ${chalk.gray(formatFileSize(stats.size).padStart(10))} ${chalk.gray(ageStr)}`,
-        );
-      }
-
-      lines.push("");
-      lines.push(`${chalk.gray("Total:")} ${String(allFiles.length)} file(s), ${formatFileSize(totalSize)}`);
-
-      await note(lines.join("\n"), "Available Log Files");
-      await outro(`Tail logs: ${chalk.cyan("npx orazaka logs")} or ${chalk.cyan("npx orazaka logs --service router")}`);
+      await showListing(logDir, allFiles);
       return;
     }
 
-    // ─── Filter by service ──────────────────────────────────────
-    let targetFiles = allFiles;
-    if (options.service) {
-      targetFiles = allFiles.filter((f) => f.toLowerCase().includes(options.service!.toLowerCase()));
-
-      if (targetFiles.length === 0) {
-        await intro(chalk.cyan.bold("🥷 Orazaka Logs"));
-        await logWarning(`No logs found for service: ${chalk.yellow(options.service)}`);
-        await logInfo(`Available services: ${chalk.gray("router, ollama, media-worker, image-worker, ui")}`);
-        await outro("Try a different service name.");
-        return;
-      }
+    const byService = filterByService(allFiles, options.service);
+    if (byService.length === 0) {
+      await bail(
+        `No logs found for service: ${chalk.yellow(options.service)}`,
+        "Try a different service name.",
+        `Available services: ${chalk.gray("router, ollama, media-worker, image-worker, ui")}`,
+      );
+      return;
     }
 
-    // ─── Parse since duration ───────────────────────────────────
-    let sinceMs = 24 * 60 * 60 * 1000; // Default 24h
-    if (options.since) {
-      const match = options.since.match(/^(\d+)(h|m|d)$/);
-      if (match) {
-        const value = parseInt(match[1]!);
-        const unit = match[2];
-        if (unit === "h") sinceMs = value * 60 * 60 * 1000;
-        else if (unit === "m") sinceMs = value * 60 * 1000;
-        else if (unit === "d") sinceMs = value * 24 * 60 * 60 * 1000;
-      }
-    }
-
-    // Filter files by modification time
-    const cutoff = Date.now() - sinceMs;
-    targetFiles = targetFiles.filter((f) => {
-      const stats = fs.statSync(path.join(logDir, f));
-      return stats.mtimeMs >= cutoff;
-    });
-
+    const targetFiles = filterBySince(logDir, byService, parseSinceMs(options.since));
     if (targetFiles.length === 0) {
-      await intro(chalk.cyan.bold("🥷 Orazaka Logs"));
-      await logWarning(`No logs found within the last ${options.since ?? "24h"}`);
-      await outro("Try a longer duration with --since.");
+      await bail(`No logs found within the last ${options.since ?? "24h"}`, "Try a longer duration with --since.");
       return;
     }
 
-    // ─── Tail mode (real-time streaming) ────────────────────────
-    const tailLines = parseInt(options.tail ?? "50");
-
-    console.log("");
-    console.log(chalk.cyan.bold("🥷 Orazaka Logs — Real-time Stream"));
-    console.log(chalk.gray(`  Tailing ${String(targetFiles.length)} file(s) | Ctrl+C to stop`));
-    console.log(chalk.gray("  ─".repeat(30)));
-    console.log("");
-
-    // Show last N lines from each file
-    for (const file of targetFiles.slice(0, 5)) {
-      // Max 5 files to avoid flooding
-      const filePath = path.join(logDir, file);
-      const colorFn = getServiceColor(file);
-      const label = getServiceLabel(file);
-
-      try {
-        const content = fs.readFileSync(filePath, "utf-8");
-        const lines = content.split("\n").filter(Boolean);
-        const lastLines = lines.slice(-tailLines);
-
-        if (lastLines.length > 0) {
-          console.log(colorFn(`── ${label} (${file}) ${"─".repeat(Math.max(0, 50 - file.length))}`));
-          for (const line of lastLines) {
-            console.log(`${colorFn(`[${label}]`)} ${line}`);
-          }
-          console.log("");
-        }
-      } catch {
-        /* skip unreadable files */
-      }
-    }
-
-    // Start watching for new content
-    console.log(chalk.gray("  ═══ Watching for new log entries... ═══"));
-    console.log("");
-
-    const watchers: fs.FSWatcher[] = [];
-    const filePositions = new Map<string, number>();
-
-    for (const file of targetFiles.slice(0, 5)) {
-      const filePath = path.join(logDir, file);
-      const colorFn = getServiceColor(file);
-      const label = getServiceLabel(file);
-
-      try {
-        const stats = fs.statSync(filePath);
-        filePositions.set(filePath, stats.size);
-
-        const watcher = fs.watch(filePath, (eventType) => {
-          if (eventType !== "change") return;
-
-          try {
-            const newStats = fs.statSync(filePath);
-            const prevPos = filePositions.get(filePath) ?? 0;
-
-            if (newStats.size > prevPos) {
-              const fd = fs.openSync(filePath, "r");
-              const buffer = Buffer.alloc(newStats.size - prevPos);
-              fs.readSync(fd, buffer, 0, buffer.length, prevPos);
-              fs.closeSync(fd);
-
-              const newContent = buffer.toString("utf-8");
-              for (const line of newContent.split("\n")) {
-                if (line.trim()) {
-                  console.log(`${colorFn(`[${label}]`)} ${line}`);
-                }
-              }
-              filePositions.set(filePath, newStats.size);
-            }
-          } catch {
-            /* ignore read errors during watch */
-          }
-        });
-
-        watchers.push(watcher);
-      } catch {
-        /* skip files that can't be watched */
-      }
-    }
-
-    // Keep process alive until Ctrl+C
-    await new Promise<void>((resolve) => {
-      process.on("SIGINT", () => {
-        for (const watcher of watchers) {
-          watcher.close();
-        }
-        console.log("\n" + chalk.gray("Log streaming stopped."));
-        resolve();
-      });
-    });
+    await streamLogs(logDir, targetFiles, parseInt(options.tail ?? "50"));
   });

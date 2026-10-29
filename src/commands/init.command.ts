@@ -9,7 +9,6 @@
 import { Command } from "commander";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as crypto from "node:crypto";
 import chalk from "chalk";
 import {
   intro,
@@ -33,10 +32,14 @@ import {
   getToolVersion,
 } from "../ui/platform";
 import { detectAllTools, formatToolResult } from "../services/tool-installer";
-
-function secureHex(bytes: number): string {
-  return crypto.randomBytes(bytes).toString("hex");
-}
+import {
+  buildSystemLines,
+  createMissingDirs,
+  findEnvTemplate,
+  injectGeneratedValues,
+  renderEnvFile,
+  secureHex,
+} from "./init.steps";
 
 function getWorkspaceDirs(root: string): string[] {
   return [
@@ -181,254 +184,213 @@ volumes:
 `;
 }
 
+type InitOptions = { force?: boolean; yes?: boolean; skipValidation?: boolean; dir?: string };
+type Detection = ReturnType<typeof detectOrazakaWorkspace>;
+
+/** Versions of the tools present on this machine, for the system note. */
+function collectToolVersions(): string[] {
+  const versions: string[] = [];
+  if (hasTool("java")) versions.push(`Java ${getToolVersion("java").split("\n")[0]}`);
+  if (hasTool("node")) versions.push(`Node ${getToolVersion("node")}`);
+  if (hasTool("python3")) versions.push(`Python ${getToolVersion("python3")}`);
+  if (hasTool("ollama")) versions.push(`Ollama ${getToolVersion("ollama")}`);
+  return versions;
+}
+
+async function showSystemInfo(targetDir: string): Promise<void> {
+  const lines = buildSystemLines(getSystemInfo(), targetDir, collectToolVersions());
+  await note(lines.join("\n"), "System Information");
+}
+
+async function announceWorkspace(targetDir: string, detection: Detection): Promise<void> {
+  await logSuccess(`Existing Orazaka workspace detected in ${chalk.cyan(targetDir)}`);
+  await logStep(`Found markers: ${detection.markers.join(", ")}`);
+  if (detection.missing.length > 0) {
+    await logWarning(`Missing markers: ${chalk.yellow(detection.missing.join(", "))}`);
+  }
+}
+
+/** An existing .env: only the missing keys are appended. */
+async function completeEnv(envFile: string): Promise<void> {
+  await logStep("Checking .env completeness...");
+  const added = mergeEnvFile(envFile, getRequiredEnvDefaults());
+  if (added.length > 0) {
+    await logSuccess(`Added ${String(added.length)} missing key(s) to .env: ${chalk.gray(added.join(", "))}`);
+  } else {
+    await logSuccess("✔ .env is complete — no missing keys");
+  }
+}
+
+/** No .env: from the first template found (with fresh random values), else from the defaults. */
+async function generateEnv(targetDir: string, envFile: string): Promise<void> {
+  await logWarning(".env not found — generating with secure defaults");
+  const template = findEnvTemplate(targetDir);
+  if (template) {
+    await logStep(`Using template: ${template.name}`);
+    fs.writeFileSync(envFile, injectGeneratedValues(template.content), "utf-8");
+  } else {
+    fs.writeFileSync(envFile, renderEnvFile(getRequiredEnvDefaults(), new Date()), "utf-8");
+  }
+  // Merge any remaining missing keys
+  mergeEnvFile(envFile, getRequiredEnvDefaults());
+  await logSuccess("✔ .env generated with secure defaults");
+}
+
+async function validateEnv(targetDir: string): Promise<void> {
+  const envFile = path.join(targetDir, ".env");
+  if (fs.existsSync(envFile)) {
+    await completeEnv(envFile);
+  } else {
+    await generateEnv(targetDir, envFile);
+  }
+}
+
+async function ensureWorkspaceDirs(targetDir: string): Promise<void> {
+  const created = createMissingDirs(getWorkspaceDirs(targetDir), ensureDir);
+  if (created > 0) {
+    await logSuccess(`Created ${String(created)} missing workspace director(ies)`);
+  }
+}
+
+async function reportTools(): Promise<void> {
+  const toolReport = detectAllTools();
+  if (!toolReport.allCriticalMet) {
+    await logWarning("Some critical tools are missing:");
+    for (const r of toolReport.missingCritical) {
+      console.log(`  ${formatToolResult(r)}`);
+    }
+    console.log(`\n  Run ${chalk.cyan("npx orazaka install")} to install missing tools.`);
+  }
+  if (toolReport.missingOptional.length > 0) {
+    await logInfo("Optional tools not found:");
+    for (const r of toolReport.missingOptional) {
+      console.log(`  ${formatToolResult(r)}`);
+    }
+  }
+}
+
+async function runExistingWorkspaceFlow(targetDir: string, detection: Detection): Promise<void> {
+  await announceWorkspace(targetDir, detection);
+  await validateEnv(targetDir);
+  await ensureWorkspaceDirs(targetDir);
+  await reportTools();
+
+  await note(
+    [
+      `${chalk.green("✔")} Workspace validated`,
+      `${chalk.green("✔")} Environment configuration (.env)`,
+      `${chalk.green("✔")} Workspace directories`,
+      "",
+      `${chalk.cyan("Next steps:")}`,
+      `  ${chalk.white("1.")} ${chalk.cyan("npx orazaka install")}     — Install/verify tools`,
+      `  ${chalk.white("2.")} ${chalk.cyan("npx orazaka doctor")}      — Full diagnostics`,
+      `  ${chalk.white("3.")} ${chalk.cyan("npx orazaka start --mode dev")} — Launch middleware + AI engines`,
+      `  ${chalk.white("4.")} ${chalk.cyan("npx orazaka dev")}            — Spawn Router + Web + Mobile`,
+      `  ${chalk.white("5.")} ${chalk.gray("(or debug RouterApplication in IntelliJ + ")}${chalk.cyan("npx orazaka dev --skip-router")}${chalk.gray(")")}`,
+    ].join("\n"),
+    "✨ Workspace Ready",
+  );
+
+  await outro(chalk.green("Happy building! 🚀"));
+}
+
+/** Asks where to create the workspace (skipped with --yes); returns the chosen directory. */
+async function chooseNewWorkspaceDir(targetDir: string, yes: boolean | undefined): Promise<string> {
+  if (yes) return targetDir;
+  const initHere = await confirm({
+    message: `Initialize Orazaka workspace in ${chalk.cyan(targetDir)}?`,
+    initialValue: true,
+  });
+  handleCancel(initHere);
+  if (initHere) return targetDir;
+
+  const customDir = await text({
+    message: "Enter the directory path for the workspace:",
+    placeholder: path.join(process.cwd(), "orazaka"),
+    defaultValue: path.join(process.cwd(), "orazaka"),
+  });
+  handleCancel(customDir);
+  return path.resolve(customDir as string);
+}
+
+async function createWorkspaceDirs(targetDir: string): Promise<void> {
+  const spinner = await createSpinner();
+  spinner.start("Creating workspace directories...");
+  ensureDir(targetDir);
+  for (const d of getWorkspaceDirs(targetDir)) {
+    ensureDir(d);
+  }
+  spinner.stop("Directories created.");
+}
+
+async function writeNewEnv(targetDir: string, force: boolean | undefined): Promise<void> {
+  const envFile = path.join(targetDir, ".env");
+  if (fs.existsSync(envFile) && !force) {
+    await logWarning(
+      ".env already exists. Use " + chalk.cyan("--force") + " to regenerate.\n" + "  Merging missing keys only...",
+    );
+    const added = mergeEnvFile(envFile, getRequiredEnvDefaults());
+    if (added.length > 0) {
+      await logSuccess(`Added ${String(added.length)} missing key(s)`);
+    }
+    return;
+  }
+  fs.writeFileSync(envFile, renderEnvFile(getRequiredEnvDefaults(), new Date()), "utf-8");
+  await logSuccess("Secure .env generated with cryptographic secrets.");
+}
+
+async function writeCompose(targetDir: string, force: boolean | undefined): Promise<void> {
+  const composeFile = path.join(targetDir, "infra", "docker-compose.yml");
+  if (fs.existsSync(composeFile) && !force) {
+    await logStep("docker-compose.yml already exists.");
+    return;
+  }
+  ensureDir(path.dirname(composeFile));
+  fs.writeFileSync(composeFile, getDefaultComposeYml(), "utf-8");
+  await logSuccess("docker-compose.yml generated.");
+}
+
+async function runNewWorkspaceFlow(targetDir: string, options: InitOptions): Promise<void> {
+  await createWorkspaceDirs(targetDir);
+  await writeNewEnv(targetDir, options.force);
+  await writeCompose(targetDir, options.force);
+
+  await note(
+    [
+      `${chalk.green("✔")} Workspace: ${chalk.cyan(targetDir)}`,
+      `${chalk.green("✔")} Environment: .env`,
+      `${chalk.green("✔")} Docker Compose: infra/docker-compose.yml`,
+      "",
+      `${chalk.cyan("Next steps:")}`,
+      `  ${chalk.white("1.")} ${chalk.cyan("npx orazaka install")}   — Install required tools`,
+      `  ${chalk.white("2.")} ${chalk.cyan("npx orazaka doctor")}    — Run diagnostics`,
+      `  ${chalk.white("3.")} ${chalk.cyan("npx orazaka start")}     — Launch infrastructure`,
+    ].join("\n"),
+    "✨ Initialization Complete",
+  );
+
+  await outro(chalk.green("Workspace ready. Happy building! 🚀"));
+}
+
 export const initCommand = new Command("init")
   .description("Initialize workspace — detects existing projects, validates config, and fixes gaps")
   .option("-f, --force", "Overwrite existing configuration")
   .option("-y, --yes", "Non-interactive mode with defaults")
   .option("--skip-validation", "Skip diagnostic checks")
   .option("--dir <path>", "Target directory (default: current directory)")
-  .action(async (options: { force?: boolean; yes?: boolean; skipValidation?: boolean; dir?: string }) => {
+  .action(async (options: InitOptions) => {
     await intro(chalk.cyan.bold("🥷 Orazaka Workspace Initialization"));
 
-    // ─── Resolve target directory ─────────────────────────────
-    let targetDir = options.dir ? path.resolve(options.dir) : process.cwd();
-
-    // ─── Smart workspace detection ────────────────────────────
+    const targetDir = options.dir ? path.resolve(options.dir) : process.cwd();
     const detection = detectOrazakaWorkspace(targetDir);
+    await showSystemInfo(targetDir);
 
-    // ─── System info ──────────────────────────────────────────
-    const sys = getSystemInfo();
-    const sysLines = [
-      `${chalk.yellow("Platform")}     ${sys.platform} / ${sys.arch}`,
-      `${chalk.yellow("CPU")}          ${sys.cpuModel}`,
-      `${chalk.yellow("Memory")}       ${String(sys.totalMemoryGb)} GB`,
-      `${chalk.yellow("Node")}         ${sys.nodeVersion}`,
-      `${chalk.yellow("Workspace")}    ${targetDir}`,
-    ];
-
-    if (sys.isAppleSilicon) {
-      sysLines.push(`${chalk.yellow("Accelerator")}  ${chalk.green("✔ Apple Silicon Metal MPS")}`);
-    }
-
-    // Show tool versions
-    const toolVersions: string[] = [];
-    if (hasTool("java")) toolVersions.push(`Java ${getToolVersion("java").split("\n")[0]}`);
-    if (hasTool("node")) toolVersions.push(`Node ${getToolVersion("node")}`);
-    if (hasTool("python3")) toolVersions.push(`Python ${getToolVersion("python3")}`);
-    if (hasTool("ollama")) toolVersions.push(`Ollama ${getToolVersion("ollama")}`);
-    if (toolVersions.length > 0) {
-      sysLines.push(`${chalk.yellow("Tools")}        ${toolVersions.join(", ")}`);
-    }
-
-    await note(sysLines.join("\n"), "System Information");
-
-    // ─── Existing workspace flow ──────────────────────────────
     if (detection.isWorkspace) {
-      await logSuccess(`Existing Orazaka workspace detected in ${chalk.cyan(targetDir)}`);
-      await logStep(`Found markers: ${detection.markers.join(", ")}`);
-
-      if (detection.missing.length > 0) {
-        await logWarning(`Missing markers: ${chalk.yellow(detection.missing.join(", "))}`);
-      }
-
-      // Validate and fix .env
-      const envFile = path.join(targetDir, ".env");
-      if (fs.existsSync(envFile)) {
-        await logStep("Checking .env completeness...");
-
-        const defaults = getRequiredEnvDefaults();
-        const added = mergeEnvFile(envFile, defaults);
-
-        if (added.length > 0) {
-          await logSuccess(`Added ${String(added.length)} missing key(s) to .env: ${chalk.gray(added.join(", "))}`);
-        } else {
-          await logSuccess("✔ .env is complete — no missing keys");
-        }
-      } else {
-        // No .env exists — generate from template or defaults
-        await logWarning(".env not found — generating with secure defaults");
-        const templatePaths = [
-          path.join(targetDir, "exemple.env.txt"),
-          path.join(targetDir, ".env.example"),
-          path.join(targetDir, ".env.template"),
-        ];
-
-        let templateContent = "";
-        for (const tp of templatePaths) {
-          if (fs.existsSync(tp)) {
-            templateContent = fs.readFileSync(tp, "utf-8");
-            await logStep(`Using template: ${path.basename(tp)}`);
-            break;
-          }
-        }
-
-        if (templateContent) {
-          // Inject secure random values into template
-          templateContent = templateContent
-            .replace(/SPRING_DATASOURCE_PASSWORD=.*/g, `SPRING_DATASOURCE_PASSWORD=${secureHex(16)}`)
-            .replace(/CRYPTO_KEY=.*/g, `CRYPTO_KEY=${secureHex(16)}`)
-            .replace(/CRYPTO_SALT=.*/g, `CRYPTO_SALT=${secureHex(8)}`);
-
-          fs.writeFileSync(envFile, templateContent, "utf-8");
-        } else {
-          // Write defaults
-          const defaults = getRequiredEnvDefaults();
-          const lines: string[] = [
-            "# ──────────────────────────────────────────────────────",
-            "# ORAZAKA ENVIRONMENT CONFIGURATION",
-            "# Generated by: npx orazaka init",
-            `# Timestamp: ${new Date().toISOString()}`,
-            "# ──────────────────────────────────────────────────────",
-            "",
-          ];
-          for (const [key, value] of Object.entries(defaults)) {
-            lines.push(`${key}=${value}`);
-          }
-          fs.writeFileSync(envFile, lines.join("\n"), "utf-8");
-        }
-
-        // Merge any remaining missing keys
-        mergeEnvFile(envFile, getRequiredEnvDefaults());
-        await logSuccess("✔ .env generated with secure defaults");
-      }
-
-      // Ensure workspace directories exist
-      const dirs = getWorkspaceDirs(targetDir);
-      let dirsCreated = 0;
-      for (const d of dirs) {
-        if (!fs.existsSync(d)) {
-          ensureDir(d);
-          dirsCreated++;
-        }
-      }
-      if (dirsCreated > 0) {
-        await logSuccess(`Created ${String(dirsCreated)} missing workspace director(ies)`);
-      }
-
-      // Quick tool check
-      const toolReport = detectAllTools();
-      if (!toolReport.allCriticalMet) {
-        await logWarning("Some critical tools are missing:");
-        for (const r of toolReport.missingCritical) {
-          console.log(`  ${formatToolResult(r)}`);
-        }
-        console.log(`\n  Run ${chalk.cyan("npx orazaka install")} to install missing tools.`);
-      }
-
-      if (toolReport.missingOptional.length > 0) {
-        await logInfo("Optional tools not found:");
-        for (const r of toolReport.missingOptional) {
-          console.log(`  ${formatToolResult(r)}`);
-        }
-      }
-
-      // Summary
-      await note(
-        [
-          `${chalk.green("✔")} Workspace validated`,
-          `${chalk.green("✔")} Environment configuration (.env)`,
-          `${chalk.green("✔")} Workspace directories`,
-          "",
-          `${chalk.cyan("Next steps:")}`,
-          `  ${chalk.white("1.")} ${chalk.cyan("npx orazaka install")}     — Install/verify tools`,
-          `  ${chalk.white("2.")} ${chalk.cyan("npx orazaka doctor")}      — Full diagnostics`,
-          `  ${chalk.white("3.")} ${chalk.cyan("npx orazaka start --mode dev")} — Launch middleware + AI engines`,
-          `  ${chalk.white("4.")} ${chalk.cyan("npx orazaka dev")}            — Spawn Router + Web + Mobile`,
-          `  ${chalk.white("5.")} ${chalk.gray("(or debug RouterApplication in IntelliJ + ")}${chalk.cyan("npx orazaka dev --skip-router")}${chalk.gray(")")}`,
-        ].join("\n"),
-        "✨ Workspace Ready",
-      );
-
-      await outro(chalk.green("Happy building! 🚀"));
+      await runExistingWorkspaceFlow(targetDir, detection);
       return;
     }
 
-    // ─── New workspace flow ───────────────────────────────────
     await logInfo("No Orazaka workspace detected in current directory.");
-
-    if (!options.yes) {
-      const initHere = await confirm({
-        message: `Initialize Orazaka workspace in ${chalk.cyan(targetDir)}?`,
-        initialValue: true,
-      });
-      handleCancel(initHere);
-
-      if (!initHere) {
-        const customDir = await text({
-          message: "Enter the directory path for the workspace:",
-          placeholder: path.join(process.cwd(), "orazaka"),
-          defaultValue: path.join(process.cwd(), "orazaka"),
-        });
-        handleCancel(customDir);
-        targetDir = path.resolve(customDir as string);
-      }
-    }
-
-    // Create directories
-    const spinner = await createSpinner();
-    spinner.start("Creating workspace directories...");
-
-    ensureDir(targetDir);
-    const dirs = getWorkspaceDirs(targetDir);
-    for (const d of dirs) {
-      ensureDir(d);
-    }
-
-    spinner.stop("Directories created.");
-
-    // Generate .env
-    const envFile = path.join(targetDir, ".env");
-    const envExists = fs.existsSync(envFile);
-
-    if (envExists && !options.force) {
-      await logWarning(
-        ".env already exists. Use " + chalk.cyan("--force") + " to regenerate.\n" + "  Merging missing keys only...",
-      );
-      const added = mergeEnvFile(envFile, getRequiredEnvDefaults());
-      if (added.length > 0) {
-        await logSuccess(`Added ${String(added.length)} missing key(s)`);
-      }
-    } else {
-      const defaults = getRequiredEnvDefaults();
-      const lines: string[] = [
-        "# ──────────────────────────────────────────────────────",
-        "# ORAZAKA ENVIRONMENT CONFIGURATION",
-        "# Generated by: npx orazaka init",
-        `# Timestamp: ${new Date().toISOString()}`,
-        "# ──────────────────────────────────────────────────────",
-        "",
-      ];
-      for (const [key, value] of Object.entries(defaults)) {
-        lines.push(`${key}=${value}`);
-      }
-      fs.writeFileSync(envFile, lines.join("\n"), "utf-8");
-      await logSuccess("Secure .env generated with cryptographic secrets.");
-    }
-
-    // Generate docker-compose.yml
-    const composeFile = path.join(targetDir, "infra", "docker-compose.yml");
-    if (!fs.existsSync(composeFile) || options.force) {
-      ensureDir(path.dirname(composeFile));
-      fs.writeFileSync(composeFile, getDefaultComposeYml(), "utf-8");
-      await logSuccess("docker-compose.yml generated.");
-    } else {
-      await logStep("docker-compose.yml already exists.");
-    }
-
-    // Summary
-    await note(
-      [
-        `${chalk.green("✔")} Workspace: ${chalk.cyan(targetDir)}`,
-        `${chalk.green("✔")} Environment: .env`,
-        `${chalk.green("✔")} Docker Compose: infra/docker-compose.yml`,
-        "",
-        `${chalk.cyan("Next steps:")}`,
-        `  ${chalk.white("1.")} ${chalk.cyan("npx orazaka install")}   — Install required tools`,
-        `  ${chalk.white("2.")} ${chalk.cyan("npx orazaka doctor")}    — Run diagnostics`,
-        `  ${chalk.white("3.")} ${chalk.cyan("npx orazaka start")}     — Launch infrastructure`,
-      ].join("\n"),
-      "✨ Initialization Complete",
-    );
-
-    await outro(chalk.green("Workspace ready. Happy building! 🚀"));
+    const workspaceDir = await chooseNewWorkspaceDir(targetDir, options.yes);
+    await runNewWorkspaceFlow(workspaceDir, options);
   });
