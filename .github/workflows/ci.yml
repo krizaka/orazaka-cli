@@ -29,7 +29,7 @@ jobs:
     with:
       component: orazaka-cli
       duplication: true
-    secrets: inherit
+    secrets: inherit # zizmor: ignore[secrets-inherit] the org's own pinned pipeline; it reads SONAR_TOKEN and nothing else of the repository's secrets
 
   # What npm users get: the CLI and its `orazaka` alias packed, installed in an empty project outside any
   # workspace, and their bin run from there (scripts/pack-smoke.mjs). Standalone on purpose — the published
@@ -45,8 +45,11 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
+          package-manager-cache: false
           node-version: "22"
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run test:pack
