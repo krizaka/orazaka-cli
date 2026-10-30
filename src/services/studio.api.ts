@@ -165,4 +165,29 @@ export const StudioApi = {
       path: "/api/v1/studios/runs",
     });
   },
+
+  /** Cancels a run and releases its hold (204). */
+  cancelRun: async (runId: string): Promise<void> => {
+    await ApiClient.requestRest<void>({
+      method: "POST",
+      path: `/api/v1/studios/runs/${encodeURIComponent(runId)}/cancel`,
+    });
+  },
+
+  /** Resolves the approval step a run is parked on (204). */
+  approveRun: async (runId: string): Promise<void> => {
+    await ApiClient.requestRest<void>({
+      method: "POST",
+      path: `/api/v1/studios/runs/${encodeURIComponent(runId)}/approve`,
+    });
+  },
+
+  /** Starts a new run from a step of a finished one (202): the steps before keep their recorded outputs. */
+  resumeRun: async (runId: string, fromStep: string): Promise<RunResponse> => {
+    return ApiClient.requestRest<RunResponse>({
+      method: "POST",
+      path: `/api/v1/studios/runs/${encodeURIComponent(runId)}/resume`,
+      body: { fromStep },
+    });
+  },
 } as const;
