@@ -81,7 +81,7 @@ Prose inputs with commas go through a file: `orazaka studio run <installation> -
 
 ### Runs as background tasks (ADR-088)
 
-`orazaka runs ls [--watch] [--json]` lists the runs (name, status, current step, elapsed time, cost against the budget; `--watch` refreshes every 3 s); `orazaka runs show <name|id> [--steps] [--json]` shows one run and its folded timeline. Name and cost columns show `-` until the Studio serves them. `send`, `resume`, `stop` and `approve` follow with the Studio slices (orazaka-cli#90 stays open for them).
+`orazaka runs ls [--watch] [--json]` lists the runs (name, status, current step, elapsed time, cost against the budget; `--watch` refreshes every 3 s); `orazaka runs show <name|id> [--steps] [--json]` shows one run and its folded timeline. Name and cost columns show `-` until the Studio serves them. `orazaka runs stop <ref>` cancels a run, `orazaka runs approve <ref>` approves the step it waits on, `orazaka runs resume <ref> --from <step>` starts a new run from a step (all take `--json`). `send` and `deny` wait for the Studio endpoints (orazaka-cli#90 stays open for them).
 
 ## Position in the platform
 
