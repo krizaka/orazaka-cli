@@ -64,6 +64,49 @@ export interface PlanOptions {
   readonly seed?: number;
 }
 
+const fail = (where: string, message: string): never => {
+  throw new TreatmentError(`${where}: ${message}`);
+};
+
+function secondsOf(raw: Raw, where: string): number {
+  const seconds = Number(raw.seconds);
+  if (!Number.isFinite(seconds) || seconds < 1 || seconds > 5)
+    fail(where, "seconds must be between 1 and 5 (one clip)");
+  return seconds;
+}
+
+function chainFromOf(raw: Raw, id: number, where: string): { shot: number; at?: number } | undefined {
+  const chainRaw = raw.chainFrom as Raw | undefined;
+  if (!chainRaw) return undefined;
+  const chainFrom = { shot: Number(chainRaw.shot), ...(chainRaw.at !== undefined ? { at: Number(chainRaw.at) } : {}) };
+  if (!(Number.isInteger(chainFrom.shot) && chainFrom.shot >= 1 && chainFrom.shot < id))
+    fail(where, "chainFrom names a shot before it");
+  if (chainFrom.at !== undefined && !(chainFrom.at >= 0 && chainFrom.at <= 5))
+    fail(where, "chainFrom.at is a second (0 to 5)");
+  return chainFrom;
+}
+
+function chainAtOf(raw: Raw, continuous: boolean, where: string): number | undefined {
+  if (raw.chainAt === undefined || raw.chainAt === null) return undefined;
+  const chainAt = Number(raw.chainAt);
+  if (!continuous || !Number.isFinite(chainAt) || chainAt < 0 || chainAt > 5)
+    fail(where, "chainAt is a second (0 to 5) of the previous take, for a continuous shot only");
+  return chainAt;
+}
+
+function speedOf(raw: Raw, where: string): number {
+  const speed = raw.speed === undefined ? 1 : Number(raw.speed);
+  if (!Number.isFinite(speed) || speed < 0.25 || speed > 2) fail(where, "speed must be between 0.25 and 2");
+  return speed;
+}
+
+function rampOf(raw: Raw, seconds: number, speed: number, where: string): number | null {
+  const ramp = raw.rampAt === null || raw.rampAt === undefined ? null : Number(raw.rampAt);
+  if (ramp !== null && !(ramp > 0.6 && ramp < seconds - 0.6 && speed === 1))
+    fail(where, "a ramp sits inside the shot (0.6 s from each end) and never with a whole-shot speed");
+  return ramp;
+}
+
 function shotOf(
   raw: Raw,
   index: number,
@@ -73,43 +116,22 @@ function shotOf(
 ): ScriptShot {
   const id = index + 1;
   const where = `shot ${id}`;
-  const seconds = Number(raw.seconds);
-  if (!Number.isFinite(seconds) || seconds < 1 || seconds > 5)
-    throw new TreatmentError(`${where}: seconds must be between 1 and 5 (one clip)`);
+  const seconds = secondsOf(raw, where);
   const characters = Array.isArray(raw.characters) ? raw.characters.map(String) : [];
-  for (const c of characters)
-    if (!cast.has(c)) throw new TreatmentError(`${where}: character '${c}' is not in the cast`);
+  for (const c of characters) if (!cast.has(c)) fail(where, `character '${c}' is not in the cast`);
   const keyframe = str(raw.keyframe);
   const motion = str(raw.motion);
   const reuse = str(raw.reuse);
-  const chainRaw = raw.chainFrom as Raw | undefined;
-  const chainFrom = chainRaw
-    ? { shot: Number(chainRaw.shot), ...(chainRaw.at !== undefined ? { at: Number(chainRaw.at) } : {}) }
-    : undefined;
-  if (chainFrom && !(Number.isInteger(chainFrom.shot) && chainFrom.shot >= 1 && chainFrom.shot < id)) {
-    throw new TreatmentError(`${where}: chainFrom names a shot before it`);
-  }
-  if (chainFrom?.at !== undefined && !(chainFrom.at >= 0 && chainFrom.at <= 5))
-    throw new TreatmentError(`${where}: chainFrom.at is a second (0 to 5)`);
+  const chainFrom = chainFromOf(raw, id, where);
   // A kept take needs neither prompt; a shot chained from another take needs no keyframe of its own.
-  if (!keyframe && !reuse && !chainFrom) throw new TreatmentError(`${where}: a keyframe prompt is required`);
-  if (!motion && !reuse) throw new TreatmentError(`${where}: a motion prompt is required`);
+  if (!keyframe && !reuse && !chainFrom) fail(where, "a keyframe prompt is required");
+  if (!motion && !reuse) fail(where, "a motion prompt is required");
   const transition = id === 1 ? "cut" : within(raw.transition ?? "cut", TRANSITIONS, `${where}: transition`);
   const continuous = raw.continuous === true;
   if (continuous && id === 1) throw new TreatmentError("shot 1 cannot continue a shot before it");
-  const chainAt = raw.chainAt === undefined || raw.chainAt === null ? undefined : Number(raw.chainAt);
-  if (chainAt !== undefined && (!continuous || !Number.isFinite(chainAt) || chainAt < 0 || chainAt > 5)) {
-    throw new TreatmentError(`${where}: chainAt is a second (0 to 5) of the previous take, for a continuous shot only`);
-  }
-  const speed = raw.speed === undefined ? 1 : Number(raw.speed);
-  if (!Number.isFinite(speed) || speed < 0.25 || speed > 2)
-    throw new TreatmentError(`${where}: speed must be between 0.25 and 2`);
-  const ramp = raw.rampAt === null || raw.rampAt === undefined ? null : Number(raw.rampAt);
-  if (ramp !== null && !(ramp > 0.6 && ramp < seconds - 0.6 && speed === 1)) {
-    throw new TreatmentError(
-      `${where}: a ramp sits inside the shot (0.6 s from each end) and never with a whole-shot speed`,
-    );
-  }
+  const chainAt = chainAtOf(raw, continuous, where);
+  const speed = speedOf(raw, where);
+  const ramp = rampOf(raw, seconds, speed, where);
   const cueId = str(raw.caption);
   const cue = cues[cueId];
   return {
