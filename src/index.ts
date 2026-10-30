@@ -9,6 +9,7 @@ import { Command } from "commander";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import chalk from "chalk";
+import { developmentStatus } from "./utils/development-status";
 import { VersionManager } from "./services/version-manager";
 
 import { loginCommand } from "./commands/login.command";
@@ -67,6 +68,7 @@ ${chalk.cyan("  └────────────────────�
 
 function getHelpFooter(): string {
   return `
+${chalk.gray(developmentStatus())}
 ${chalk.cyan.bold("Quick Start:")}
   ${chalk.white("$")} npx orazaka init         ${chalk.gray("Initialize workspace")}
   ${chalk.white("$")} npx orazaka install      ${chalk.gray("Verify tools & setup topology")}
