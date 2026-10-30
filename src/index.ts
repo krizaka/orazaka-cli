@@ -23,6 +23,7 @@ import { profileCommand } from "./commands/profile.command";
 import { videoCommand } from "./commands/video.command";
 import { graphCommand } from "./commands/graph.command";
 import { studioCommand } from "./commands/studio.command";
+import { runsCommand } from "./commands/runs.command";
 import { cinemaCommand } from "./commands/cinema.command";
 import { packCommand } from "./commands/pack.command";
 import { mcpCommand } from "./commands/mcp.command";
@@ -129,6 +130,7 @@ program
   .addCommand(videoCommand)
   .addCommand(graphCommand)
   .addCommand(studioCommand)
+  .addCommand(runsCommand)
   .addCommand(cinemaCommand)
   .addCommand(packCommand)
   .addCommand(mcpCommand)

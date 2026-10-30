@@ -79,6 +79,10 @@ orazaka models image use flux-2-klein-4b     # make it the catalogue's default, 
 recipe (steps, guidance, flags from `src/services/image-model-recipes.json`) and refuses to serve another one under its name.
 Prose inputs with commas go through a file: `orazaka studio run <installation> --inputs-file inputs.json`.
 
+### Runs as background tasks (ADR-088)
+
+`orazaka runs ls [--watch] [--json]` lists the runs (name, status, current step, elapsed time, cost against the budget; `--watch` refreshes every 3 s); `orazaka runs show <name|id> [--steps] [--json]` shows one run and its folded timeline. Name and cost columns show `-` until the Studio serves them. `send`, `resume`, `stop` and `approve` follow with the Studio slices (orazaka-cli#90 stays open for them).
+
 ## Position in the platform
 
 | | |
