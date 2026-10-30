@@ -38,6 +38,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import chalk from "chalk";
+import { toolPath } from "../services/tool-path";
 import { requireAuth } from "../threads";
 import { Logger } from "../ui/logger";
 import { ApiClient } from "../services/api-client";
@@ -69,7 +70,8 @@ import {
 import measured from "../services/cinema-estimate.json";
 import {
   TreatmentError,
-  ffmpegOperand,
+  firstFrameArgs,
+  writeTreatmentFiles,
   planProduction,
   podJobs,
   recordTake,
@@ -161,7 +163,7 @@ const restPort: StudioPort = {
         file = path.join(scratch, "last-frame.png");
         // The chained frame: a chosen second of the previous take (`chainAt`), else its last frame.
         const seek = at !== undefined ? ["-ss", at.toFixed(3)] : ["-sseof", "-0.15"];
-        execFileSync("ffmpeg", [
+        execFileSync(toolPath("ffmpeg"), [
           "-v",
           "error",
           "-y",
@@ -299,7 +301,7 @@ const runCommand = new Command("run")
           if (!character?.reference) throw new TreatmentError(`character ${id} has no reference render`);
           const file = path.join(dir, "sheets", `${id}.png`);
           fs.mkdirSync(path.dirname(file), { recursive: true });
-          execFileSync("ffmpeg", sheetArgs([character.reference], file));
+          execFileSync(toolPath("ffmpeg"), sheetArgs([character.reference], file));
           const { assetId } = await ApiClient.uploadFile(file);
           return { runId: `sheet:${id}`, studioKey: "reference-sheet", status: "SUCCEEDED", output: assetId, assetId };
         },
@@ -436,7 +438,7 @@ const sheetCommand = new Command("sheet")
     for (const character of production.script?.parsed?.characters ?? []) {
       if (!character.reference) continue;
       const file = path.join(out, `${character.id}.png`);
-      execFileSync("ffmpeg", sheetArgs([character.reference], file));
+      execFileSync(toolPath("ffmpeg"), sheetArgs([character.reference], file));
       production.characters[character.id] = {
         runId: `sheet:${character.id}`,
         studioKey: "reference-sheet",
@@ -493,11 +495,10 @@ const reviewCommand = new Command("review")
       .slice(0, 5);
     const cast = path.join(out, `${path.basename(file, path.extname(file))}-cast.png`);
     // A shot without a cast (a landscape) is compared with its own first frame.
-    if (renders.length > 0) execFileSync("ffmpeg", sheetArgs(renders, cast));
-    else
-      execFileSync("ffmpeg", ["-v", "error", "-y", "-i", ffmpegOperand(file), "-frames:v", "1", ffmpegOperand(cast)]);
+    if (renders.length > 0) execFileSync(toolPath("ffmpeg"), sheetArgs(renders, cast));
+    else execFileSync(toolPath("ffmpeg"), firstFrameArgs(file, cast));
     const sheet = path.join(out, `${path.basename(file, path.extname(file))}.jpg`);
-    execFileSync("ffmpeg", reviewArgs(file, cast, sheet));
+    execFileSync(toolPath("ffmpeg"), reviewArgs(file, cast, sheet));
     Logger.success(`review sheet: ${sheet}`);
   });
 
@@ -538,19 +539,12 @@ const treatCommand = new Command("treat")
           model: o.model,
           log: (line) => console.log(`${chalk.cyan("▸")} ${line}`),
         });
-        fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(path.join(dir, "treatment.json"), `${JSON.stringify(draft.treatment, null, 1)}\n`);
-        fs.writeFileSync(
-          path.join(dir, "critique.json"),
-          `${JSON.stringify({ rubric: draft.rubric, judge: draft.judge, verdict: draft.verdict, runs: draft.runs }, null, 1)}\n`,
-        );
+        const written = writeTreatmentFiles(dir, draft);
         if (draft.verdict.pass)
-          Logger.success(
-            `accepted: ${path.join(dir, "treatment.json")} — next: orazaka cinema plan <prod> --treatment it`,
-          );
+          Logger.success(`accepted: ${written.treatment} — next: orazaka cinema plan <prod> --treatment it`);
         else {
           Logger.warn(
-            `not accepted after the revisions — read ${path.join(dir, "critique.json")}, edit the treatment, then: orazaka cinema critique`,
+            `not accepted after the revisions — read ${written.critique}, edit the treatment, then: orazaka cinema critique`,
           );
           process.exitCode = 2;
         }

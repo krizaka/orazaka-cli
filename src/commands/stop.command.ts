@@ -6,7 +6,8 @@
 import { Command } from "commander";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
+import { toolPath } from "../services/tool-path";
 import chalk from "chalk";
 import { intro, outro, confirm, logSuccess, logWarning, createSpinner, note, handleCancel } from "../ui/prompts";
 import { resolveWorkspaceRoot, resolveComposeFile, resolvePidFile, resolveDockerComposeCmd } from "../ui/platform";
@@ -260,10 +261,10 @@ export const stopCommand = new Command("stop")
     // ─── 6: Memory flush (macOS) ────────────────────────────
     if (process.platform === "darwin") {
       try {
-        execSync("purge", { stdio: "ignore" });
+        execFileSync(toolPath("purge"), { stdio: "ignore" });
       } catch {
         try {
-          execSync("sudo -n purge", { stdio: "ignore" });
+          execFileSync(toolPath("sudo"), ["-n", toolPath("purge")], { stdio: "ignore" });
         } catch {
           /* Ignore */
         }

@@ -9,6 +9,8 @@
  * (`podJobs`), and the ffmpeg graphs of a cast's reference sheet and of a take's review sheet.
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   type Aspect,
   type Character,
@@ -286,6 +288,28 @@ export function podJobs(production: Production): PodJob[] {
 /** A file name as an ffmpeg operand: one starting with "-" would be read as an option, so it is anchored at "./" (pure). */
 export function ffmpegOperand(file: string): string {
   return file.startsWith("-") ? `./${file}` : file;
+}
+
+/** ffmpeg arguments that take the first frame of a take as a picture (pure). */
+export function firstFrameArgs(file: string, output: string): string[] {
+  return ["-v", "error", "-y", "-i", ffmpegOperand(file), "-frames:v", "1", ffmpegOperand(output)];
+}
+
+/** What `orazaka cinema treat` writes: the treatment, and its critique (rubric, judge, verdict, runs). */
+export function writeTreatmentFiles(
+  dir: string,
+  draft: { treatment: unknown; rubric: unknown; judge?: unknown; verdict: unknown; runs: unknown },
+): { treatment: string; critique: string } {
+  const out = path.resolve(dir);
+  fs.mkdirSync(out, { recursive: true });
+  const treatment = path.join(out, "treatment.json");
+  const critique = path.join(out, "critique.json");
+  fs.writeFileSync(treatment, `${JSON.stringify(draft.treatment, null, 1)}\n`);
+  fs.writeFileSync(
+    critique,
+    `${JSON.stringify({ rubric: draft.rubric, judge: draft.judge, verdict: draft.verdict, runs: draft.runs }, null, 1)}\n`,
+  );
+  return { treatment, critique };
 }
 
 /** ffmpeg arguments of a cast's reference sheet: each render, 512 high, side by side on neutral grey (pure). */
