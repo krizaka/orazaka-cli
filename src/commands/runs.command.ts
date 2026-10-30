@@ -2,8 +2,8 @@
  * @file runs.command.ts
  * @description `orazaka runs` - the runs of the workspace as background tasks (ADR-088, orazaka-cli#90):
  * `runs ls [--watch] [--json]` and `runs show <name|id> [--steps] [--json]`. A run is addressed by its id or its
- * name (the server resolves both, ADR-088 point 1). `--watch` re-reads the list every few seconds; `runs stop|approve|resume` steer a run
- * through the endpoints the Studio serves; `send` and `deny` follow with theirs.
+ * name (the server resolves both, ADR-088 point 1). `--watch` re-reads the list every few seconds; `runs stop|approve|deny|send|resume`
+ * steer a run through the endpoints the Studio serves; `runs wait <ref> [--notify]` follows one run to its end.
  */
 
 import { Command } from "commander";
@@ -11,6 +11,8 @@ import chalk from "chalk";
 import { requireAuth } from "../threads";
 import { Logger } from "../ui/logger";
 import { StudioApi } from "../services/studio.api";
+import { waitForRun } from "../services/runs.wait";
+import { notify, outcomeMessage } from "../services/notify";
 import {
   normaliseRef,
   rowLine,
@@ -89,7 +91,7 @@ const showCommand = new Command("show")
     }
   });
 
-/** The three steering actions the Studio serves today (cancel, approve, resume); send and deny wait for their endpoints. */
+/** A steering action that takes only the run (stop, approve). */
 function steerCommand(name: string, description: string, done: string, call: (id: string) => Promise<unknown>) {
   return new Command(name)
     .description(description)
@@ -116,6 +118,60 @@ const approveCommand = steerCommand(
   (id) => StudioApi.approveRun(id),
 );
 
+const sendCommand = new Command("send")
+  .description("Answer a run that is waiting for input: the message becomes the output of the step it waits on")
+  .argument("<ref>", "The run name or id")
+  .argument("<message>", "What to say to the run")
+  .option("--json", "Output the run as JSON")
+  .action(async (ref: string, message: string, options: { json?: boolean }) => {
+    requireAuth();
+    try {
+      const run = (await StudioApi.sendRun(normaliseRef(ref), message)) as NamedRun;
+      if (options.json) console.log(JSON.stringify(toRow(run, new Date()), null, 2));
+      else console.log(`sent, the run continues (${run.status})`);
+    } catch (error: unknown) {
+      fail("Could not send the message", error);
+    }
+  });
+
+const denyCommand = new Command("deny")
+  .description("Refuse the approval a run is waiting on: the run stops without the step and its hold is released")
+  .argument("<ref>", "The run name or id")
+  .option("--reason <text>", "Why the approval is refused")
+  .option("--json", "Output the run as JSON")
+  .action(async (ref: string, options: { reason?: string; json?: boolean }) => {
+    requireAuth();
+    try {
+      const run = (await StudioApi.denyRun(normaliseRef(ref), options.reason)) as NamedRun;
+      if (options.json) console.log(JSON.stringify(toRow(run, new Date()), null, 2));
+      else console.log(`denied, the run is ${run.status.toLowerCase()}`);
+    } catch (error: unknown) {
+      fail("Could not deny the run", error);
+    }
+  });
+
+const waitCommand = new Command("wait")
+  .description("Follow a run until it ends or needs your approval")
+  .argument("<ref>", "The run name or id")
+  .option("--notify", "Send a desktop notification when it ends or needs approval")
+  .option("--json", "Output the final row as JSON")
+  .action(async (ref: string, options: { notify?: boolean; json?: boolean }) => {
+    requireAuth();
+    try {
+      const { outcome, run } = await waitForRun(normaliseRef(ref), {
+        onStatus: (status) => {
+          if (!options.json) console.log(chalk.gray(status.toLowerCase()));
+        },
+      });
+      const row = toRow(run as NamedRun, new Date());
+      if (options.notify) notify("Orazaka", outcomeMessage(outcome, row.name ?? row.id));
+      if (options.json) console.log(JSON.stringify({ ...row, outcome }, null, 2));
+      else console.log(outcomeMessage(outcome, row.name ?? row.id));
+    } catch (error: unknown) {
+      fail("Could not follow the run", error);
+    }
+  });
+
 const resumeCommand = new Command("resume")
   .description("Start a new run from a step of a finished one; the steps before it keep their outputs")
   .argument("<ref>", "The run name or id")
@@ -138,4 +194,7 @@ export const runsCommand = new Command("runs")
   .addCommand(showCommand)
   .addCommand(stopCommand)
   .addCommand(approveCommand)
+  .addCommand(denyCommand)
+  .addCommand(sendCommand)
+  .addCommand(waitCommand)
   .addCommand(resumeCommand);

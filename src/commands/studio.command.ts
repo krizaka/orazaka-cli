@@ -16,6 +16,9 @@ import { createSpinner } from "../ui/prompts";
 import { Box } from "../ui/box";
 import { Logger } from "../ui/logger";
 import { StudioApi } from "../services/studio.api";
+import { waitForRun } from "../services/runs.wait";
+import { notify, outcomeMessage } from "../services/notify";
+import { spawn } from "node:child_process";
 
 /** Turns `k=v,k2=v2` into an object. The CLI's one concession to terseness. */
 function parsePairs(raw?: string): Record<string, string> {
@@ -149,24 +152,50 @@ const runCommand = new Command("run")
   .option("-i, --inputs <pairs>", "Inputs as key=value,key2=a|b|c (pipes make a list)")
   .option("-f, --inputs-file <file>", "Inputs as one JSON object (for prose with commas); --inputs pairs apply on top")
   .option("-s, --studio", "The target is a Studio key: a toolkit Studio (media, art direction) has no installation")
-  .action(async (target: string, options: { inputs?: string; inputsFile?: string; studio?: boolean }) => {
-    requireAuth();
-    const spinner = await createSpinner();
-    spinner.start("Starting the run...");
-    try {
-      const inputs = {
-        ...(options.inputsFile ? readInputsFile(options.inputsFile) : {}),
-        ...parseInputs(options.inputs),
-      };
-      const run = options.studio ? await StudioApi.startStudioRun(target, inputs) : await StudioApi.run(target, inputs);
-      spinner.stop(`Run ${run.status.toLowerCase()}`);
-      Logger.info(`Run id: ${run.id}`);
-      Logger.info(`Follow it with: orazaka studio logs ${run.id}`);
-    } catch (error: unknown) {
-      spinner.stop("Run refused");
-      fail("Could not start the run", error);
-    }
+  .option("--background", "Print the run id and return at once; follow it with `orazaka runs ls` or `runs wait`")
+  .option("--notify", "Send a desktop notification when the run ends or needs your approval")
+  .action(
+    async (
+      target: string,
+      options: { inputs?: string; inputsFile?: string; studio?: boolean; background?: boolean; notify?: boolean },
+    ) => {
+      requireAuth();
+      const spinner = await createSpinner();
+      spinner.start("Starting the run...");
+      try {
+        const inputs = {
+          ...(options.inputsFile ? readInputsFile(options.inputsFile) : {}),
+          ...parseInputs(options.inputs),
+        };
+        const run = options.studio
+          ? await StudioApi.startStudioRun(target, inputs)
+          : await StudioApi.run(target, inputs);
+        spinner.stop(`Run ${run.status.toLowerCase()}`);
+        Logger.info(`Run id: ${run.id}`);
+        if (options.background) {
+          Logger.info(`Follow it with: orazaka runs wait ${run.id}`);
+          if (options.notify) watchDetached(run.id);
+          return;
+        }
+        const { outcome } = await waitForRun(run.id, { onStatus: (status) => Logger.info(status.toLowerCase()) });
+        if (options.notify) notify("Orazaka", outcomeMessage(outcome, run.id));
+        Logger.info(outcomeMessage(outcome, run.id));
+        Logger.info(`Details: orazaka studio logs ${run.id}`);
+      } catch (error: unknown) {
+        spinner.stop("Run refused");
+        fail("Could not start the run", error);
+      }
+    },
+  );
+
+/** `--background --notify`: a detached `runs wait --notify` outlives this command and notifies when the run needs you. */
+function watchDetached(runId: string): void {
+  const child = spawn(process.execPath, [process.argv[1], "runs", "wait", runId, "--notify", "--json"], {
+    detached: true,
+    stdio: "ignore",
   });
+  child.unref();
+}
 
 const logsCommand = new Command("logs")
   .description("Show a run's per-step state and results")

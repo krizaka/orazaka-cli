@@ -81,7 +81,7 @@ Prose inputs with commas go through a file: `orazaka studio run <installation> -
 
 ### Runs as background tasks (ADR-088)
 
-`orazaka runs ls [--watch] [--json]` lists the runs (name, status, current step, elapsed time, cost against the budget; `--watch` refreshes every 3 s); `orazaka runs show <name|id> [--steps] [--json]` shows one run and its folded timeline. Name and cost columns show `-` until the Studio serves them. `orazaka runs stop <ref>` cancels a run, `orazaka runs approve <ref>` approves the step it waits on, `orazaka runs resume <ref> --from <step>` starts a new run from a step (all take `--json`). `send` and `deny` wait for the Studio endpoints (orazaka-cli#90 stays open for them).
+`orazaka runs ls [--watch] [--json]` lists the runs (name, status, current step, elapsed time, cost against the budget; `--watch` refreshes every 3 s); `orazaka runs show <name|id> [--steps] [--json]` shows one run and its folded timeline. Name and cost columns show `-` until the Studio serves them. `orazaka runs stop <ref>` cancels a run, `orazaka runs approve <ref>` approves the step it waits on, `orazaka runs resume <ref> --from <step>` starts a new run from a step (all take `--json`). `orazaka runs send <ref> "<message>"` answers a run that waits for input and `orazaka runs deny <ref> [--reason <text>]` refuses the approval it waits on (the run stops without the step). `orazaka runs wait <ref> [--notify]` follows a run until it ends or needs you. `orazaka studio run <target>` now follows the run to its end; `--background` prints the run id and returns at once, `--notify` sends a desktop notification (Notification Center on macOS, `notify-send` on Linux, the terminal bell elsewhere) when it ends or needs approval.
 
 ## Position in the platform
 

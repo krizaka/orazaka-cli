@@ -182,6 +182,24 @@ export const StudioApi = {
     });
   },
 
+  /** Answers a run that waits for input (200, orazaka-studio#115): the message is the parked step's output. */
+  sendRun: async (runId: string, text: string): Promise<RunResponse> => {
+    return ApiClient.requestRest<RunResponse>({
+      method: "POST",
+      path: `/api/v1/studios/runs/${encodeURIComponent(runId)}/send`,
+      body: { text },
+    });
+  },
+
+  /** Refuses the approval a run waits on (200): the run stops without the step and its hold is released. */
+  denyRun: async (runId: string, reason?: string): Promise<RunResponse> => {
+    return ApiClient.requestRest<RunResponse>({
+      method: "POST",
+      path: `/api/v1/studios/runs/${encodeURIComponent(runId)}/deny`,
+      body: reason ? { reason } : {},
+    });
+  },
+
   /** Starts a new run from a step of a finished one (202): the steps before keep their recorded outputs. */
   resumeRun: async (runId: string, fromStep: string): Promise<RunResponse> => {
     return ApiClient.requestRest<RunResponse>({
