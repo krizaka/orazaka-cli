@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { AuthApi } from "../services/auth.api";
 import { saveConfig } from "../threads";
 import * as crypto from "node:crypto";
+import { developmentStatus } from "../utils/development-status";
 
 async function promptEmail(emailArg?: string): Promise<string> {
   if (emailArg) return emailArg;
@@ -37,6 +38,7 @@ export const loginCommand = new Command("login")
   .action(async (emailArg?: string, passwordArg?: string) => {
     try {
       await intro(chalk.cyan("Orazaka Router Auth"));
+      console.log(chalk.gray(developmentStatus()));
 
       const email = await promptEmail(emailArg);
       const pwd = await promptPassword(passwordArg);

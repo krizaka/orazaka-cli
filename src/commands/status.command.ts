@@ -13,6 +13,7 @@ import { resolveWorkspaceRoot, resolvePidFile, resolveLogDir, isAppleSilicon } f
 import { isPortInUse } from "../utils/health";
 import { readPidFile, isPidAlive } from "../utils/pid";
 import { PORTS } from "../utils/config";
+import { developmentStatus } from "../utils/development-status";
 
 interface ServiceEntry {
   readonly name: string;
@@ -118,6 +119,8 @@ export const statusCommand = new Command("status")
       // Summary counts
       const running = results.filter((r) => r.status === "running").length;
       const total = results.length;
+      lines.push("");
+      lines.push(chalk.gray(developmentStatus()));
       lines.push("");
       lines.push(
         `${chalk.gray("Summary:")} ${chalk.green(String(running))}/${String(total)} services running` +
