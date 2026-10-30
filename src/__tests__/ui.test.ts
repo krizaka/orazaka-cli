@@ -21,9 +21,15 @@ beforeEach(() => {
   logOutput = [];
   errorOutput = [];
   warnOutput = [];
-  console.log = (...args: unknown[]) => { logOutput.push(args.map(String).join(" ")); };
-  console.error = (...args: unknown[]) => { errorOutput.push(args.map(String).join(" ")); };
-  console.warn = (...args: unknown[]) => { warnOutput.push(args.map(String).join(" ")); };
+  console.log = (...args: unknown[]) => {
+    logOutput.push(args.map(String).join(" "));
+  };
+  console.error = (...args: unknown[]) => {
+    errorOutput.push(args.map(String).join(" "));
+  };
+  console.warn = (...args: unknown[]) => {
+    warnOutput.push(args.map(String).join(" "));
+  };
 });
 
 afterEach(() => {

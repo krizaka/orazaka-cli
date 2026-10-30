@@ -25,8 +25,21 @@
 
 /** Camera moves a shot may name. `locked` is the only static one: a choice, rationed by `MAX_STATIC_SHARE`. */
 export const CAMERA_MOVES = [
-  "handheld", "whip-pan", "dolly-in", "dolly-out", "tracking", "orbit", "crane-up", "fpv",
-  "crane-down", "push-in", "pull-back", "tilt-up", "tilt-down", "snap-zoom", "locked",
+  "handheld",
+  "whip-pan",
+  "dolly-in",
+  "dolly-out",
+  "tracking",
+  "orbit",
+  "crane-up",
+  "fpv",
+  "crane-down",
+  "push-in",
+  "pull-back",
+  "tilt-up",
+  "tilt-down",
+  "snap-zoom",
+  "locked",
 ] as const;
 export type CameraMove = (typeof CAMERA_MOVES)[number];
 
@@ -106,7 +119,8 @@ const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 const list = (v: unknown): Raw[] => (Array.isArray(v) ? (v as Raw[]) : []);
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], what: string): T {
-  if (!(allowed as readonly string[]).includes(String(value))) throw new StagingError(`${what} '${String(value)}' is not one of ${allowed.join(", ")}`);
+  if (!(allowed as readonly string[]).includes(String(value)))
+    throw new StagingError(`${what} '${String(value)}' is not one of ${allowed.join(", ")}`);
   return value as T;
 }
 
@@ -131,13 +145,17 @@ export function parseStaging(raw: Raw): StagedFilm {
       if (support === "ground") {
         if (!str(g.surface)) throw new StagingError(`${where}: ${character} stands on the ground but names no surface`);
         const sc = g.scale as Raw | undefined;
-        if (!sc || !str(sc.ref) || !(Number(sc.ratio) > 0)) throw new StagingError(`${where}: ${character} stands on the ground but has no scale reference (scale.ref, scale.ratio)`);
+        if (!sc || !str(sc.ref) || !(Number(sc.ratio) > 0))
+          throw new StagingError(
+            `${where}: ${character} stands on the ground but has no scale reference (scale.ref, scale.ratio)`,
+          );
         return { character, support, surface: str(g.surface), scale: { ref: str(sc.ref), ratio: Number(sc.ratio) } };
       }
       return { character, support };
     });
     for (const c of characters) {
-      if (!staging.some((g) => g.character === c)) throw new StagingError(`${where}: ${c} is in the shot but not staged (ground, air or held)`);
+      if (!staging.some((g) => g.character === c))
+        throw new StagingError(`${where}: ${c} is in the shot but not staged (ground, air or held)`);
     }
     const light = (s.light ?? {}) as Raw;
     return {
@@ -183,20 +201,40 @@ const KEY_WORDS: Record<Key, RegExp> = {
 export function critiqueCut(film: StagedFilm): { findings: CutFinding[]; pass: boolean } {
   const findings: CutFinding[] = [];
   if (film.narration === "none" && film.lines > 0) {
-    findings.push({ rule: "narrator", message: `${film.lines} narrator line(s) in a film told without a narrator: tell it with picture, action and sound` });
+    findings.push({
+      rule: "narrator",
+      message: `${film.lines} narrator line(s) in a film told without a narrator: tell it with picture, action and sound`,
+    });
   }
   const n = Math.max(1, film.shots.length);
   const mean = film.shots.reduce((a, s) => a + s.seconds, 0) / n;
-  if (mean > MAX_MEAN_SHOT_SECONDS) findings.push({ rule: "pace", message: `the mean shot lasts ${mean.toFixed(2)} s (at most ${MAX_MEAN_SHOT_SECONDS} s)` });
+  if (mean > MAX_MEAN_SHOT_SECONDS)
+    findings.push({
+      rule: "pace",
+      message: `the mean shot lasts ${mean.toFixed(2)} s (at most ${MAX_MEAN_SHOT_SECONDS} s)`,
+    });
   const locked = film.shots.filter((s) => s.camera === "locked").length;
-  if (locked / n > MAX_STATIC_SHARE) findings.push({ rule: "static", message: `${locked} of ${film.shots.length} shots are locked off (at most ${Math.round(MAX_STATIC_SHARE * 100)} %)` });
+  if (locked / n > MAX_STATIC_SHARE)
+    findings.push({
+      rule: "static",
+      message: `${locked} of ${film.shots.length} shots are locked off (at most ${Math.round(MAX_STATIC_SHARE * 100)} %)`,
+    });
   const kinds = new Set(film.shots.map((s) => s.camera).filter((c) => c !== "locked"));
-  if (kinds.size < MIN_CAMERA_KINDS) findings.push({ rule: "camera", message: `${kinds.size} kind(s) of camera move (at least ${MIN_CAMERA_KINDS})` });
+  if (kinds.size < MIN_CAMERA_KINDS)
+    findings.push({ rule: "camera", message: `${kinds.size} kind(s) of camera move (at least ${MIN_CAMERA_KINDS})` });
   const lowOrMacro = film.shots.filter((s) => s.angle === "low" || s.angle === "macro").length;
-  if (lowOrMacro < MIN_LOW_OR_MACRO) findings.push({ rule: "angle", message: `${lowOrMacro} low-angle or macro shot(s) (at least ${MIN_LOW_OR_MACRO})` });
+  if (lowOrMacro < MIN_LOW_OR_MACRO)
+    findings.push({
+      rule: "angle",
+      message: `${lowOrMacro} low-angle or macro shot(s) (at least ${MIN_LOW_OR_MACRO})`,
+    });
   for (const s of film.shots) {
     if (s.light.hard && s.plate && !KEY_WORDS[s.light.key].test(s.plate)) {
-      findings.push({ rule: "light", shot: s.id, message: `the plate does not say its hard key comes ${s.light.key === "top" ? "from above" : `from the ${s.light.key}`}: the composite's shadows would not know where to fall` });
+      findings.push({
+        rule: "light",
+        shot: s.id,
+        message: `the plate does not say its hard key comes ${s.light.key === "top" ? "from above" : `from the ${s.light.key}`}: the composite's shadows would not know where to fall`,
+      });
     }
   }
   return { findings, pass: findings.length === 0 };
@@ -205,8 +243,16 @@ export function critiqueCut(film: StagedFilm): { findings: CutFinding[]; pass: b
 // ── Frame questions (a local vision model, Qwen2.5-VL 7B, read strictly) ───────────────────────────────────────────
 
 export type FrameCheck =
-  | "grounded" | "floating" | "floatingShadow" | "onModel" | "continuity" | "sliding"
-  | "static" | "colour" | "whiteout" | "scale";
+  | "grounded"
+  | "floating"
+  | "floatingShadow"
+  | "onModel"
+  | "continuity"
+  | "sliding"
+  | "static"
+  | "colour"
+  | "whiteout"
+  | "scale";
 
 /**
  * Calibrated on nine frames (six v2 frames with the anomalies, three v3 keyframes), Qwen2.5-VL 7B on MLX:
@@ -339,14 +385,23 @@ export function measuredFindings(shot: { camera: string }, m: Measures): Array<{
   const out: Array<{ check: FrameCheck; message: string }> = [];
   if (shot.camera !== "locked" && m.cameraShift !== undefined) {
     if (m.cameraShift < MIN_CAMERA_SHIFT && (m.zoom ?? 0) < MIN_ZOOM) {
-      out.push({ check: "static", message: `the shot asks for « ${shot.camera} » but the camera does not move (shift ${m.cameraShift.toFixed(4)}, zoom ${(m.zoom ?? 0).toFixed(3)})` });
+      out.push({
+        check: "static",
+        message: `the shot asks for « ${shot.camera} » but the camera does not move (shift ${m.cameraShift.toFixed(4)}, zoom ${(m.zoom ?? 0).toFixed(3)})`,
+      });
     }
   }
   if (m.lumaRatio !== undefined && (m.lumaRatio < LUMA_RATIO[0] || m.lumaRatio > LUMA_RATIO[1])) {
-    out.push({ check: "colour", message: `the character is ${m.lumaRatio.toFixed(2)}× as bright as the plate around it` });
+    out.push({
+      check: "colour",
+      message: `the character is ${m.lumaRatio.toFixed(2)}× as bright as the plate around it`,
+    });
   }
   if (m.chromaShift !== undefined && m.chromaShift > MAX_CHROMA_SHIFT) {
-    out.push({ check: "colour", message: `the character's light differs in colour from the plate's (Δab ${m.chromaShift.toFixed(1)})` });
+    out.push({
+      check: "colour",
+      message: `the character's light differs in colour from the plate's (Δab ${m.chromaShift.toFixed(1)})`,
+    });
   }
   if (m.clippedSeconds !== undefined && m.clippedSeconds > MAX_CLIPPED_SECONDS) {
     out.push({ check: "whiteout", message: `${m.clippedSeconds.toFixed(2)} s of the take are whited out` });

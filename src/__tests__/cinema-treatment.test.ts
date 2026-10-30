@@ -30,17 +30,85 @@ const treatment = (): Record<string, unknown> => ({
   seedBase: 2026102000,
   keep: "One single continuous shot. The characters keep their exact design.",
   keyframeKeep: "Keep every character's exact shape.",
-  cues: { falcon: { en: "The falcon keeps watch: security comes first.", fr: "Le faucon veille : la sécurité d’abord." } },
+  cues: {
+    falcon: { en: "The falcon keeps watch: security comes first.", fr: "Le faucon veille : la sécurité d’abord." },
+  },
   characters: [
     { id: "falcon", reference: "falcon", description: "the orange-red falcon with a black visor" },
     { id: "pigeon", reference: "pigeon", description: "the sky-blue pigeon with an orange parcel" },
   ],
   titles: [{ start: 1, end: 3, style: "hero", en: "The world of Krizaka.", fr: "Le monde de Krizaka." }],
   shots: [
-    { id: 1, slug: "falcon-cliff", seconds: 5, characters: ["falcon"], model: "wan2.2-i2v-a14b-hq", lens: "35mm", camera: "slow orbit", lighting: "blue hour", atmosphere: "fog", action: "it scans", keyframe: "the falcon on a cliff", motion: "The falcon scans the valley. Slow orbit right, 35 mm.", transition: "cut", speed: 1, rampAt: null, caption: "falcon" },
-    { id: 2, slug: "valley", seconds: 3, characters: [], model: "ltx-video-0.9.8-13b-distilled", lens: "24mm", camera: "aerial glide", lighting: "first light", atmosphere: "clouds", action: "glide", keyframe: "a valley before dawn", motion: "Aerial glide over the valley.", transition: "dissolve", speed: 1, rampAt: null },
-    { id: 3, slug: "pigeon-takeoff", seconds: 2.67, characters: ["pigeon"], model: "wan2.2-i2v-a14b-hq", lens: "24mm", camera: "tilt up", lighting: "golden", atmosphere: "haze", action: "takes off", keyframe: "the pigeon on a roof", motion: "The pigeon takes off. Low angle, slow tilt up.", transition: "cut", speed: 1, rampAt: null },
-    { id: 4, slug: "pigeon-flight", seconds: 2.67, characters: ["pigeon"], model: "wan2.2-i2v-a14b-hq", lens: "50mm", camera: "tracking", lighting: "golden", atmosphere: "clouds", action: "flies", keyframe: "the pigeon in flight", motion: "The pigeon flies fast. Fast tracking alongside.", transition: "cut", speed: 1, rampAt: null, continuous: true },
+    {
+      id: 1,
+      slug: "falcon-cliff",
+      seconds: 5,
+      characters: ["falcon"],
+      model: "wan2.2-i2v-a14b-hq",
+      lens: "35mm",
+      camera: "slow orbit",
+      lighting: "blue hour",
+      atmosphere: "fog",
+      action: "it scans",
+      keyframe: "the falcon on a cliff",
+      motion: "The falcon scans the valley. Slow orbit right, 35 mm.",
+      transition: "cut",
+      speed: 1,
+      rampAt: null,
+      caption: "falcon",
+    },
+    {
+      id: 2,
+      slug: "valley",
+      seconds: 3,
+      characters: [],
+      model: "ltx-video-0.9.8-13b-distilled",
+      lens: "24mm",
+      camera: "aerial glide",
+      lighting: "first light",
+      atmosphere: "clouds",
+      action: "glide",
+      keyframe: "a valley before dawn",
+      motion: "Aerial glide over the valley.",
+      transition: "dissolve",
+      speed: 1,
+      rampAt: null,
+    },
+    {
+      id: 3,
+      slug: "pigeon-takeoff",
+      seconds: 2.67,
+      characters: ["pigeon"],
+      model: "wan2.2-i2v-a14b-hq",
+      lens: "24mm",
+      camera: "tilt up",
+      lighting: "golden",
+      atmosphere: "haze",
+      action: "takes off",
+      keyframe: "the pigeon on a roof",
+      motion: "The pigeon takes off. Low angle, slow tilt up.",
+      transition: "cut",
+      speed: 1,
+      rampAt: null,
+    },
+    {
+      id: 4,
+      slug: "pigeon-flight",
+      seconds: 2.67,
+      characters: ["pigeon"],
+      model: "wan2.2-i2v-a14b-hq",
+      lens: "50mm",
+      camera: "tracking",
+      lighting: "golden",
+      atmosphere: "clouds",
+      action: "flies",
+      keyframe: "the pigeon in flight",
+      motion: "The pigeon flies fast. Fast tracking alongside.",
+      transition: "cut",
+      speed: 1,
+      rampAt: null,
+      continuous: true,
+    },
   ],
 });
 
@@ -52,9 +120,16 @@ describe("the planner: a treatment is a typed shot list, checked once", () => {
     expect(p.script?.status).toBe("SUCCEEDED");
     expect(p.script?.studioKey).toBe("treatment");
     const script = p.script?.parsed;
-    expect(script?.shots.map((s) => s.model)).toEqual(["wan2.2-i2v-a14b-hq", "ltx-video-0.9.8-13b-distilled", "wan2.2-i2v-a14b-hq", "wan2.2-i2v-a14b-hq"]);
+    expect(script?.shots.map((s) => s.model)).toEqual([
+      "wan2.2-i2v-a14b-hq",
+      "ltx-video-0.9.8-13b-distilled",
+      "wan2.2-i2v-a14b-hq",
+      "wan2.2-i2v-a14b-hq",
+    ]);
     expect(script?.shots[0].caption).toBe("The falcon keeps watch: security comes first.");
-    expect(planProduction(treatment(), { language: "fr" }).script?.parsed?.shots[0].caption).toBe("Le faucon veille : la sécurité d’abord.");
+    expect(planProduction(treatment(), { language: "fr" }).script?.parsed?.shots[0].caption).toBe(
+      "Le faucon veille : la sécurité d’abord.",
+    );
     expect(script?.shots[3].continuous).toBe(true);
     expect(script?.characters[0].reference).toBe("falcon");
     expect(script?.titles[0].text).toBe("The world of Krizaka.");
@@ -68,7 +143,8 @@ describe("the planner: a treatment is a typed shot list, checked once", () => {
       expect(() => planProduction(t, { language: "en" })).toThrow(TreatmentError);
       expect(() => planProduction(t, { language: "en" })).toThrow(message);
     };
-    const shots = (t: Record<string, unknown>): Array<Record<string, unknown>> => t.shots as Array<Record<string, unknown>>;
+    const shots = (t: Record<string, unknown>): Array<Record<string, unknown>> =>
+      t.shots as Array<Record<string, unknown>>;
     bad((t) => (shots(t)[1].model = "hunyuan-video"), /shot 2: model 'hunyuan-video' is not one of/);
     // A character id names a file on disk (`<dir>/sheets/<id>.png`): a path is refused, never written outside the folder.
     for (const id of ["../../.ssh/falcon", "/tmp/falcon", "a\\b", ".falcon"]) {
@@ -98,7 +174,8 @@ describe("the planner: a treatment is a typed shot list, checked once", () => {
 describe("tail-frame chaining and redoing one shot", () => {
   test("reshooting a shot also reshoots the shots chained to its last frame, and only those", () => {
     const p = planProduction(treatment(), { language: "en" });
-    for (const s of p.shots) s.video = { runId: `v${s.id}`, studioKey: "video-generation", status: "SUCCEEDED", output: `clip-${s.id}` };
+    for (const s of p.shots)
+      s.video = { runId: `v${s.id}`, studioKey: "video-generation", status: "SUCCEEDED", output: `clip-${s.id}` };
     markReshoot(p, [3]);
     expect(p.shots.filter((s) => s.review === "reshoot").map((s) => s.id)).toEqual([3, 4]);
     markReshoot(p, [1]);
@@ -114,7 +191,11 @@ function fakePort(): StudioPort & { calls: Array<[string, Record<string, unknown
     async run(studioKey, inputs): Promise<FinishedRun> {
       calls.push([studioKey, inputs]);
       n += 1;
-      return { id: `run-${n}`, status: "SUCCEEDED", outputs: [{ key: studioKey === "video-sound" ? "video" : "out", value: `/api/v1/assets/job-${n}/out` }] };
+      return {
+        id: `run-${n}`,
+        status: "SUCCEEDED",
+        outputs: [{ key: studioKey === "video-sound" ? "video" : "out", value: `/api/v1/assets/job-${n}/out` }],
+      };
     },
     async reupload(output, lastFrame, at): Promise<string> {
       return `${lastFrame ? "last" : "key"}${at !== undefined ? `@${at}` : ""}:${output}`;
@@ -137,7 +218,12 @@ describe("the director follows the planned shots", () => {
     });
     expect(refs).toEqual(["falcon", "pigeon"]);
     const videos = port.calls.filter(([k]) => k === "video-generation").map(([, i]) => i.model);
-    expect(videos).toEqual(["wan2.2-i2v-a14b-hq", "ltx-video-0.9.8-13b-distilled", "wan2.2-i2v-a14b-hq", "wan2.2-i2v-a14b-hq"]);
+    expect(videos).toEqual([
+      "wan2.2-i2v-a14b-hq",
+      "ltx-video-0.9.8-13b-distilled",
+      "wan2.2-i2v-a14b-hq",
+      "wan2.2-i2v-a14b-hq",
+    ]);
     expect(port.calls.filter(([k]) => k === "image-generation")).toHaveLength(3); // shot 4 is chained: no keyframe
   });
 });
@@ -210,7 +296,13 @@ describe("a treatment that changes during the production", () => {
     const shots = changed.shots as Array<Record<string, unknown>>;
     shots.push({ ...shots[1], id: 5, slug: "sunrise", continuous: false });
     const again = replan(p, changed, { language: "en" });
-    expect(again.script?.parsed?.shots.map((s) => s.slug)).toEqual(["falcon-cliff", "valley", "pigeon-takeoff", "pigeon-flight", "sunrise"]);
+    expect(again.script?.parsed?.shots.map((s) => s.slug)).toEqual([
+      "falcon-cliff",
+      "valley",
+      "pigeon-takeoff",
+      "pigeon-flight",
+      "sunrise",
+    ]);
     expect(podJobs(again).map((j) => j.shot)).toEqual([2, 4, 5]);
     expect(again.history).toHaveLength(2);
     expect(again.brief.seed).toBe(p.brief.seed);

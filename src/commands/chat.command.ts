@@ -2,7 +2,15 @@ import { Command } from "commander";
 import { text, isCancel, intro, outro } from "../ui/prompts";
 import chalk from "chalk";
 import { format } from "date-fns";
-import { requireAuth, loadConfig, createThread, listThreads, switchThread, updateThreadTitle, appendMessage } from "../threads";
+import {
+  requireAuth,
+  loadConfig,
+  createThread,
+  listThreads,
+  switchThread,
+  updateThreadTitle,
+  appendMessage,
+} from "../threads";
 import { SettingsApi } from "../services/settings.api";
 import { Logger } from "../ui/logger";
 import type { OperationNode } from "../types/api.types";
@@ -144,7 +152,9 @@ function handleThreadMeta(input: string, config = loadConfig()!): string {
       threads.forEach((t) => {
         const active = t.conversationId === config.activeThreadId ? chalk.green(" ← active") : "";
         const date = format(new Date(t.updatedAt), "yyyy-MM-dd HH:mm:ss");
-        console.log(`  ${chalk.yellow(t.conversationId.substring(0, 8))}  ${t.title.padEnd(30)}  ${chalk.gray(date)}${active}`);
+        console.log(
+          `  ${chalk.yellow(t.conversationId.substring(0, 8))}  ${t.title.padEnd(30)}  ${chalk.gray(date)}${active}`,
+        );
       });
       console.log();
     }
@@ -163,7 +173,7 @@ function handleThreadMeta(input: string, config = loadConfig()!): string {
     return match.conversationId;
   }
 
-  Logger.warn('Use: /thread new | /thread list | /thread switch <id>');
+  Logger.warn("Use: /thread new | /thread list | /thread switch <id>");
   return config.activeThreadId;
 }
 
@@ -183,11 +193,7 @@ async function executeSingleShot(
   }
 }
 
-async function replLoop(
-  currentConversationId: string,
-  token: string,
-  nodes: readonly OperationNode[],
-): Promise<void> {
+async function replLoop(currentConversationId: string, token: string, nodes: readonly OperationNode[]): Promise<void> {
   const input = await text({
     message: chalk.green("Orazaka >"),
     placeholder: "Type a prompt or command...",
@@ -217,9 +223,7 @@ async function replLoop(
   const parsedRepl = parseInputArgs(trimmed.split(/\s+/));
   try {
     await handleExecution(parsedRepl, currentConversationId, token, nodes);
-    const title = parsedRepl.prompt.length > 40
-      ? `${parsedRepl.prompt.substring(0, 40)}...`
-      : parsedRepl.prompt;
+    const title = parsedRepl.prompt.length > 40 ? `${parsedRepl.prompt.substring(0, 40)}...` : parsedRepl.prompt;
     updateThreadTitle(currentConversationId, title);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";

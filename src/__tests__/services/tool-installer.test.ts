@@ -9,7 +9,9 @@ describe("required tools", () => {
   });
 
   test("what the platform cannot start without stays critical", () => {
-    const critical = getRequiredTools().filter((t) => t.critical).map((t) => t.name);
+    const critical = getRequiredTools()
+      .filter((t) => t.critical)
+      .map((t) => t.name);
     expect(critical).toEqual(expect.arrayContaining(["Docker", "Docker Compose", "Java 21", "Node.js"]));
     expect(critical).not.toContain("Ollama");
   });

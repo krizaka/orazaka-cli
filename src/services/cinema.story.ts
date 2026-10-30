@@ -18,11 +18,49 @@ export type Beat = (typeof BEATS)[number];
 
 /** The sounds the foley step can lay (orazaka-worker-media app/foley.py): beds, then events placed at a second of the shot. */
 export const SOUND_BEDS = [
-  "rain", "storm", "wind", "wind-soft", "lake", "waves", "drizzle", "room", "dawn", "city", "rain-window", "drips", "tunnel", "crowd", "neon",
+  "rain",
+  "storm",
+  "wind",
+  "wind-soft",
+  "lake",
+  "waves",
+  "drizzle",
+  "room",
+  "dawn",
+  "city",
+  "rain-window",
+  "drips",
+  "tunnel",
+  "crowd",
+  "neon",
 ] as const;
 export const SOUND_EVENTS = [
-  "thunder", "gust", "flap", "whoosh", "steps", "rustle", "shake", "paper", "block", "hum", "ignite", "chime", "call",
-  "chirp", "splash", "splash-small", "coin", "parcel", "tap", "swell", "train", "skate", "sparks", "impact", "slide", "riser",
+  "thunder",
+  "gust",
+  "flap",
+  "whoosh",
+  "steps",
+  "rustle",
+  "shake",
+  "paper",
+  "block",
+  "hum",
+  "ignite",
+  "chime",
+  "call",
+  "chirp",
+  "splash",
+  "splash-small",
+  "coin",
+  "parcel",
+  "tap",
+  "swell",
+  "train",
+  "skate",
+  "sparks",
+  "impact",
+  "slide",
+  "riser",
 ] as const;
 export const SOUND_KINDS = [...SOUND_BEDS, ...SOUND_EVENTS] as const;
 export type SoundKind = (typeof SOUND_KINDS)[number];
@@ -144,11 +182,13 @@ export interface Story {
 
 type Raw = Record<string, unknown>;
 const str = (value: unknown): string => (typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "");
-const num = (value: unknown, fallback: number): number => (Number.isFinite(Number(value)) && value !== null && value !== "" ? Number(value) : fallback);
+const num = (value: unknown, fallback: number): number =>
+  Number.isFinite(Number(value)) && value !== null && value !== "" ? Number(value) : fallback;
 const list = (value: unknown): Raw[] => (Array.isArray(value) ? (value as Raw[]) : []);
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], what: string): T {
-  if (!(allowed as readonly string[]).includes(String(value))) throw new StoryError(`${what} '${String(value)}' is not one of ${allowed.join(", ")}`);
+  if (!(allowed as readonly string[]).includes(String(value)))
+    throw new StoryError(`${what} '${String(value)}' is not one of ${allowed.join(", ")}`);
   return value as T;
 }
 
@@ -175,11 +215,14 @@ export function parseStory(raw: unknown): Story {
   const cast = new Set(characters.map((c) => c.id));
   const shots: StoryShot[] = list(t.shots).map((s, i) => {
     const id = i + 1;
-    if (Number(s.id ?? id) !== id) throw new StoryError(`shots are numbered 1 to n in order (shot ${i + 1} says ${String(s.id)})`);
+    if (Number(s.id ?? id) !== id)
+      throw new StoryError(`shots are numbered 1 to n in order (shot ${i + 1} says ${String(s.id)})`);
     const characterIds = list(s.characters).map(String);
-    for (const c of characterIds) if (!cast.has(c)) throw new StoryError(`shot ${id}: character '${c}' is not in the cast`);
+    for (const c of characterIds)
+      if (!cast.has(c)) throw new StoryError(`shot ${id}: character '${c}' is not in the cast`);
     const chain = s.chainFrom as Raw | undefined;
-    if (chain && !(Number(chain.shot) >= 1 && Number(chain.shot) < id)) throw new StoryError(`shot ${id}: chainFrom names a shot before it`);
+    if (chain && !(Number(chain.shot) >= 1 && Number(chain.shot) < id))
+      throw new StoryError(`shot ${id}: chainFrom names a shot before it`);
     return {
       id,
       slug: str(s.slug) || `shot-${id}`,
@@ -193,7 +236,9 @@ export function parseStory(raw: unknown): Story {
       gaze: str(s.gaze),
       physics: str(s.physics),
       interaction: str(s.interaction),
-      ...(s.interactionKind ? { interactionKind: oneOf(s.interactionKind, INTERACTIONS, `shot ${id}: interactionKind`) } : {}),
+      ...(s.interactionKind
+        ? { interactionKind: oneOf(s.interactionKind, INTERACTIONS, `shot ${id}: interactionKind`) }
+        : {}),
       place: str(s.place),
       framing: str(s.framing),
       camera: str(s.camera),
@@ -203,7 +248,9 @@ export function parseStory(raw: unknown): Story {
       motion: str(s.motion),
       transition: str(s.transition) || "cut",
       ...(str(s.reuse) ? { reuse: str(s.reuse) } : {}),
-      ...(chain ? { chainFrom: { shot: Number(chain.shot), ...(chain.at !== undefined ? { at: Number(chain.at) } : {}) } } : {}),
+      ...(chain
+        ? { chainFrom: { shot: Number(chain.shot), ...(chain.at !== undefined ? { at: Number(chain.at) } : {}) } }
+        : {}),
       sound: list(s.sound).map((c, k) => ({
         kind: oneOf(c.kind, SOUND_KINDS, `shot ${id}: sound[${k}].kind`),
         ...(c.at !== undefined && c.at !== null ? { at: num(c.at, 0) } : {}),
@@ -218,7 +265,8 @@ export function parseStory(raw: unknown): Story {
     if (on.length === 0 || on.some((s) => !ids.has(s))) throw new StoryError(`line ${lineId}: its shots must exist`);
     const d = (l.direction ?? {}) as Raw;
     const textByLanguage: Record<string, string> = {};
-    for (const [k, v] of Object.entries(l)) if (/^[a-z]{2}$/.test(k) && typeof v === "string") textByLanguage[k] = str(v);
+    for (const [k, v] of Object.entries(l))
+      if (/^[a-z]{2}$/.test(k) && typeof v === "string") textByLanguage[k] = str(v);
     return {
       id: lineId,
       shots: on,
@@ -266,11 +314,37 @@ export function parseStory(raw: unknown): Story {
 // ── The rubric ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Verbs that say nothing about a character (the v1 film's failure): an action made only of these is flat. */
-const GENERIC = /\b(moves?|moving|stands?|standing|looks? around|turns? (its|his|her) head (left|right)|flies around|is shown|appears?|idles?|poses?|walks? around|scanning)\b/gi;
+const GENERIC =
+  /\b(moves?|moving|stands?|standing|looks? around|turns? (its|his|her) head (left|right)|flies around|is shown|appears?|idles?|poses?|walks? around|scanning)\b/gi;
 /** Physical verbs of a living body: a character shot names at least one. */
-const LIVING = /\b(breath\w*|lean\w*|crouch\w*|leap\w*|launch\w*|beat\w*|flap\w*|land\w*|fold\w*|grip\w*|tighten\w*|shuffl\w*|step\w*|nod\w*|bow\w*|nudg\w*|shak\w*|lift\w*|rais\w*|set\w*|tap\w*|push\w*|brac\w*|tumbl\w*|climb\w*|glanc\w*|snap\w*|puff\w*|smooth\w*|carr\w*|hold\w*|answer\w*|read\w*|recogn\w*|spread\w*|ruffl\w*|blink\w*|widen\w*|bump\w*|twirl\w*|hop\w*|spin\w*|wav(e|es|ing)|slid\w*|danc\w*|jump\w*|cheer\w*|scoop\w*|wrap\w*|flick\w*|sink\w*|shiver\w*|curl\w*|dive\w*|snatch\w*|catch\w*|bob\w*|bank\w*)\b/i;
+const LIVING =
+  /\b(breath\w*|lean\w*|crouch\w*|leap\w*|launch\w*|beat\w*|flap\w*|land\w*|fold\w*|grip\w*|tighten\w*|shuffl\w*|step\w*|nod\w*|bow\w*|nudg\w*|shak\w*|lift\w*|rais\w*|set\w*|tap\w*|push\w*|brac\w*|tumbl\w*|climb\w*|glanc\w*|snap\w*|puff\w*|smooth\w*|carr\w*|hold\w*|answer\w*|read\w*|recogn\w*|spread\w*|ruffl\w*|blink\w*|widen\w*|bump\w*|twirl\w*|hop\w*|spin\w*|wav(e|es|ing)|slid\w*|danc\w*|jump\w*|cheer\w*|scoop\w*|wrap\w*|flick\w*|sink\w*|shiver\w*|curl\w*|dive\w*|snatch\w*|catch\w*|bob\w*|bank\w*)\b/i;
 /** Words too common to tie an action to a promise. */
-const STOP = new Set(["the", "and", "with", "that", "this", "from", "into", "every", "each", "comes", "first", "time", "line", "open", "its", "their", "then", "they", "when", "what", "keeps", "keep", "follows"]);
+const STOP = new Set([
+  "the",
+  "and",
+  "with",
+  "that",
+  "this",
+  "from",
+  "into",
+  "every",
+  "each",
+  "comes",
+  "first",
+  "time",
+  "line",
+  "open",
+  "its",
+  "their",
+  "then",
+  "they",
+  "when",
+  "what",
+  "keeps",
+  "keep",
+  "follows",
+]);
 
 const stems = (value: string): Set<string> =>
   new Set(
@@ -285,8 +359,19 @@ const stems = (value: string): Set<string> =>
 
 export interface Finding {
   readonly rule:
-    | "arc" | "purpose" | "flat" | "off-topic" | "alive" | "continuity" | "voice" | "music" | "sound"
-    | "interaction" | "lineup" | "rhythm" | "legal";
+    | "arc"
+    | "purpose"
+    | "flat"
+    | "off-topic"
+    | "alive"
+    | "continuity"
+    | "voice"
+    | "music"
+    | "sound"
+    | "interaction"
+    | "lineup"
+    | "rhythm"
+    | "legal";
   readonly shot?: number;
   readonly line?: string;
   readonly message: string;
@@ -295,7 +380,20 @@ export interface Finding {
 export interface Critique {
   /** Each criterion, 0..1 (1: every shot, line or cue passes it). */
   readonly scores: Readonly<
-    Record<"arc" | "purpose" | "alive" | "onTopic" | "continuity" | "voice" | "music" | "sound" | "interaction" | "rhythm" | "legal", number>
+    Record<
+      | "arc"
+      | "purpose"
+      | "alive"
+      | "onTopic"
+      | "continuity"
+      | "voice"
+      | "music"
+      | "sound"
+      | "interaction"
+      | "rhythm"
+      | "legal",
+      number
+    >
   >;
   readonly findings: readonly Finding[];
   readonly pass: boolean;
@@ -307,7 +405,8 @@ export const MIN_INTERACTION_SHARE = 1 / 3;
 /** Rhythm: the spread of shot lengths (coefficient of variation), and what a quick shot is. */
 export const MIN_LENGTH_SPREAD = 0.15;
 export const QUICK_SHOT = 3;
-const LINEUP = /\b(in a row|line[sd]? up|lineup|turns? (their|its) heads? (to|toward) the (camera|lens)|looks? (in)?to the (camera|lens)|pose[sd]? for)\b/i;
+const LINEUP =
+  /\b(in a row|line[sd]? up|lineup|turns? (their|its) heads? (to|toward) the (camera|lens)|looks? (in)?to the (camera|lens)|pose[sd]? for)\b/i;
 
 /**
  * Names a film must never say or show (the hard legal rule of orazaka#289): real people, songs, games, shows and brands
@@ -315,17 +414,51 @@ const LINEUP = /\b(in a row|line[sd]? up|lineup|turns? (their|its) heads? (to|to
  * never named. Matched as whole words, case-insensitive.
  */
 export const NEVER_NAMED = [
-  "snoop", "dr. dre", "kendrick", "drake", "sugar sammy", "bougon", "not like us", "gta", "grand theft auto",
-  "rockstar games", "disney", "pixar", "marvel", "nintendo", "pokemon", "taylor swift", "beyonce", "eminem",
+  "snoop",
+  "dr. dre",
+  "kendrick",
+  "drake",
+  "sugar sammy",
+  "bougon",
+  "not like us",
+  "gta",
+  "grand theft auto",
+  "rockstar games",
+  "disney",
+  "pixar",
+  "marvel",
+  "nintendo",
+  "pokemon",
+  "taylor swift",
+  "beyonce",
+  "eminem",
 ] as const;
 
 function textsOf(story: Story): Array<[string, string]> {
-  const out: Array<[string, string]> = [["title", story.title], ["logline", story.logline], ["theme", story.theme]];
+  const out: Array<[string, string]> = [
+    ["title", story.title],
+    ["logline", story.logline],
+    ["theme", story.theme],
+  ];
   for (const l of story.lines) for (const [lang, t] of Object.entries(l.text)) out.push([`line ${l.id} ${lang}`, t]);
   for (const s of story.shots) {
-    for (const k of ["action", "motion", "purpose", "intent", "interaction", "place", "camera", "lighting", "atmosphere"] as const) out.push([`shot ${s.id} ${k}`, s[k]]);
+    for (const k of [
+      "action",
+      "motion",
+      "purpose",
+      "intent",
+      "interaction",
+      "place",
+      "camera",
+      "lighting",
+      "atmosphere",
+    ] as const)
+      out.push([`shot ${s.id} ${k}`, s[k]]);
   }
-  out.push(["music", story.music.prompt], ...story.music.cues.map((c, i): [string, string] => [`cue ${i + 1}`, c.prompt]));
+  out.push(
+    ["music", story.music.prompt],
+    ...story.music.cues.map((c, i): [string, string] => [`cue ${i + 1}`, c.prompt]),
+  );
   for (const r of story.references) out.push([`reference ${r.evokes}`, `${r.evokes} ${r.how}`]);
   return out;
 }
@@ -338,11 +471,16 @@ export function legalFindings(story: Story): Finding[] {
     const lower = ` ${text.toLowerCase()} `;
     for (const name of banned) {
       const at = lower.search(new RegExp(`[^a-z0-9]${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^a-z0-9]`));
-      if (at >= 0) findings.push({ rule: "legal", message: `${where} names « ${name} »: evoke it through an original or generic means instead` });
+      if (at >= 0)
+        findings.push({
+          rule: "legal",
+          message: `${where} names « ${name} »: evoke it through an original or generic means instead`,
+        });
     }
   }
   for (const r of story.references) {
-    if (r.how.split(/\s+/).length < 3) findings.push({ rule: "legal", message: `the reference « ${r.evokes} » does not say how it is evoked legally` });
+    if (r.how.split(/\s+/).length < 3)
+      findings.push({ rule: "legal", message: `the reference « ${r.evokes} » does not say how it is evoked legally` });
   }
   return findings;
 }
@@ -369,11 +507,13 @@ export function critiqueStory(story: Story, language = "en"): Critique {
     if (story.shots.some((s) => s.beat === beat)) arcOk += 1;
     else findings.push({ rule: "arc", message: `the story has no ${beat}` });
   }
-  if (order.some((b, i) => i > 0 && b < order[i - 1])) findings.push({ rule: "arc", message: "the beats go back in time (hook → journey → turn → payoff)" });
+  if (order.some((b, i) => i > 0 && b < order[i - 1]))
+    findings.push({ rule: "arc", message: "the beats go back in time (hook → journey → turn → payoff)" });
   const turnAt = story.shots.findIndex((s) => s.beat === "turn");
   if (turnAt >= 0) {
     const before = story.shots.slice(0, turnAt).reduce((sum, s) => sum + screen(s), 0);
-    if (before < runtime / 3) findings.push({ rule: "arc", message: "the turn comes before the story has started its journey (first third)" });
+    if (before < runtime / 3)
+      findings.push({ rule: "arc", message: "the turn comes before the story has started its journey (first third)" });
   }
   if (!story.theme) findings.push({ rule: "arc", message: "the story names no theme" });
 
@@ -400,17 +540,30 @@ export function critiqueStory(story: Story, language = "en"): Critique {
     if (beats < 2) problems.push("one action only (a beat needs a change)");
     if (problems.length === 0) alive += 1;
     else findings.push({ rule: "alive", shot: s.id, message: problems.join(", ") });
-    if (generic > 0 && beats - generic < 2) findings.push({ rule: "flat", shot: s.id, message: `the action is generic motion (${(s.action.match(GENERIC) ?? []).join(", ")})` });
+    if (generic > 0 && beats - generic < 2)
+      findings.push({
+        rule: "flat",
+        shot: s.id,
+        message: `the action is generic motion (${(s.action.match(GENERIC) ?? []).join(", ")})`,
+      });
     // On topic: the action carries the promise or the intention of at least one character in it, or the purpose names it.
     const doing = stems(`${s.action} ${s.intent}`);
     const tied = s.characters.some((id) => {
       const c = story.characters.find((x) => x.id === id);
       if (!c) return false;
       const promise = stems(`${c.promise} ${c.intention}`);
-      return [...promise].some((w) => doing.has(w)) || (c.promise && s.purpose.toLowerCase().includes(c.promise.split(/[:,]/)[0].toLowerCase()));
+      return (
+        [...promise].some((w) => doing.has(w)) ||
+        (c.promise && s.purpose.toLowerCase().includes(c.promise.split(/[:,]/)[0].toLowerCase()))
+      );
     });
     if (tied) onTopic += 1;
-    else findings.push({ rule: "off-topic", shot: s.id, message: "the action serves no character's promise or intention" });
+    else
+      findings.push({
+        rule: "off-topic",
+        shot: s.id,
+        message: "the action serves no character's promise or intention",
+      });
   }
 
   // Continuity: a chained shot keeps one of the characters of the shot it starts from.
@@ -421,7 +574,12 @@ export function critiqueStory(story: Story, language = "en"): Critique {
     chained += 1;
     const from = story.shots.find((x) => x.id === s.chainFrom?.shot);
     if (from && s.characters.some((c) => from.characters.includes(c))) chainOk += 1;
-    else findings.push({ rule: "continuity", shot: s.id, message: `chained from shot ${s.chainFrom.shot} but shares no character with it` });
+    else
+      findings.push({
+        rule: "continuity",
+        shot: s.id,
+        message: `chained from shot ${s.chainFrom.shot} but shares no character with it`,
+      });
   }
 
   // Voice: every line has a direction, fits its shots, and lines never overlap.
@@ -432,7 +590,8 @@ export function critiqueStory(story: Story, language = "en"): Critique {
     const seconds = l.shots.reduce((sum, id) => sum + screen(story.shots[id - 1]), 0);
     const problems: string[] = [];
     if (!l.direction.emotion) problems.push("no emotion");
-    if (words / Math.max(seconds, 0.1) > MAX_WORDS_PER_SECOND) problems.push(`${words} words over ${seconds.toFixed(1)} s is rushed`);
+    if (words / Math.max(seconds, 0.1) > MAX_WORDS_PER_SECOND)
+      problems.push(`${words} words over ${seconds.toFixed(1)} s is rushed`);
     if (l.shots.some((id, k) => k > 0 && id !== l.shots[k - 1] + 1)) problems.push("its shots are not consecutive");
     if (l.shots[0] <= lastShot) problems.push("it overlaps the line before it");
     lastShot = l.shots[l.shots.length - 1];
@@ -449,9 +608,17 @@ export function critiqueStory(story: Story, language = "en"): Critique {
     ? story.shots.every((s) => story.music.cues.some((c) => c.shots && c.shots[0] <= s.id && s.id <= c.shots[1]))
     : BEATS.every((b) => !story.shots.some((s) => s.beat === b) || cue(b));
   if (covered) musicOk += 1;
-  else findings.push({ rule: "music", message: byShots ? "a shot of the story has no music cue" : "a beat of the story has no music cue" });
+  else
+    findings.push({
+      rule: "music",
+      message: byShots ? "a shot of the story has no music cue" : "a beat of the story has no music cue",
+    });
   if (story.music.cues.every((c) => c.intensity <= MAX_MUSIC_INTENSITY)) musicOk += 1;
-  else findings.push({ rule: "music", message: `a cue is louder than ${MAX_MUSIC_INTENSITY} (the score sits under the story)` });
+  else
+    findings.push({
+      rule: "music",
+      message: `a cue is louder than ${MAX_MUSIC_INTENSITY} (the score sits under the story)`,
+    });
   const [hook, turn, payoff] = [cue("hook"), cue("turn"), cue("payoff")];
   if (!hook || story.music.cues.every((c) => c.intensity >= hook.intensity)) musicOk += 1;
   else findings.push({ rule: "music", message: "the hook's cue is not the quietest (an intro starts low)" });
@@ -466,8 +633,10 @@ export function critiqueStory(story: Story, language = "en"): Critique {
   // Sound: every shot has a sound; a character shot has at least one event (its action is heard, not just a bed).
   const soundOk = story.shots.filter((s) => {
     const events = s.sound.filter((c) => c.at !== undefined).length;
-    if (s.sound.length === 0) findings.push({ rule: "sound", shot: s.id, message: "the shot is silent (no sound list)" });
-    else if (s.characters.length > 0 && !s.reuse && events === 0) findings.push({ rule: "sound", shot: s.id, message: "the character's action is not heard (no foley event)" });
+    if (s.sound.length === 0)
+      findings.push({ rule: "sound", shot: s.id, message: "the shot is silent (no sound list)" });
+    else if (s.characters.length > 0 && !s.reuse && events === 0)
+      findings.push({ rule: "sound", shot: s.id, message: "the character's action is not heard (no foley event)" });
     else return true;
     return false;
   }).length;
@@ -480,29 +649,55 @@ export function critiqueStory(story: Story, language = "en"): Critique {
   let interactionScore = 1;
   if (castSize >= 2) {
     const share = characterShots.length ? interacting.length / characterShots.length : 0;
-    interactionScore = Number((Math.min(1, kinds.size / MIN_INTERACTION_KINDS) * Math.min(1, share / MIN_INTERACTION_SHARE)).toFixed(3));
+    interactionScore = Number(
+      (Math.min(1, kinds.size / MIN_INTERACTION_KINDS) * Math.min(1, share / MIN_INTERACTION_SHARE)).toFixed(3),
+    );
     if (kinds.size < MIN_INTERACTION_KINDS) {
-      findings.push({ rule: "interaction", message: `the characters only ${[...kinds].join(", ") || "stand side by side"}: they should meet, help, argue, hand off (${MIN_INTERACTION_KINDS} kinds at least)` });
+      findings.push({
+        rule: "interaction",
+        message: `the characters only ${[...kinds].join(", ") || "stand side by side"}: they should meet, help, argue, hand off (${MIN_INTERACTION_KINDS} kinds at least)`,
+      });
     }
     if (share < MIN_INTERACTION_SHARE) {
-      findings.push({ rule: "interaction", message: `${interacting.length} of ${characterShots.length} character shots show characters acting on each other (a third at least)` });
+      findings.push({
+        rule: "interaction",
+        message: `${interacting.length} of ${characterShots.length} character shots show characters acting on each other (a third at least)`,
+      });
     }
-    for (const s of multi) if (!s.interactionKind) findings.push({ rule: "interaction", shot: s.id, message: "several characters share the frame but do nothing to each other" });
+    for (const s of multi)
+      if (!s.interactionKind)
+        findings.push({
+          rule: "interaction",
+          shot: s.id,
+          message: "several characters share the frame but do nothing to each other",
+        });
   }
   // A lineup: characters presented to the camera instead of acting (v1's « five on the ridge turn their heads to us »).
   for (const s of story.shots.filter((x) => x.characters.length >= 3 && !x.reuse)) {
-    if (LINEUP.test(s.action) && !s.interactionKind) findings.push({ rule: "lineup", shot: s.id, message: "the characters are lined up for the camera, not acting" });
+    if (LINEUP.test(s.action) && !s.interactionKind)
+      findings.push({ rule: "lineup", shot: s.id, message: "the characters are lined up for the camera, not acting" });
   }
   // Rhythm: shot lengths that vary, and somewhere a run of quick cuts (dynamism).
   const lengths = story.shots.map(screen);
   const mean = lengths.reduce((a, b) => a + b, 0) / Math.max(1, lengths.length);
-  const spread = Math.sqrt(lengths.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, lengths.length)) / Math.max(mean, 1e-6);
-  const quickRun = lengths.some((_, i) => i + 2 < lengths.length && lengths.slice(i, i + 3).every((x) => x <= QUICK_SHOT));
+  const spread =
+    Math.sqrt(lengths.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, lengths.length)) / Math.max(mean, 1e-6);
+  const quickRun = lengths.some(
+    (_, i) => i + 2 < lengths.length && lengths.slice(i, i + 3).every((x) => x <= QUICK_SHOT),
+  );
   let rhythmOk = 0;
   if (spread >= MIN_LENGTH_SPREAD) rhythmOk += 1;
-  else findings.push({ rule: "rhythm", message: `every shot lasts about the same (spread ${spread.toFixed(2)}): change the rhythm` });
+  else
+    findings.push({
+      rule: "rhythm",
+      message: `every shot lasts about the same (spread ${spread.toFixed(2)}): change the rhythm`,
+    });
   if (quickRun || story.shots.length < 6) rhythmOk += 1;
-  else findings.push({ rule: "rhythm", message: `no run of quick cuts (three shots of ${QUICK_SHOT} s or less): nothing has momentum` });
+  else
+    findings.push({
+      rule: "rhythm",
+      message: `no run of quick cuts (three shots of ${QUICK_SHOT} s or less): nothing has momentum`,
+    });
   // Legal (the hard rule): no real person, song, game, show or brand named anywhere; every reference says how it is evoked.
   const named = legalFindings(story);
   findings.push(...named);
@@ -543,10 +738,15 @@ export const JUDGE_THRESHOLD = 3.5;
 /** The prompt of the critique Studio (pure): the story, compact, and the rubric it is scored against. */
 export function judgePrompt(story: Story, language = "en"): string {
   const shots = story.shots
-    .map((s) => `${s.id}. [${s.beat}] ${s.characters.join("+") || "landscape"} — purpose: ${s.purpose} — action: ${s.action}${s.gaze ? ` — gaze: ${s.gaze}` : ""}${s.physics ? ` — body: ${s.physics}` : ""}${s.interactionKind ? ` — they ${s.interactionKind}` : ""}`)
+    .map(
+      (s) =>
+        `${s.id}. [${s.beat}] ${s.characters.join("+") || "landscape"} — purpose: ${s.purpose} — action: ${s.action}${s.gaze ? ` — gaze: ${s.gaze}` : ""}${s.physics ? ` — body: ${s.physics}` : ""}${s.interactionKind ? ` — they ${s.interactionKind}` : ""}`,
+    )
     .join("\n");
   const cast = story.characters.map((c) => `${c.id}: promise «${c.promise}», intention «${c.intention}»`).join("\n");
-  const lines = story.lines.map((l) => `(${l.shots.join(",")}) ${l.text[language] ?? ""} [${l.direction.emotion}, ${l.direction.pace}]`).join("\n");
+  const lines = story.lines
+    .map((l) => `(${l.shots.join(",")}) ${l.text[language] ?? ""} [${l.direction.emotion}, ${l.direction.pace}]`)
+    .join("\n");
   return [
     "You are a demanding film director reviewing a short film's treatment before it is shot. Judge it against this rubric.",
     "transport: does the story carry the viewer (a hook that raises a question, stakes, an emotional turn, a payoff that answers the hook)?",
@@ -580,7 +780,10 @@ export function parseJudge(raw: string, shotCount: number): Judgement {
     throw new StoryError(`the judge's answer is not JSON (${error instanceof Error ? error.message : "parse error"})`);
   }
   const given = (data.scores ?? {}) as Raw;
-  const scores = Object.fromEntries(JUDGE_AXES.map((a) => [a, Math.min(5, Math.max(1, num(given[a], 1)))])) as Record<JudgeAxis, number>;
+  const scores = Object.fromEntries(JUDGE_AXES.map((a) => [a, Math.min(5, Math.max(1, num(given[a], 1)))])) as Record<
+    JudgeAxis,
+    number
+  >;
   const rejects = list(data.rejects)
     .map((r) => ({ shot: Number(r.shot), why: str(r.why) }))
     .filter((r) => Number.isInteger(r.shot) && r.shot >= 1 && r.shot <= shotCount);
@@ -596,9 +799,12 @@ export interface Verdict {
 
 /** The rubric and the judge together: a story is filmed only when both accept it (pure). */
 export function verdict(rubric: Critique, judge?: Judgement): Verdict {
-  const reasons = rubric.findings.map((f) => `${f.rule}${f.shot ? ` (shot ${f.shot})` : f.line ? ` (line ${f.line})` : ""}: ${f.message}`);
+  const reasons = rubric.findings.map(
+    (f) => `${f.rule}${f.shot ? ` (shot ${f.shot})` : f.line ? ` (line ${f.line})` : ""}: ${f.message}`,
+  );
   if (judge) {
-    for (const axis of JUDGE_AXES) if (judge.scores[axis] < JUDGE_THRESHOLD) reasons.push(`judge: ${axis} ${judge.scores[axis]}/5`);
+    for (const axis of JUDGE_AXES)
+      if (judge.scores[axis] < JUDGE_THRESHOLD) reasons.push(`judge: ${axis} ${judge.scores[axis]}/5`);
     for (const r of judge.rejects) reasons.push(`judge rejects shot ${r.shot}: ${r.why}`);
   }
   const judged = !judge || (JUDGE_AXES.every((a) => judge.scores[a] >= JUDGE_THRESHOLD) && judge.rejects.length === 0);
@@ -620,13 +826,24 @@ export interface Placed {
 
 export interface Timeline {
   /** Each shot's place in the cut: [start, end) in seconds. */
-  readonly shots: ReadonlyArray<{ readonly id: number; readonly start: number; readonly end: number; readonly beat: Beat }>;
+  readonly shots: ReadonlyArray<{
+    readonly id: number;
+    readonly start: number;
+    readonly end: number;
+    readonly beat: Beat;
+  }>;
   /** Each line, with where it is said and whether its measured length fits its shots. */
   readonly lines: ReadonlyArray<Placed & { readonly fits: boolean; readonly room: number }>;
   /** The music cues on the cut: each beat's span and its intensity. */
   readonly music: ReadonlyArray<Placed & { readonly intensity: number }>;
   /** Every sound of the sound list at its absolute time (beds span their shot). */
-  readonly sound: ReadonlyArray<{ readonly shot: number; readonly kind: SoundKind; readonly start: number; readonly end: number; readonly gain: number }>;
+  readonly sound: ReadonlyArray<{
+    readonly shot: number;
+    readonly kind: SoundKind;
+    readonly start: number;
+    readonly end: number;
+    readonly gain: number;
+  }>;
   readonly seconds: number;
 }
 
@@ -635,7 +852,12 @@ export interface Timeline {
  * music); otherwise each shot's screen time back to back. `voice` is each line's measured length in seconds (from the
  * voice step); a line without one is given the time its words take at the pace asked.
  */
-export function timeline(story: Story, language = "en", voice: Readonly<Record<string, number>> = {}, spans?: ReadonlyArray<readonly [number, number]>): Timeline {
+export function timeline(
+  story: Story,
+  language = "en",
+  voice: Readonly<Record<string, number>> = {},
+  spans?: ReadonlyArray<readonly [number, number]>,
+): Timeline {
   let t = 0;
   const shots = story.shots.map((s, i) => {
     const [start, end] = spans?.[i] ?? [t, t + screen(s)];
@@ -658,7 +880,12 @@ export function timeline(story: Story, language = "en", voice: Readonly<Record<s
   const music = story.music.cues.some((c) => c.shots)
     ? story.music.cues
         .filter((c) => c.shots)
-        .map((c, i) => ({ id: c.genre ? `${i + 1}-${c.genre}` : `${i + 1}-${c.beat}`, start: shots[c.shots![0] - 1].start, end: shots[c.shots![1] - 1].end, intensity: c.intensity }))
+        .map((c, i) => ({
+          id: c.genre ? `${i + 1}-${c.genre}` : `${i + 1}-${c.beat}`,
+          start: shots[c.shots![0] - 1].start,
+          end: shots[c.shots![1] - 1].end,
+          intensity: c.intensity,
+        }))
     : BEATS.flatMap((b) => {
         const inBeat = shots.filter((s) => s.beat === b);
         const cue = story.music.cues.find((c) => c.beat === b);
@@ -669,7 +896,13 @@ export function timeline(story: Story, language = "en", voice: Readonly<Record<s
     s.sound.map((c) => {
       const shot = shots[i];
       const start = c.at === undefined ? shot.start : Math.min(shot.end, shot.start + c.at / (s.speed || 1));
-      return { shot: s.id, kind: c.kind, start: round(start), end: c.at === undefined ? shot.end : round(start), gain: c.gain };
+      return {
+        shot: s.id,
+        kind: c.kind,
+        start: round(start),
+        end: c.at === undefined ? shot.end : round(start),
+        gain: c.gain,
+      };
     }),
   );
   return { shots, lines, music, sound, seconds: round(seconds) };

@@ -47,10 +47,9 @@ describe("SettingsApi", () => {
 
     const result = await SettingsApi.getInterceptionSchema("schema-1");
 
-    expect(mockRequestGql).toHaveBeenCalledWith(
-      expect.stringContaining("GetInterceptionSchema"),
-      { schemaId: "schema-1" },
-    );
+    expect(mockRequestGql).toHaveBeenCalledWith(expect.stringContaining("GetInterceptionSchema"), {
+      schemaId: "schema-1",
+    });
     expect(result).toBe('{"field":"value"}');
   });
 
@@ -62,15 +61,18 @@ describe("SettingsApi", () => {
   });
 
   test("updatePreferences calls mutation with prefs", async () => {
-    const profile = { id: "u1", username: "admin", email: "a@b.com", authorities: ["USER"], preferences: { theme: "dark" } };
+    const profile = {
+      id: "u1",
+      username: "admin",
+      email: "a@b.com",
+      authorities: ["USER"],
+      preferences: { theme: "dark" },
+    };
     mockRequestGql.mockResolvedValue({ updatePreferences: profile });
 
     const result = await SettingsApi.updatePreferences({ theme: "dark" });
 
-    expect(mockRequestGql).toHaveBeenCalledWith(
-      expect.stringContaining("UpdatePrefs"),
-      { prefs: { theme: "dark" } },
-    );
+    expect(mockRequestGql).toHaveBeenCalledWith(expect.stringContaining("UpdatePrefs"), { prefs: { theme: "dark" } });
     expect(result).toEqual(profile);
   });
 
@@ -79,14 +81,11 @@ describe("SettingsApi", () => {
 
     const result = await SettingsApi.resolveInterception("ONBOARDING", "schema-1", { answer: "yes" });
 
-    expect(mockRequestGql).toHaveBeenCalledWith(
-      expect.stringContaining("ResolveInterception"),
-      {
-        interceptionType: "ONBOARDING",
-        schemaId: "schema-1",
-        responses: { answer: "yes" },
-      },
-    );
+    expect(mockRequestGql).toHaveBeenCalledWith(expect.stringContaining("ResolveInterception"), {
+      interceptionType: "ONBOARDING",
+      schemaId: "schema-1",
+      responses: { answer: "yes" },
+    });
     expect(result).toBe(true);
   });
 });

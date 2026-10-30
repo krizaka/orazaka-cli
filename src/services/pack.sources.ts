@@ -45,8 +45,7 @@ export function packSources(): PackSource[] {
             location: entry.slice(REGISTRY_PREFIX.length),
             // Named, not silently skipped: a deployment that thinks it has a registry and
             // quietly resolves nothing is worse than one that says the control plane is absent.
-            unavailable:
-              "registry sources need the cloud control plane; this deployment is local (AGENTS.md §0)",
+            unavailable: "registry sources need the cloud control plane; this deployment is local (AGENTS.md §0)",
           }
         : { kind: "directory" as const, location: entry },
     );

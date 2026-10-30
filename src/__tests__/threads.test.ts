@@ -3,9 +3,9 @@
  * @description Tests for CLI thread management — config persistence, thread CRUD.
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import * as os from 'node:os';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 import type { CliConfig, StoredMessage } from "../types/local.types";
 
 // ── Isolated test environment ───────────────────────────────────────────────
@@ -85,9 +85,7 @@ describe("Message persistence (manual)", () => {
     ];
 
     fs.writeFileSync(threadFile, JSON.stringify(messages, null, 2), "utf-8");
-    const loaded: StoredMessage[] = JSON.parse(
-      fs.readFileSync(threadFile, "utf-8"),
-    );
+    const loaded: StoredMessage[] = JSON.parse(fs.readFileSync(threadFile, "utf-8"));
     expect(loaded).toHaveLength(2);
     expect(loaded[0].role).toBe("user");
     expect(loaded[1].role).toBe("assistant");
@@ -108,9 +106,7 @@ describe("Message persistence (manual)", () => {
     ];
 
     fs.writeFileSync(threadFile, JSON.stringify(messages), "utf-8");
-    const loaded: StoredMessage[] = JSON.parse(
-      fs.readFileSync(threadFile, "utf-8"),
-    );
+    const loaded: StoredMessage[] = JSON.parse(fs.readFileSync(threadFile, "utf-8"));
     expect(loaded[0].kind).toBe("audio");
   });
 });

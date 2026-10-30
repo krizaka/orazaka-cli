@@ -107,10 +107,7 @@ export const StudioApi = {
    * The only door: a TOOLKIT Studio has no installation row to address, and since
    * ADR-068 there is no capability endpoint to POST to either.
    */
-  startStudioRun: async (
-    studioKey: string,
-    inputs: Record<string, unknown>,
-  ): Promise<RunResponse> => {
+  startStudioRun: async (studioKey: string, inputs: Record<string, unknown>): Promise<RunResponse> => {
     return ApiClient.requestRest<RunResponse>({
       method: "POST",
       path: `/api/v1/studios/${encodeURIComponent(studioKey)}/runs`,
@@ -136,10 +133,7 @@ export const StudioApi = {
   },
 
   /** Installs a Studio, pinning its newest published version. */
-  install: async (
-    studioKey: string,
-    config: Record<string, string>,
-  ): Promise<InstallationResponse> => {
+  install: async (studioKey: string, config: Record<string, string>): Promise<InstallationResponse> => {
     return ApiClient.requestRest<InstallationResponse>({
       method: "POST",
       path: `/api/v1/studios/${encodeURIComponent(studioKey)}/installations`,
@@ -148,10 +142,7 @@ export const StudioApi = {
   },
 
   /** Starts a run and returns immediately with its id — a run outlives the command. */
-  run: async (
-    installationId: string,
-    inputs: Record<string, unknown>,
-  ): Promise<RunResponse> => {
+  run: async (installationId: string, inputs: Record<string, unknown>): Promise<RunResponse> => {
     return ApiClient.requestRest<RunResponse>({
       method: "POST",
       path: `/api/v1/studios/installations/${encodeURIComponent(installationId)}/runs`,

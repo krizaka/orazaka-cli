@@ -4,12 +4,12 @@
  * Handles text, image (Data URL → file), audio (Data URL → file), and video (Base64 → file).
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { format } from 'date-fns';
-import type { TimelineMessage } from './types/api.types';
-import { ROUTER_URL } from './utils/config';
-import { loadConfig } from './threads';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { format } from "date-fns";
+import type { TimelineMessage } from "./types/api.types";
+import { ROUTER_URL } from "./utils/config";
+import { loadConfig } from "./threads";
 
 const DATA_URL_REGEX = /^data:([^;]+);base64,(.+)$/;
 
@@ -22,7 +22,7 @@ const DATA_URL_REGEX = /^data:([^;]+);base64,(.+)$/;
 function decodeDataUrl(dataUrl: string): { mime: string; buffer: Buffer } | null {
   const match = DATA_URL_REGEX.exec(dataUrl);
   if (!match) return null;
-  return { mime: match[1], buffer: Buffer.from(match[2], 'base64') };
+  return { mime: match[1], buffer: Buffer.from(match[2], "base64") };
 }
 
 /**
@@ -33,15 +33,15 @@ function decodeDataUrl(dataUrl: string): { mime: string; buffer: Buffer } | null
  */
 function extensionFromMime(mime: string): string {
   const map: Record<string, string> = {
-    'image/png': '.png',
-    'image/jpeg': '.jpg',
-    'image/webp': '.webp',
-    'audio/mp3': '.mp3',
-    'audio/mpeg': '.mp3',
-    'audio/wav': '.wav',
-    'video/mp4': '.mp4',
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "audio/mp3": ".mp3",
+    "audio/mpeg": ".mp3",
+    "audio/wav": ".wav",
+    "video/mp4": ".mp4",
   };
-  return map[mime] || '.bin';
+  return map[mime] || ".bin";
 }
 
 /**
@@ -88,11 +88,13 @@ export function renderText(content: string): void {
  * @param savePath - Optional explicit save path; auto-generates if omitted.
  */
 async function downloadUrl(urlStr: string): Promise<Buffer> {
-  const absolute = urlStr.startsWith('http');
+  const absolute = urlStr.startsWith("http");
   const fullUrl = absolute ? urlStr : `${ROUTER_URL}${urlStr}`;
   // An asset of the platform (`/api/v1/assets/…`) is its owner's: the session's token asks for it. A URL elsewhere gets none.
-  const token = urlStr.startsWith('/api/') ? loadConfig()?.token : undefined;
-  const response = token ? await fetch(fullUrl, { headers: { Authorization: `Bearer ${token}` } }) : await fetch(fullUrl);
+  const token = urlStr.startsWith("/api/") ? loadConfig()?.token : undefined;
+  const response = token
+    ? await fetch(fullUrl, { headers: { Authorization: `Bearer ${token}` } })
+    : await fetch(fullUrl);
   if (!response.ok) {
     throw new Error(`Failed to download media: status ${response.status}`);
   }
@@ -114,11 +116,7 @@ interface MediaRenderConfig {
  * Shared media content renderer. Handles the decode/download/save pipeline
  * and delegates formatting to the per-kind config.
  */
-async function renderMediaContent(
-  content: string,
-  config: MediaRenderConfig,
-  savePath?: string,
-): Promise<void> {
+async function renderMediaContent(content: string, config: MediaRenderConfig, savePath?: string): Promise<void> {
   const decoded = decodeDataUrl(content);
   if (decoded) {
     const ext = extensionFromMime(decoded.mime);
@@ -127,7 +125,7 @@ async function renderMediaContent(
     for (const line of config.formatSuccess(target, decoded.buffer, decoded.mime)) {
       console.log(line);
     }
-  } else if (content.startsWith('http') || content.startsWith('/uploads') || content.startsWith('/api/')) {
+  } else if (content.startsWith("http") || content.startsWith("/uploads") || content.startsWith("/api/")) {
     try {
       const buffer = await downloadUrl(content);
       const target = savePath || autoFileName(config.prefix, config.defaultExt);
@@ -137,7 +135,9 @@ async function renderMediaContent(
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.log(`${config.color}[${config.label}]\x1b[0m Failed to download ${config.label.toLowerCase()} URL: ${msg}`);
+      console.log(
+        `${config.color}[${config.label}]\x1b[0m Failed to download ${config.label.toLowerCase()} URL: ${msg}`,
+      );
     }
   } else {
     console.log(`${config.color}[${config.label}]\x1b[0m ${content}`);
@@ -147,13 +147,13 @@ async function renderMediaContent(
 // ── Media Render Configs ─────────────────────────────────────────────────────
 
 const IMAGE_CONFIG: MediaRenderConfig = {
-  prefix: 'orazaka-image',
-  defaultExt: '.png',
-  color: '\x1b[35m',
-  label: 'IMAGE',
+  prefix: "orazaka-image",
+  defaultExt: ".png",
+  color: "\x1b[35m",
+  label: "IMAGE",
   formatSuccess: (target, buffer, mime) => [
     `\x1b[35m┌─ IMAGE OUTPUT ─────────────────────────────────┐\x1b[0m`,
-    `\x1b[35m│\x1b[0m Format: ${(mime || 'image/png').padEnd(40)} \x1b[35m│\x1b[0m`,
+    `\x1b[35m│\x1b[0m Format: ${(mime || "image/png").padEnd(40)} \x1b[35m│\x1b[0m`,
     `\x1b[35m│\x1b[0m Size:   ${(buffer.length / 1024).toFixed(1).padEnd(37)} KB \x1b[35m│\x1b[0m`,
     `\x1b[35m│\x1b[0m File:   ${path.basename(target).padEnd(40)} \x1b[35m│\x1b[0m`,
     `\x1b[35m└────────────────────────────────────────────────┘\x1b[0m`,
@@ -161,10 +161,10 @@ const IMAGE_CONFIG: MediaRenderConfig = {
 };
 
 const AUDIO_CONFIG: MediaRenderConfig = {
-  prefix: 'orazaka-speech',
-  defaultExt: '.mp3',
-  color: '\x1b[33m',
-  label: 'AUDIO',
+  prefix: "orazaka-speech",
+  defaultExt: ".mp3",
+  color: "\x1b[33m",
+  label: "AUDIO",
   formatSuccess: (target) => [
     `\x1b[33m🔊 Audio saved → ${path.resolve(target)}\x1b[0m`,
     `\x1b[90m   Hint: afplay "${path.resolve(target)}" (macOS)\x1b[0m`,
@@ -172,10 +172,10 @@ const AUDIO_CONFIG: MediaRenderConfig = {
 };
 
 const VIDEO_CONFIG: MediaRenderConfig = {
-  prefix: 'orazaka-video',
-  defaultExt: '.mp4',
-  color: '\x1b[36m',
-  label: 'VIDEO',
+  prefix: "orazaka-video",
+  defaultExt: ".mp4",
+  color: "\x1b[36m",
+  label: "VIDEO",
   formatSuccess: (target, buffer) => {
     const sizeMb = (buffer.length / (1024 * 1024)).toFixed(2);
     return [
@@ -219,16 +219,16 @@ export async function renderVideo(content: string, savePath?: string): Promise<v
  */
 export async function renderTimeline(message: TimelineMessage, savePath?: string): Promise<void> {
   switch (message.kind) {
-    case 'text':
+    case "text":
       renderText(message.content);
       break;
-    case 'image':
+    case "image":
       await renderImage(message.content, savePath);
       break;
-    case 'audio':
+    case "audio":
       await renderAudio(message.content, savePath);
       break;
-    case 'video':
+    case "video":
       await renderVideo(message.content, savePath);
       break;
     default: {
@@ -237,4 +237,3 @@ export async function renderTimeline(message: TimelineMessage, savePath?: string
     }
   }
 }
-

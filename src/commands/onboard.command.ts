@@ -92,7 +92,7 @@ function runHandshakeSmokeTest(): boolean {
       "curl -s -o /dev/null -w '%{http_code}'",
       "-X POST http://localhost:8080/api/v1/intent/route",
       "-H 'Content-Type: application/json'",
-      "-d '{\"userId\":\"smoke-test\",\"rawPrompt\":\"ping\",\"sessionId\":\"test\"}'",
+      '-d \'{"userId":"smoke-test","rawPrompt":"ping","sessionId":"test"}\'',
     ].join(" ");
 
     const statusCode = execSync(curlCmd, { encoding: "utf-8", timeout: 10_000 }).trim();
@@ -143,7 +143,9 @@ async function runLocalRuntimeChecks(): Promise<void> {
   if (ollama.ok) {
     console.log(`  ${chalk.green("✔")} Ollama daemon responsive ${chalk.gray(`(${ollama.detail})`)}`);
   } else {
-    console.log(`  ${chalk.yellow("⚠")} Ollama not reachable at ${chalk.gray(OLLAMA_TAGS_URL)} ${chalk.gray(`— ${ollama.detail}`)}`);
+    console.log(
+      `  ${chalk.yellow("⚠")} Ollama not reachable at ${chalk.gray(OLLAMA_TAGS_URL)} ${chalk.gray(`— ${ollama.detail}`)}`,
+    );
     console.log(chalk.gray("    Start it with: ollama serve"));
   }
 
@@ -152,7 +154,9 @@ async function runLocalRuntimeChecks(): Promise<void> {
     if (localai.ok) {
       console.log(`  ${chalk.green("✔")} LocalAI endpoint responsive ${chalk.gray(`(${localai.detail})`)}`);
     } else {
-      console.log(`  ${chalk.yellow("⚠")} LocalAI not reachable at ${chalk.gray(LOCALAI_MODELS_URL)} ${chalk.gray(`— ${localai.detail}`)}`);
+      console.log(
+        `  ${chalk.yellow("⚠")} LocalAI not reachable at ${chalk.gray(LOCALAI_MODELS_URL)} ${chalk.gray(`— ${localai.detail}`)}`,
+      );
     }
   } else {
     console.log(`  ${chalk.gray("○")} LocalAI not configured ${chalk.gray("(set ORAZAKA_LOCALAI_URL to enable)")}`);
@@ -219,7 +223,9 @@ function runAcceleratorDetection(): void {
 }
 
 export const onboardCommand = new Command("onboard")
-  .description("Full clone-and-run onboarding: verify prerequisites, compile, smoke-test M2M handshake, and probe local AI runtimes")
+  .description(
+    "Full clone-and-run onboarding: verify prerequisites, compile, smoke-test M2M handshake, and probe local AI runtimes",
+  )
   .action(async () => {
     console.log(chalk.cyan.bold("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
     console.log(chalk.cyan.bold("  🥷  ORAZAKA ONBOARDING — Production Readiness"));

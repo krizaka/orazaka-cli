@@ -102,7 +102,12 @@ export class DemoSeeder {
   /** Registers the account if needed, verifies it through the local mailbox, and signs in. */
   private async account(): Promise<LoginResponse> {
     const { username, email, language } = DEMO_PERSONA;
-    const res = await this.raw("POST", "/api/v1/auth/register", undefined, { username, email, password: this.o.password, language });
+    const res = await this.raw("POST", "/api/v1/auth/register", undefined, {
+      username,
+      email,
+      password: this.o.password,
+      language,
+    });
     if (res.status === 201) {
       const body = (await res.json()) as { requires_verification?: boolean };
       this.o.onStep(`Account created: ${username} <${email}>`);
@@ -118,7 +123,10 @@ export class DemoSeeder {
       await this.verify();
       login = await this.raw("POST", "/api/v1/auth/login", undefined, { email, password: this.o.password });
     }
-    if (!login.ok) throw new Error(`Sign-in failed for ${email}: HTTP ${login.status}. Was the account created with another DEMO_PASSWORD?`);
+    if (!login.ok)
+      throw new Error(
+        `Sign-in failed for ${email}: HTTP ${login.status}. Was the account created with another DEMO_PASSWORD?`,
+      );
     return (await login.json()) as LoginResponse;
   }
 
@@ -143,7 +151,9 @@ export class DemoSeeder {
         }
       }
       if (Date.now() > deadline) {
-        throw new Error(`No verification e-mail for ${DEMO_PERSONA.email} in ${this.o.mailUrl}: is the notifications service running?`);
+        throw new Error(
+          `No verification e-mail for ${DEMO_PERSONA.email} in ${this.o.mailUrl}: is the notifications service running?`,
+        );
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
@@ -185,7 +195,10 @@ export class DemoSeeder {
         return;
       }
     }
-    await this.call("POST", `/api/v1/billing/subscriptions/${actorId}`, token, { planKey: DEMO_PLAN, status: "ACTIVE" });
+    await this.call("POST", `/api/v1/billing/subscriptions/${actorId}`, token, {
+      planKey: DEMO_PLAN,
+      status: "ACTIVE",
+    });
     this.o.onStep(`Plan set to ${DEMO_PLAN}`);
   }
 
@@ -234,7 +247,12 @@ export class DemoSeeder {
         this.o.onStep(`Studio already installed: ${key}`);
         continue;
       }
-      const res = await this.raw("POST", `/api/v1/studios/${key}/installations?locale=${DEMO_PERSONA.language}`, token, { config: {} });
+      const res = await this.raw(
+        "POST",
+        `/api/v1/studios/${key}/installations?locale=${DEMO_PERSONA.language}`,
+        token,
+        { config: {} },
+      );
       if (res.status === 409) {
         // A Studio a held pack includes has nothing to install: it runs directly (`studio_included`).
         const { status } = (await res.json()) as { status?: string };
@@ -254,8 +272,13 @@ export class DemoSeeder {
    * The runs go on in the background: the jobs page and the bell show them as they finish.
    */
   private async demoRuns(token: string): Promise<string[]> {
-    const history = (await this.call("GET", "/api/v1/studios/runs?limit=200", token)) as { studioKey: string; status: string }[];
-    const done = new Set(history.filter((r) => r.status === "SUCCEEDED" || r.status === "RUNNING").map((r) => r.studioKey));
+    const history = (await this.call("GET", "/api/v1/studios/runs?limit=200", token)) as {
+      studioKey: string;
+      status: string;
+    }[];
+    const done = new Set(
+      history.filter((r) => r.status === "SUCCEEDED" || r.status === "RUNNING").map((r) => r.studioKey),
+    );
     const started: string[] = [];
     for (const run of DEMO_RUNS) {
       if (run.heavy && !this.o.withVideo) continue;
@@ -275,7 +298,11 @@ export class DemoSeeder {
    * Starts one run, waiting for a free slot when the plan's concurrent-run limit is reached (409 run_refused):
    * the machine does one piece of work after another instead of being refused — and never saturated.
    */
-  private async startWhenFree(studioKey: string, inputs: Readonly<Record<string, unknown>>, token: string): Promise<void> {
+  private async startWhenFree(
+    studioKey: string,
+    inputs: Readonly<Record<string, unknown>>,
+    token: string,
+  ): Promise<void> {
     const deadline = Date.now() + (this.o.runSlotTimeoutMs ?? 10 * 60_000);
     for (;;) {
       const res = await this.raw("POST", `/api/v1/studios/${studioKey}/runs`, token, { inputs });

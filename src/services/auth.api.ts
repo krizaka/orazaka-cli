@@ -31,12 +31,7 @@ export const AuthApi = {
   /**
    * Registers a new user account with the orchestration backend.
    */
-  register: async (
-    username: string,
-    email: string,
-    password: string,
-    language?: string,
-  ): Promise<RegisterResult> => {
+  register: async (username: string, email: string, password: string, language?: string): Promise<RegisterResult> => {
     // Note: The GraphQL registry has the register mutation.
     const query = `
       mutation Register(

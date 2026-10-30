@@ -27,11 +27,7 @@ describe("ChatApi.streamRest", () => {
 
   test("parses SSE tokens and calls onNext", async () => {
     const tokens: string[] = [];
-    const body = makeStream([
-      'data: {"content":"Hello"}\n\n',
-      'data: {"content":" World"}\n\n',
-      "data: [DONE]\n\n",
-    ]);
+    const body = makeStream(['data: {"content":"Hello"}\n\n', 'data: {"content":" World"}\n\n', "data: [DONE]\n\n"]);
 
     globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -64,15 +60,7 @@ describe("ChatApi.streamRest", () => {
 
     const onError = jest.fn();
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok-123",
-      jest.fn(),
-      onError,
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok-123", jest.fn(), onError, jest.fn());
 
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
     expect(onError.mock.calls[0][0].message).toContain("500");
@@ -87,15 +75,7 @@ describe("ChatApi.streamRest", () => {
 
     const onError = jest.fn();
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok-123",
-      jest.fn(),
-      onError,
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok-123", jest.fn(), onError, jest.fn());
 
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
     expect(onError.mock.calls[0][0].message).toContain("No response body");
@@ -103,10 +83,7 @@ describe("ChatApi.streamRest", () => {
 
   test("handles split SSE chunks correctly", async () => {
     const tokens: string[] = [];
-    const body = makeStream([
-      'data: {"conte',
-      'nt":"split"}\n\ndata: [DONE]\n\n',
-    ]);
+    const body = makeStream(['data: {"conte', 'nt":"split"}\n\ndata: [DONE]\n\n']);
 
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
 
@@ -125,10 +102,7 @@ describe("ChatApi.streamRest", () => {
 
   test("handles plain text SSE data", async () => {
     const tokens: string[] = [];
-    const body = makeStream([
-      "data: plain text\n\n",
-      "data: [DONE]\n\n",
-    ]);
+    const body = makeStream(["data: plain text\n\n", "data: [DONE]\n\n"]);
 
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
 
@@ -171,14 +145,7 @@ describe("ChatApi.streamCodeRest", () => {
 
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
 
-    await ChatApi.streamCodeRest(
-      "write a function",
-      "gpt-4o",
-      "tok",
-      (c) => tokens.push(c),
-      jest.fn(),
-      jest.fn(),
-    );
+    await ChatApi.streamCodeRest("write a function", "gpt-4o", "tok", (c) => tokens.push(c), jest.fn(), jest.fn());
 
     expect(tokens).toEqual(["function", " hello()"]);
     expect(globalThis.fetch).toHaveBeenCalledWith(
@@ -233,10 +200,7 @@ describe("SSE edge cases", () => {
   test("flushes remaining buffer when stream ends without [DONE]", async () => {
     const tokens: string[] = [];
     // Stream ends with data in buffer (no trailing \n\n, no [DONE])
-    const body = makeStream([
-      'data: {"content":"first"}\n\n',
-      'data: {"content":"last"}',
-    ]);
+    const body = makeStream(['data: {"content":"first"}\n\n', 'data: {"content":"last"}']);
 
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
     const onComplete = jest.fn();
@@ -266,15 +230,7 @@ describe("SSE edge cases", () => {
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
     const onError = jest.fn();
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok",
-      jest.fn(),
-      onError,
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok", jest.fn(), onError, jest.fn());
 
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
   });
@@ -283,15 +239,7 @@ describe("SSE edge cases", () => {
     globalThis.fetch = jest.fn().mockRejectedValue(new Error("network down"));
     const onError = jest.fn();
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok",
-      jest.fn(),
-      onError,
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok", jest.fn(), onError, jest.fn());
 
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
     expect(onError.mock.calls[0][0].message).toBe("network down");
@@ -301,15 +249,7 @@ describe("SSE edge cases", () => {
     globalThis.fetch = jest.fn().mockRejectedValue("string error");
     const onError = jest.fn();
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok",
-      jest.fn(),
-      onError,
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok", jest.fn(), onError, jest.fn());
 
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
     expect(onError.mock.calls[0][0].message).toBe("string error");
@@ -317,70 +257,33 @@ describe("SSE edge cases", () => {
 
   test("handles empty SSE data lines gracefully", async () => {
     const tokens: string[] = [];
-    const body = makeStream([
-      "data: \n\n",
-      'data: {"content":"real"}\n\n',
-      "data: [DONE]\n\n",
-    ]);
+    const body = makeStream(["data: \n\n", 'data: {"content":"real"}\n\n', "data: [DONE]\n\n"]);
 
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok",
-      (c) => tokens.push(c),
-      jest.fn(),
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok", (c) => tokens.push(c), jest.fn(), jest.fn());
 
     expect(tokens).toEqual(["real"]);
   });
 
   test("ignores non-data SSE lines", async () => {
     const tokens: string[] = [];
-    const body = makeStream([
-      "event: message\n",
-      'data: {"content":"hello"}\n\n',
-      "id: 42\n",
-      "data: [DONE]\n\n",
-    ]);
+    const body = makeStream(["event: message\n", 'data: {"content":"hello"}\n\n', "id: 42\n", "data: [DONE]\n\n"]);
 
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok",
-      (c) => tokens.push(c),
-      jest.fn(),
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok", (c) => tokens.push(c), jest.fn(), jest.fn());
 
     expect(tokens).toEqual(["hello"]);
   });
 
   test("ignores valid JSON payload without content field", async () => {
     const tokens: string[] = [];
-    const body = makeStream([
-      'data: {"foo":"bar"}\n\n',
-      'data: {"content":"real"}\n\n',
-      "data: [DONE]\n\n",
-    ]);
+    const body = makeStream(['data: {"foo":"bar"}\n\n', 'data: {"content":"real"}\n\n', "data: [DONE]\n\n"]);
 
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok",
-      (c) => tokens.push(c),
-      jest.fn(),
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok", (c) => tokens.push(c), jest.fn(), jest.fn());
 
     expect(tokens).toEqual(["real"]);
   });
@@ -392,21 +295,13 @@ describe("SSE edge cases", () => {
       },
       pull() {
         throw "stream chunk error string";
-      }
+      },
     });
 
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
     const onError = jest.fn();
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok",
-      jest.fn(),
-      onError,
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok", jest.fn(), onError, jest.fn());
 
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
     expect(onError.mock.calls[0][0].message).toBe("stream chunk error string");
@@ -426,38 +321,18 @@ describe("SSE edge cases", () => {
     globalThis.fetch = jest.fn().mockRejectedValue("network error");
 
     await expect(
-      ChatApi.streamRest(
-        "/api/v1/chat/stream",
-        "conv-1",
-        "Hi",
-        "tok",
-        jest.fn(),
-        undefined as any,
-        jest.fn(),
-      )
+      ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok", jest.fn(), undefined as any, jest.fn()),
     ).rejects.toThrow("onError is not a function");
   });
 
   test("stream ends with buffer containing non-content data", async () => {
     const tokens: string[] = [];
-    const body = makeStream([
-      'data: {"content":"first"}\n\n',
-      'data: {"foo":"bar"}',
-    ]);
+    const body = makeStream(['data: {"content":"first"}\n\n', 'data: {"foo":"bar"}']);
 
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, body });
 
-    await ChatApi.streamRest(
-      "/api/v1/chat/stream",
-      "conv-1",
-      "Hi",
-      "tok",
-      (c) => tokens.push(c),
-      jest.fn(),
-      jest.fn(),
-    );
+    await ChatApi.streamRest("/api/v1/chat/stream", "conv-1", "Hi", "tok", (c) => tokens.push(c), jest.fn(), jest.fn());
 
     expect(tokens).toEqual(["first"]);
   });
 });
-

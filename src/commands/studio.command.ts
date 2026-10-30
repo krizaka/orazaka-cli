@@ -74,9 +74,7 @@ const listCommand = new Command("list")
       const items: string[] = [];
       for (const studio of studios) {
         // A locked Studio is listed, not hidden: the terminal is a funnel too.
-        const state = studio.locked
-          ? chalk.yellow(`○ ${studio.lockedReason}`)
-          : chalk.green("● available");
+        const state = studio.locked ? chalk.yellow(`○ ${studio.lockedReason}`) : chalk.green("● available");
         items.push(`${state} ${chalk.bold(studio.label)} (${studio.studioKey})`);
         if (studio.tagline) {
           items.push(`           ${chalk.gray(studio.tagline)}`);
@@ -108,9 +106,7 @@ const installedCommand = new Command("installed")
       const items: string[] = [];
       for (const installation of installations) {
         const upgrade =
-          installation.status === "UPGRADE_AVAILABLE"
-            ? chalk.yellow(` ⤴ ${installation.latestVersion} available`)
-            : "";
+          installation.status === "UPGRADE_AVAILABLE" ? chalk.yellow(` ⤴ ${installation.latestVersion} available`) : "";
         items.push(
           `${chalk.bold(installation.label)} (${installation.studioKey}) @ ${installation.pinnedVersion}${upgrade}`,
         );
@@ -162,9 +158,7 @@ const runCommand = new Command("run")
         ...(options.inputsFile ? readInputsFile(options.inputsFile) : {}),
         ...parseInputs(options.inputs),
       };
-      const run = options.studio
-        ? await StudioApi.startStudioRun(target, inputs)
-        : await StudioApi.run(target, inputs);
+      const run = options.studio ? await StudioApi.startStudioRun(target, inputs) : await StudioApi.run(target, inputs);
       spinner.stop(`Run ${run.status.toLowerCase()}`);
       Logger.info(`Run id: ${run.id}`);
       Logger.info(`Follow it with: orazaka studio logs ${run.id}`);
@@ -185,16 +179,9 @@ const logsCommand = new Command("logs")
       const run = await StudioApi.runDetail(runId);
       spinner.stop(`Run ${run.status}`);
 
-      const items: string[] = [
-        `${chalk.bold(run.studioKey)} @ ${run.blueprintVersion} — ${run.status}`,
-      ];
+      const items: string[] = [`${chalk.bold(run.studioKey)} @ ${run.blueprintVersion} — ${run.status}`];
       for (const step of run.steps) {
-        const tone =
-          step.status === "SUCCEEDED"
-            ? chalk.green
-            : step.status === "FAILED"
-              ? chalk.red
-              : chalk.gray;
+        const tone = step.status === "SUCCEEDED" ? chalk.green : step.status === "FAILED" ? chalk.red : chalk.gray;
         const fanOut = step.ordinal > 0 ? ` #${step.ordinal + 1}` : "";
         items.push(`${tone(`● ${step.status.padEnd(9)}`)} ${step.stepId}${fanOut}`);
         if (step.error) {

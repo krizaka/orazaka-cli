@@ -34,9 +34,22 @@ jest.mock("../../ui/platform", () => ({
   ensureDir: jest.fn(),
   parseEnvFile: jest.fn(() => ({})),
   isAppleSilicon: jest.fn(() => false),
-  detectOrazakaWorkspace: jest.fn(() => ({ isWorkspace: true, root: "/mock/workspace", markers: ["pom.xml"], missing: [] })),
+  detectOrazakaWorkspace: jest.fn(() => ({
+    isWorkspace: true,
+    root: "/mock/workspace",
+    markers: ["pom.xml"],
+    missing: [],
+  })),
   getToolVersion: jest.fn(() => "Installed"),
-  getSystemInfo: jest.fn(() => ({ platform: "darwin", arch: "arm64", cpuModel: "Test", totalMemoryGb: 16, nodeVersion: "v20.0.0", isAppleSilicon: false, hostname: "mock" })),
+  getSystemInfo: jest.fn(() => ({
+    platform: "darwin",
+    arch: "arm64",
+    cpuModel: "Test",
+    totalMemoryGb: 16,
+    nodeVersion: "v20.0.0",
+    isAppleSilicon: false,
+    hostname: "mock",
+  })),
   resolveComposeFile: jest.fn(() => "/mock/workspace/infra/docker-compose.yml"),
   resolveDockerComposeCmd: jest.fn(() => "docker compose"),
 }));
@@ -66,9 +79,7 @@ describe("install command", () => {
       .mockResolvedValueOnce("bundled"); // infraMode
 
     (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.readFileSync as jest.Mock).mockReturnValue(
-      "SPRING_AI_OLLAMA_BASE_URL=http://localhost:11434"
-    );
+    (fs.readFileSync as jest.Mock).mockReturnValue("SPRING_AI_OLLAMA_BASE_URL=http://localhost:11434");
 
     await installCommand.parseAsync(["node", "install"]);
 
@@ -80,7 +91,7 @@ describe("install command", () => {
         SPRING_AI_OLLAMA_BASE_URL: "http://localhost:11434",
         OLLAMA_BASE_URL: "http://localhost:11434",
         DEFAULT_PROVIDER: "ollama",
-      })
+      }),
     );
 
     // Verify docker-compose.override.yml content. Bundled infra needs no service
@@ -89,7 +100,7 @@ describe("install command", () => {
     expect(fs.writeFileSync).toHaveBeenCalledWith(
       expect.stringContaining("docker-compose.override.yml"),
       expect.stringContaining("services: {}"),
-      "utf-8"
+      "utf-8",
     );
   });
 
@@ -130,19 +141,18 @@ describe("install command", () => {
     expect(mergeEnvFile).toHaveBeenCalledWith(
       "/mock/workspace/.env",
       expect.objectContaining({
-        SPRING_DATASOURCE_URL:
-          "jdbc:postgresql://custom-db-host:5432/orazaka_db",
+        SPRING_DATASOURCE_URL: "jdbc:postgresql://custom-db-host:5432/orazaka_db",
         REDIS_URL: "redis://custom-redis-host:6379",
         RABBITMQ_HOST: "custom-mq-host",
         SPRING_AI_OLLAMA_BASE_URL: "http://custom-ollama-host:11434",
-      })
+      }),
     );
 
     // Verify scale 0 for bundled services in override compose
     expect(fs.writeFileSync).toHaveBeenCalledWith(
       expect.stringContaining("docker-compose.override.yml"),
       expect.stringContaining("db-vector:\n    scale: 0"),
-      "utf-8"
+      "utf-8",
     );
   });
 
@@ -156,7 +166,7 @@ describe("install command", () => {
     expect(fs.writeFileSync).toHaveBeenCalledWith(
       expect.stringContaining("docker-compose.override.yml"),
       expect.stringContaining("services: {}"),
-      "utf-8"
+      "utf-8",
     );
   });
 

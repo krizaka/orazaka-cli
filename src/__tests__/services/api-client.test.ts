@@ -75,9 +75,7 @@ describe("ApiClient.requestRest", () => {
       json: async () => ({ error: "Unauthorized" }),
     });
 
-    await expect(
-      ApiClient.requestRest({ method: "GET", path: "/api/v1/secure" }),
-    ).rejects.toThrow("Unauthorized");
+    await expect(ApiClient.requestRest({ method: "GET", path: "/api/v1/secure" })).rejects.toThrow("Unauthorized");
   });
 
   test("throws generic message when error body has no error field", async () => {
@@ -87,21 +85,23 @@ describe("ApiClient.requestRest", () => {
       json: async () => ({}),
     });
 
-    await expect(
-      ApiClient.requestRest({ method: "GET", path: "/api/v1/fail" }),
-    ).rejects.toThrow("HTTP request failed: status 500");
+    await expect(ApiClient.requestRest({ method: "GET", path: "/api/v1/fail" })).rejects.toThrow(
+      "HTTP request failed: status 500",
+    );
   });
 
   test("handles json() failure on error response", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 502,
-      json: async () => { throw new Error("parse error"); },
+      json: async () => {
+        throw new Error("parse error");
+      },
     });
 
-    await expect(
-      ApiClient.requestRest({ method: "GET", path: "/api/v1/broken" }),
-    ).rejects.toThrow("HTTP request failed: status 502");
+    await expect(ApiClient.requestRest({ method: "GET", path: "/api/v1/broken" })).rejects.toThrow(
+      "HTTP request failed: status 502",
+    );
   });
 
   test("sends request without Authorization header if config has no token", async () => {
@@ -132,9 +132,7 @@ describe("ApiClient.requestGql", () => {
       json: async () => ({ data: { users: [{ id: "1" }] } }),
     });
 
-    const result = await ApiClient.requestGql<{ users: Array<{ id: string }> }>(
-      "query { users { id } }",
-    );
+    const result = await ApiClient.requestGql<{ users: Array<{ id: string }> }>("query { users { id } }");
 
     expect(result).toEqual({ users: [{ id: "1" }] });
     expect(mockFetch).toHaveBeenCalledWith(
@@ -165,9 +163,7 @@ describe("ApiClient.requestGql", () => {
   test("throws on non-ok response", async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 403 });
 
-    await expect(
-      ApiClient.requestGql("query { me { id } }"),
-    ).rejects.toThrow("GraphQL request failed: status 403");
+    await expect(ApiClient.requestGql("query { me { id } }")).rejects.toThrow("GraphQL request failed: status 403");
   });
 
   test("throws on GraphQL errors array", async () => {
@@ -179,9 +175,7 @@ describe("ApiClient.requestGql", () => {
       }),
     });
 
-    await expect(
-      ApiClient.requestGql("query { x }"),
-    ).rejects.toThrow("Field 'x' not found");
+    await expect(ApiClient.requestGql("query { x }")).rejects.toThrow("Field 'x' not found");
   });
 
   test("throws when no data returned", async () => {
@@ -190,9 +184,9 @@ describe("ApiClient.requestGql", () => {
       json: async () => ({}),
     });
 
-    await expect(
-      ApiClient.requestGql("query { empty }"),
-    ).rejects.toThrow("No data returned from the GraphQL endpoint.");
+    await expect(ApiClient.requestGql("query { empty }")).rejects.toThrow(
+      "No data returned from the GraphQL endpoint.",
+    );
   });
 
   test("sends GraphQL query without Authorization header if config has no token", async () => {
@@ -251,21 +245,19 @@ describe("ApiClient.uploadFile", () => {
       text: async () => "File too large",
     });
 
-    await expect(
-      ApiClient.uploadFile("/tmp/big-file.bin"),
-    ).rejects.toThrow("Upload failed: status 413");
+    await expect(ApiClient.uploadFile("/tmp/big-file.bin")).rejects.toThrow("Upload failed: status 413");
   });
 
   test("handles text() failure in error response", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
-      text: async () => { throw new Error("body read failed"); },
+      text: async () => {
+        throw new Error("body read failed");
+      },
     });
 
-    await expect(
-      ApiClient.uploadFile("/tmp/error-file.bin"),
-    ).rejects.toThrow("Upload failed: status 500");
+    await expect(ApiClient.uploadFile("/tmp/error-file.bin")).rejects.toThrow("Upload failed: status 500");
   });
 
   test("uploads file without Authorization header if config has no token", async () => {

@@ -90,11 +90,19 @@ try {
   mkdirSync(elsewhere);
 
   const version = run(bin, ["--version"], elsewhere);
-  check(`orazaka --version prints ${cli.version}`, version.status === 0 && version.out.trim() === cli.version, version.out);
+  check(
+    `orazaka --version prints ${cli.version}`,
+    version.status === 0 && version.out.trim() === cli.version,
+    version.out,
+  );
 
   const cliBin = join(project, "node_modules", "@krizaka", "orazaka-cli", cli.bin.orazaka);
   const canonical = run(process.execPath, [cliBin, "--version"], elsewhere);
-  check("@krizaka/orazaka-cli's own bin runs", canonical.status === 0 && canonical.out.trim() === cli.version, canonical.out);
+  check(
+    "@krizaka/orazaka-cli's own bin runs",
+    canonical.status === 0 && canonical.out.trim() === cli.version,
+    canonical.out,
+  );
 
   const viaAlias = run(process.execPath, [aliasBin, "--version"], elsewhere);
   check("the alias runs the same CLI", viaAlias.status === 0 && viaAlias.out.trim() === cli.version, viaAlias.out);
@@ -113,7 +121,11 @@ try {
   check("orazaka demo seed --help", seedHelp.status === 0 && seedHelp.out.includes("--fresh"), seedHelp.out);
 
   const checkOnly = run(bin, ["install", "--check-only"], elsewhere);
-  check("orazaka install --check-only reports the tools", checkOnly.status === 0 && checkOnly.out.includes("Tool"), checkOnly.out);
+  check(
+    "orazaka install --check-only reports the tools",
+    checkOnly.status === 0 && checkOnly.out.includes("Tool"),
+    checkOnly.out,
+  );
 
   for (const command of ["start", "dev"]) {
     const outside = run(bin, [command], elsewhere);

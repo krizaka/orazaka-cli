@@ -12,11 +12,7 @@ import type {
   TimelineMessage,
   ChatInput,
 } from "../types/api.types";
-import type {
-  CliConfig,
-  ChatThread,
-  StoredMessage,
-} from "../types/local.types";
+import type { CliConfig, ChatThread, StoredMessage } from "../types/local.types";
 
 describe("ChatResponse", () => {
   test("required content field", () => {
@@ -140,10 +136,14 @@ describe("TimelineMessage discriminated union", () => {
     ];
     const kinds = messages.map((m) => {
       switch (m.kind) {
-        case "text": return "T";
-        case "image": return "I";
-        case "audio": return "A";
-        case "video": return "V";
+        case "text":
+          return "T";
+        case "image":
+          return "I";
+        case "audio":
+          return "A";
+        case "video":
+          return "V";
       }
     });
     expect(kinds).toEqual(["T", "I", "A", "V"]);
@@ -173,9 +173,7 @@ describe("CliConfig", () => {
       token: "jwt-abc",
       username: "admin",
       activeThreadId: "thread-1",
-      threads: [
-        { conversationId: "thread-1", title: "First", updatedAt: 1700000000000 },
-      ],
+      threads: [{ conversationId: "thread-1", title: "First", updatedAt: 1700000000000 }],
     };
     expect(config.threads).toHaveLength(1);
     expect(config.token).toBe("jwt-abc");

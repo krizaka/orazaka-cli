@@ -52,10 +52,9 @@ describe("orazaka-cli E2E sandbox", () => {
       env: {
         // npm workspaces may hoist native deps (better-sqlite3) to the workspace
         // root — resolve against both the package-local and the hoisted tree.
-        NODE_PATH: [
-          path.resolve(__dirname, "../node_modules"),
-          path.resolve(__dirname, "../../node_modules"),
-        ].join(path.delimiter),
+        NODE_PATH: [path.resolve(__dirname, "../node_modules"), path.resolve(__dirname, "../../node_modules")].join(
+          path.delimiter,
+        ),
       },
     })`node -e ${script}`;
 

@@ -13,13 +13,7 @@ import { execSync } from "node:child_process";
 import chalk from "chalk";
 import { intro, outro, logInfo, logWarning, logSuccess, logError } from "../ui/prompts";
 import { isAppleSilicon, resolveModelsDir } from "../utils/platform";
-import {
-  IMAGE_MODELS,
-  downloadBytes,
-  findImageModel,
-  isInstalled,
-  pullImageModel,
-} from "../services/image-models";
+import { IMAGE_MODELS, downloadBytes, findImageModel, isInstalled, pullImageModel } from "../services/image-models";
 import { defaultImageModel, setDefaultImageModel } from "../services/model-catalog";
 import "../utils/config"; // side-effect: loads .env into process.env (DB_NAME/DB_USERNAME)
 
@@ -51,19 +45,17 @@ export const modelsCommand = new Command("models")
 
     let rows: string[][];
     try {
-      const out = execSync(
-        `docker exec -i orazaka-db-vector psql -U ${dbUser} -d ${dbName} -t -A -F'|' -c "${sql}"`,
-        { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
-      );
+      const out = execSync(`docker exec -i orazaka-db-vector psql -U ${dbUser} -d ${dbName} -t -A -F'|' -c "${sql}"`, {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+      });
       rows = out
         .split("\n")
         .map((line) => line.trim())
         .filter(Boolean)
         .map((line) => line.split("|"));
     } catch {
-      await logWarning(
-        "Could not read orazaka_models — is the database up? Run `npm run infra`.",
-      );
+      await logWarning("Could not read orazaka_models — is the database up? Run `npm run infra`.");
       await outro(chalk.red("Compatibility scan aborted."));
       return;
     }
@@ -146,9 +138,7 @@ imageCommand
           const now = Date.now();
           if (now - lastShown > 2000 || received === file.bytes) {
             lastShown = now;
-            process.stdout.write(
-              `\r  ${file.path}  ${String(Math.floor((received / file.bytes) * 100))}%   `,
-            );
+            process.stdout.write(`\r  ${file.path}  ${String(Math.floor((received / file.bytes) * 100))}%   `);
           }
         },
       });
@@ -158,7 +148,9 @@ imageCommand
           ? "✔ Already installed — nothing to download"
           : `✔ ${String(pulled.length)} file(s) downloaded and verified (sha256)`,
       );
-      await outro(`Serve it with ${chalk.cyan(`orazaka models image use ${recipe.id}`)}, then restart the image server.`);
+      await outro(
+        `Serve it with ${chalk.cyan(`orazaka models image use ${recipe.id}`)}, then restart the image server.`,
+      );
     } catch (err) {
       await logError(err instanceof Error ? err.message : String(err));
       process.exit(1);

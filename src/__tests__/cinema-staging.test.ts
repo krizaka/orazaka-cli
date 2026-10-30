@@ -35,7 +35,14 @@ const shot = (over: Raw = {}): Raw => ({
   angle: "low",
   light: { key: "left", hard: true },
   plate: "A wet rooftop ledge at night, hard key light from the left, shadows falling to the right.",
-  staging: [{ character: "pigeon", support: "ground", surface: "the wet concrete ledge", scale: { ref: "the rooftop door", ratio: 0.2 } }],
+  staging: [
+    {
+      character: "pigeon",
+      support: "ground",
+      surface: "the wet concrete ledge",
+      scale: { ref: "the rooftop door", ratio: 0.2 },
+    },
+  ],
   ...over,
 });
 
@@ -50,18 +57,31 @@ const film = (shots: Raw[], over: Raw = {}): Raw => ({
 
 const kinetic = (n: number): Raw[] =>
   Array.from({ length: n }, (_, i) =>
-    shot({ slug: `s${i + 1}`, beats: [2, 4, 2, 8, 1, 2][i % 6], camera: CAMERA_MOVES[i % 8], angle: i % 3 === 0 ? "low" : "eye" }),
+    shot({
+      slug: `s${i + 1}`,
+      beats: [2, 4, 2, 8, 1, 2][i % 6],
+      camera: CAMERA_MOVES[i % 8],
+      angle: i % 3 === 0 ? "low" : "eye",
+    }),
   );
 
 describe("the staging is read once and refused by name", () => {
   test("a character shot stages every character it shows, on a support", () => {
     expect(() => parseStaging(film([shot({ staging: [] })]))).toThrow(StagingError);
-    expect(() => parseStaging(film([shot({ staging: [{ character: "pigeon", support: "levitating" }] })]))).toThrow(/support/);
+    expect(() => parseStaging(film([shot({ staging: [{ character: "pigeon", support: "levitating" }] })]))).toThrow(
+      /support/,
+    );
   });
 
   test("a character on the ground names the surface it stands on and a scale reference", () => {
-    expect(() => parseStaging(film([shot({ staging: [{ character: "pigeon", support: "ground", scale: { ref: "the door", ratio: 0.2 } }] })]))).toThrow(/surface/);
-    expect(() => parseStaging(film([shot({ staging: [{ character: "pigeon", support: "ground", surface: "the ledge" }] })]))).toThrow(/scale/);
+    expect(() =>
+      parseStaging(
+        film([shot({ staging: [{ character: "pigeon", support: "ground", scale: { ref: "the door", ratio: 0.2 } }] })]),
+      ),
+    ).toThrow(/surface/);
+    expect(() =>
+      parseStaging(film([shot({ staging: [{ character: "pigeon", support: "ground", surface: "the ledge" }] })])),
+    ).toThrow(/scale/);
   });
 
   test("a camera move comes from the vocabulary; a light key from its directions", () => {
@@ -72,7 +92,11 @@ describe("the staging is read once and refused by name", () => {
   test("a well staged film parses: beats become seconds at the tempo", () => {
     const parsed = parseStaging(film([shot()]));
     expect(parsed.shots[0].seconds).toBeCloseTo((4 * 60) / 140, 5);
-    expect(parsed.shots[0].staging[0]).toMatchObject({ character: "pigeon", support: "ground", surface: "the wet concrete ledge" });
+    expect(parsed.shots[0].staging[0]).toMatchObject({
+      character: "pigeon",
+      support: "ground",
+      surface: "the wet concrete ledge",
+    });
   });
 });
 
@@ -119,7 +143,9 @@ describe("the cut: no narrator, on the beat, kinetic, varied", () => {
 
 describe("frame questions: grounded, floating, on-model, continuity, sliding (calibrated)", () => {
   test("a grounded character is asked whether it touches its surface; a flyer is not", () => {
-    const parsed = parseStaging(film([shot(), shot({ slug: "fly", staging: [{ character: "pigeon", support: "air" }] })]));
+    const parsed = parseStaging(
+      film([shot(), shot({ slug: "fly", staging: [{ character: "pigeon", support: "air" }] })]),
+    );
     const ground = questionsFor(parsed.shots[0], { pigeon: "the sky-blue pigeon" }).map((q) => q.check);
     const air = questionsFor(parsed.shots[1], { pigeon: "the sky-blue pigeon" }).map((q) => q.check);
     expect(ground).toEqual(["grounded", "floating"]);
@@ -181,7 +207,9 @@ describe("measured checks: scale, static camera, colour and light, white-out", (
 
   test("a character much brighter or darker, or of another white balance, than the plate around it is refused", () => {
     expect(measuredFindings({ camera: "orbit" }, { lumaRatio: 1.9 }).map((x) => x.check)).toContain("colour");
-    expect(measuredFindings({ camera: "orbit" }, { lumaRatio: 1.1, chromaShift: 22 }).map((x) => x.check)).toContain("colour");
+    expect(measuredFindings({ camera: "orbit" }, { lumaRatio: 1.1, chromaShift: 22 }).map((x) => x.check)).toContain(
+      "colour",
+    );
     expect(measuredFindings({ camera: "orbit" }, { lumaRatio: 1.1, chromaShift: 5 })).toEqual([]);
   });
 
@@ -193,6 +221,7 @@ describe("measured checks: scale, static camera, colour and light, white-out", (
 
 describe("the underground sounds (orazaka-worker-media app/foley.py v3)", () => {
   test("a treatment may ask for a tunnel, a crowd, a neon buzz, a train, a skateboard, sparks, an impact, a slide, a riser", () => {
-    for (const k of ["tunnel", "crowd", "neon", "train", "skate", "sparks", "impact", "slide", "riser"]) expect(SOUND_KINDS).toContain(k);
+    for (const k of ["tunnel", "crowd", "neon", "train", "skate", "sparks", "impact", "slide", "riser"])
+      expect(SOUND_KINDS).toContain(k);
   });
 });

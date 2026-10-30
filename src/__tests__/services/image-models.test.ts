@@ -97,9 +97,12 @@ describe("sdServerArgs", () => {
     expect(args.slice(0, 2)).toEqual(["--listen-port", "8086"]);
     expect(args).toEqual(
       expect.arrayContaining([
-        "--diffusion-model", "/m/flux2-klein-4b/flux-2-klein-4b-Q8_0.gguf",
-        "--llm", "/m/flux2-klein-4b/Qwen3-4B-Q8_0.gguf",
-        "--vae", "/m/flux2-klein-4b/flux2-vae.safetensors",
+        "--diffusion-model",
+        "/m/flux2-klein-4b/flux-2-klein-4b-Q8_0.gguf",
+        "--llm",
+        "/m/flux2-klein-4b/Qwen3-4B-Q8_0.gguf",
+        "--vae",
+        "/m/flux2-klein-4b/flux2-vae.safetensors",
         "--diffusion-fa",
       ]),
     );
@@ -146,9 +149,9 @@ describe("pullImageModel", () => {
     const dir = tempDir();
     const recipe = recipeFor(Buffer.from("weights"));
 
-    await expect(
-      pullImageModel(recipe, dir, { fetch: serving(Buffer.from("tamper!")) }),
-    ).rejects.toThrow(/does not match its recipe/);
+    await expect(pullImageModel(recipe, dir, { fetch: serving(Buffer.from("tamper!")) })).rejects.toThrow(
+      /does not match its recipe/,
+    );
     expect(missingFiles(recipe, dir)).toHaveLength(1);
     expect(fs.existsSync(path.join(dir, "tiny/model.gguf.part"))).toBe(false);
   });

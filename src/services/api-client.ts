@@ -3,10 +3,10 @@
  * @description Base client for all REST and GraphQL outgoing requests to the Gateway.
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { loadConfig } from "../threads";
-import { ROUTER_URL } from '../utils/config';
+import { ROUTER_URL } from "../utils/config";
 
 interface RequestOptions {
   method: "GET" | "POST" | "PUT" | "DELETE";
@@ -48,7 +48,9 @@ export class ApiClient {
    * Downloads what the Gateway serves at `pathOrUrl` (a run's output, `/api/v1/assets/<job>/<file>`) into `file`.
    */
   public static async downloadTo(pathOrUrl: string, file: string): Promise<number> {
-    const url = /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${this.getBaseUrl()}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+    const url = /^https?:\/\//.test(pathOrUrl)
+      ? pathOrUrl
+      : `${this.getBaseUrl()}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
     const config = loadConfig();
     const response = await fetch(url, {
       headers: config?.token && url.startsWith(this.getBaseUrl()) ? { Authorization: `Bearer ${config.token}` } : {},
@@ -85,7 +87,7 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      const errBody = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const errBody = (await response.json().catch(() => ({}))) as Record<string, unknown>;
       // `error` is the shape most handlers use; `message` + `cause` is what the Studio context's
       // RestErrorResolver returns. Reading only the first turned a 422 that named the failing
       // slice into "HTTP request failed: status 422", which is a diagnosis an operator has to go

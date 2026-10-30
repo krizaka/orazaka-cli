@@ -5,7 +5,7 @@
  * owns only the token-by-token SSE transport.
  */
 
-import { ROUTER_URL } from '../utils/config';
+import { ROUTER_URL } from "../utils/config";
 
 /** Parses SSE data payload and extracts the content value. */
 function parseSseLine(raw: string): string | null {
@@ -19,11 +19,7 @@ function parseSseLine(raw: string): string | null {
 }
 
 /** Processes a single packet from SSE stream, returns true if DONE. */
-function processPacket(
-  packet: string,
-  onNext: (content: string) => void,
-  onComplete: () => void,
-): boolean {
+function processPacket(packet: string, onNext: (content: string) => void, onComplete: () => void): boolean {
   const lines = packet.split("\n");
   for (const line of lines) {
     if (line.startsWith("data: ")) {

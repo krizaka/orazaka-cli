@@ -5,7 +5,13 @@
  * reported for `--skip-router` (ex `--skip-core`) and `--skip-mobile`.
  */
 
-import { absoluteUploadDir, bannerAddress, bannerLabelWidth, resolveEnabledServices, type ServiceKey } from "../commands/dev.command";
+import {
+  absoluteUploadDir,
+  bannerAddress,
+  bannerLabelWidth,
+  resolveEnabledServices,
+  type ServiceKey,
+} from "../commands/dev.command";
 
 const ALL: ServiceKey[] = ["router", "web", "mobile"];
 

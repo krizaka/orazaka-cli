@@ -60,11 +60,7 @@ export function closeDb(): void {
  * Inserts a new job instruction into the local SQLite store as PENDING.
  * Atomic ingestion protocol: write before execute.
  */
-export function insertJob(
-  jobId: string,
-  payload: Record<string, unknown>,
-  approvalState: string = "APPROVED",
-): void {
+export function insertJob(jobId: string, payload: Record<string, unknown>, approvalState: string = "APPROVED"): void {
   const db = getDb();
   const stmt = db.prepare(`
     INSERT INTO orazaka_local_jobs (job_id, command_payload, status, retry_count, user_approval_state, execution_logs, synced)

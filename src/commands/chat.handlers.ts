@@ -14,10 +14,7 @@ const CHAT_STREAM_PATH = "/api/v1/chat/stream";
 /**
  * Handles image generation, as a run of the Studio that ships that capability (ADR-068).
  */
-export async function handleImageGeneration(
-  parsed: ParsedArgs,
-  conversationId: string,
-): Promise<void> {
+export async function handleImageGeneration(parsed: ParsedArgs, conversationId: string): Promise<void> {
   const prompt = parsed.flagValue || parsed.prompt;
   const s = await createSpinner();
   s.start("Generating image...");
@@ -36,10 +33,7 @@ export async function handleImageGeneration(
 /**
  * Handles speech synthesis, as a run of the Studio that ships that capability (ADR-068).
  */
-export async function handleSpeechGeneration(
-  parsed: ParsedArgs,
-  conversationId: string,
-): Promise<void> {
+export async function handleSpeechGeneration(parsed: ParsedArgs, conversationId: string): Promise<void> {
   const prompt = parsed.flagValue || parsed.prompt;
   const s = await createSpinner();
   s.start("Synthesizing speech...");
@@ -58,10 +52,7 @@ export async function handleSpeechGeneration(
 /**
  * Handles vision (image) analysis via upload + polling.
  */
-export async function handleVisionAnalysis(
-  parsed: ParsedArgs,
-  conversationId: string,
-): Promise<void> {
+export async function handleVisionAnalysis(parsed: ParsedArgs, conversationId: string): Promise<void> {
   if (!parsed.flagValue || !fs.existsSync(parsed.flagValue)) {
     throw new Error(`File not found: ${parsed.flagValue}`);
   }
@@ -86,10 +77,7 @@ export async function handleVisionAnalysis(
 /**
  * Handles audio analysis via upload + polling.
  */
-export async function handleAudioAnalysis(
-  parsed: ParsedArgs,
-  conversationId: string,
-): Promise<void> {
+export async function handleAudioAnalysis(parsed: ParsedArgs, conversationId: string): Promise<void> {
   if (!parsed.flagValue || !fs.existsSync(parsed.flagValue)) {
     throw new Error(`File not found: ${parsed.flagValue}`);
   }
@@ -113,11 +101,7 @@ export async function handleAudioAnalysis(
 /**
  * Handles text streaming via SSE REST.
  */
-export async function handleTextStream(
-  parsed: ParsedArgs,
-  conversationId: string,
-  token: string,
-): Promise<void> {
+export async function handleTextStream(parsed: ParsedArgs, conversationId: string, token: string): Promise<void> {
   let accumulated = "";
   // The path is the CLI's own constant now, like every other path it calls. It used to come from
   // the operation graph, which read it off the capability row's uri_path — a column whose values

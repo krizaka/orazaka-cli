@@ -97,7 +97,8 @@ export function getRequiredTools(): ToolRequirement[] {
       command: "ollama",
       versionCmd: "ollama --version",
       minVersion: "0.1.0",
-      description: "Local LLM inference engine — an AI engine, optional: the platform and its infrastructure run without it",
+      description:
+        "Local LLM inference engine — an AI engine, optional: the platform and its infrastructure run without it",
       critical: false,
       brewFormula: "ollama",
       downloadUrl: "https://ollama.ai",
@@ -218,10 +219,11 @@ export function checkTool(tool: ToolRequirement): ToolCheckResult {
   let versionOk: boolean;
 
   try {
-    const raw = execSync(tool.versionCmd, { stdio: ["pipe", "pipe", "pipe"] })
-      .toString()
-      .trim()
-      .split("\n")[0] ?? "";
+    const raw =
+      execSync(tool.versionCmd, { stdio: ["pipe", "pipe", "pipe"] })
+        .toString()
+        .trim()
+        .split("\n")[0] ?? "";
     version = extractVersion(raw);
     versionOk = version ? isVersionSatisfied(version, tool.minVersion) : true;
   } catch {
@@ -245,12 +247,8 @@ export function detectAllTools(): ToolReport {
   const tools = getRequiredTools();
   const results = tools.map(checkTool);
 
-  const missingCritical = results.filter(
-    (r) => r.tool.critical && (!r.available || !r.versionOk),
-  );
-  const missingOptional = results.filter(
-    (r) => !r.tool.critical && (!r.available || !r.versionOk),
-  );
+  const missingCritical = results.filter((r) => r.tool.critical && (!r.available || !r.versionOk));
+  const missingOptional = results.filter((r) => !r.tool.critical && (!r.available || !r.versionOk));
 
   return {
     results,

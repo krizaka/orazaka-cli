@@ -30,17 +30,37 @@ function manifest(overrides: Partial<ReleaseManifest> = {}): ReleaseManifest {
     upgradeFrom: "1.0.0",
     cli: { package: "@krizaka/orazaka-cli", version: "1.2.0" },
     targets: ["mac-arm64", "linux-amd64"],
-    components: [{ name: "orazaka-studio", repository: "krizaka/orazaka-studio", version: "1.0.0", commit: "b".repeat(40) }],
+    components: [
+      { name: "orazaka-studio", repository: "krizaka/orazaka-studio", version: "1.0.0", commit: "b".repeat(40) },
+    ],
     images: [
-      { name: "orazaka-platform", ref: "ghcr.io/krizaka/orazaka-platform", digest: DIGEST, platforms: ["linux/amd64", "linux/arm64"] },
-      { name: "orazaka-worker-media-cuda", ref: "ghcr.io/krizaka/orazaka-worker-media", digest: DIGEST, platforms: ["linux/amd64"], gpu: "cuda" },
+      {
+        name: "orazaka-platform",
+        ref: "ghcr.io/krizaka/orazaka-platform",
+        digest: DIGEST,
+        platforms: ["linux/amd64", "linux/arm64"],
+      },
+      {
+        name: "orazaka-worker-media-cuda",
+        ref: "ghcr.io/krizaka/orazaka-worker-media",
+        digest: DIGEST,
+        platforms: ["linux/amd64"],
+        gpu: "cuda",
+      },
     ],
     artefacts: [{ name: "sd-server", file: "mac-arm64/sd-server", sha256: SHA("sd"), size: 2, target: "mac-arm64" }],
-    models: [{
-      id: "wan2.2-ti2v-5b", source: "huggingface", repo: "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-      revision: "b8fff7315c768468a5333511427288870b2e9635", licence: "Apache-2.0", commercialUse: true,
-      downloadGb: 34.2, hardware: ["cuda"],
-    }],
+    models: [
+      {
+        id: "wan2.2-ti2v-5b",
+        source: "huggingface",
+        repo: "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        revision: "b8fff7315c768468a5333511427288870b2e9635",
+        licence: "Apache-2.0",
+        commercialUse: true,
+        downloadGb: 34.2,
+        hardware: ["cuda"],
+      },
+    ],
     packs: [{ key: "document-validation", version: "1.0.0", distribution: "OSS" }],
     ...overrides,
   };
@@ -73,12 +93,16 @@ describe("validateReleaseManifest", () => {
     expect(validateReleaseManifest(manifest({ version: "1.1.0-rc.1" }))).toContain(
       "a stable release has no pre-release tag (got 1.1.0-rc.1)",
     );
-    expect(validateReleaseManifest(manifest({ channel: "candidate" })).join("\n")).toMatch(/pre-release tag such as -rc.1/);
+    expect(validateReleaseManifest(manifest({ channel: "candidate" })).join("\n")).toMatch(
+      /pre-release tag such as -rc.1/,
+    );
     expect(validateReleaseManifest(manifest({ channel: "candidate", version: "1.1.0-rc.1" }))).toEqual([]);
   });
 
   it("refuses an upgrade path from a newer version", () => {
-    expect(validateReleaseManifest(manifest({ upgradeFrom: "2.0.0" })).join("\n")).toMatch(/upgradeFrom 2.0.0 is newer/);
+    expect(validateReleaseManifest(manifest({ upgradeFrom: "2.0.0" })).join("\n")).toMatch(
+      /upgradeFrom 2.0.0 is newer/,
+    );
   });
 
   it("needs an arm64 variant of every image a Mac runs, but not of the CUDA image", () => {
@@ -100,8 +124,16 @@ describe("validateReleaseManifest", () => {
 });
 
 describe("isBundlePath", () => {
-  it.each([["mac-arm64/sd-server", true], ["a/b/c.tar.zst", true], ["/abs", false], ["a/../b", false],
-    ["./a", false], ["a//b", false], ["C:/x", false], ["a\\b", false]])("%s → %s", (file, ok) => {
+  it.each([
+    ["mac-arm64/sd-server", true],
+    ["a/b/c.tar.zst", true],
+    ["/abs", false],
+    ["a/../b", false],
+    ["./a", false],
+    ["a//b", false],
+    ["C:/x", false],
+    ["a\\b", false],
+  ])("%s → %s", (file, ok) => {
     expect(isBundlePath(file)).toBe(ok);
   });
 });
@@ -119,7 +151,9 @@ describe("verifyArtefacts", () => {
     fs.writeFileSync(path.join(dir, "mac-arm64", "sd-server"), "xx");
     expect(verifyArtefacts(manifest(), dir)).toEqual(["sd-server: mac-arm64/sd-server does not match its SHA-256"]);
     fs.writeFileSync(path.join(dir, "mac-arm64", "sd-server"), "s");
-    expect(verifyArtefacts(manifest(), dir)).toEqual(["sd-server: mac-arm64/sd-server is 1 bytes, the manifest says 2"]);
+    expect(verifyArtefacts(manifest(), dir)).toEqual([
+      "sd-server: mac-arm64/sd-server is 1 bytes, the manifest says 2",
+    ]);
     fs.rmSync(path.join(dir, "mac-arm64", "sd-server"));
     expect(verifyArtefacts(manifest(), dir)).toEqual(["sd-server: mac-arm64/sd-server is missing"]);
   });
@@ -142,7 +176,18 @@ describe("readReleaseManifest", () => {
 
 describe("semver", () => {
   it("orders versions as SemVer 2.0.0 says", () => {
-    const ordered = ["1.0.0-alpha", "1.0.0-alpha.1", "1.0.0-alpha.beta", "1.0.0-beta.2", "1.0.0-beta.11", "1.0.0-rc.1", "1.0.0", "1.0.1", "1.10.0", "2.0.0"];
+    const ordered = [
+      "1.0.0-alpha",
+      "1.0.0-alpha.1",
+      "1.0.0-alpha.beta",
+      "1.0.0-beta.2",
+      "1.0.0-beta.11",
+      "1.0.0-rc.1",
+      "1.0.0",
+      "1.0.1",
+      "1.10.0",
+      "2.0.0",
+    ];
     for (let i = 1; i < ordered.length; i += 1) {
       expect(compareSemver(ordered[i - 1], ordered[i])).toBe(-1);
       expect(compareSemver(ordered[i], ordered[i - 1])).toBe(1);

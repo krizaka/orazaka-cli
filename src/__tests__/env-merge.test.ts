@@ -48,10 +48,17 @@ describe("ensureDbRolePasswords (a fresh install leaves no role without a strong
   const gen = () => `generated-${String(++n)}-`.padEnd(40, "x");
 
   test("fills the keys that are missing, blank or still CHANGE_ME — and keeps what the developer set", () => {
-    const file = tmpEnv("BILLING_DB_PASSWORD=CHANGE_ME\nSTUDIO_DB_PASSWORD=mine-keep\nKNOWLEDGE_DB_PASSWORD=\nPORT=8080\n");
+    const file = tmpEnv(
+      "BILLING_DB_PASSWORD=CHANGE_ME\nSTUDIO_DB_PASSWORD=mine-keep\nKNOWLEDGE_DB_PASSWORD=\nPORT=8080\n",
+    );
     const keys = ensureDbRolePasswords(file, gen);
     const env = parseEnvFile(file);
-    expect(keys.sort()).toEqual(["AUTOMATION_DB_PASSWORD", "BILLING_DB_PASSWORD", "IDENTITY_DB_PASSWORD", "KNOWLEDGE_DB_PASSWORD"]);
+    expect(keys.sort()).toEqual([
+      "AUTOMATION_DB_PASSWORD",
+      "BILLING_DB_PASSWORD",
+      "IDENTITY_DB_PASSWORD",
+      "KNOWLEDGE_DB_PASSWORD",
+    ]);
     expect(env.STUDIO_DB_PASSWORD).toBe("mine-keep");
     expect(env.PORT).toBe("8080");
     for (const k of KEYS) expect(env[k]).toBeTruthy();

@@ -160,9 +160,7 @@ const publishCommand = new Command("publish")
       // A bundle whose Studios say DRAFT installs as DRAFT; making `publish` flip them would
       // mean the shipped artefact and the installed rows disagree about what was published.
       Logger.error(
-        `${bundle.key} declares ${draft.length} Studio(s) as DRAFT: ${draft
-          .map((studio) => studio.key)
-          .join(", ")}`,
+        `${bundle.key} declares ${draft.length} Studio(s) as DRAFT: ${draft.map((studio) => studio.key).join(", ")}`,
       );
       console.log(
         chalk.dim(

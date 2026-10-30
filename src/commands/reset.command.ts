@@ -35,7 +35,7 @@ async function promptNewPassword(): Promise<string> {
 async function promptConfirmPassword(pwdInput: string): Promise<string> {
   const pwdConfirm = await password({
     message: "Confirm New Password:",
-    validate: (val) => val === pwdInput ? undefined : "Passwords do not match",
+    validate: (val) => (val === pwdInput ? undefined : "Passwords do not match"),
   });
   if (isCancel(pwdConfirm)) {
     throw new Error("CANCELLED");

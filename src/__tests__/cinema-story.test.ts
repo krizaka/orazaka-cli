@@ -35,7 +35,10 @@ const bird = (over: Raw = {}): Raw => ({
   action: "the pigeon tightens its grip on the parcel, looks out at the storm, then shuffles to the edge",
   keyframe: "The pigeon on a ledge.",
   motion: "The pigeon breathes and shuffles to the edge.",
-  sound: [{ kind: "rain", gain: -14 }, { kind: "steps", at: 2.2, gain: -20 }],
+  sound: [
+    { kind: "rain", gain: -14 },
+    { kind: "steps", at: 2.2, gain: -20 },
+  ],
   ...over,
 });
 
@@ -63,8 +66,18 @@ const story = (over: Raw = {}): Raw => ({
     { beat: "payoff", purpose: "dawn", emotion: "pride", intensity: 0.6 },
   ],
   characters: [
-    { id: "pigeon", description: "the sky-blue pigeon", promise: "delivers, every time", intention: "carries the parcel to the door" },
-    { id: "falcon", description: "the orange falcon", promise: "keeps watch: security comes first", intention: "never lets the pigeon out of its sight" },
+    {
+      id: "pigeon",
+      description: "the sky-blue pigeon",
+      promise: "delivers, every time",
+      intention: "carries the parcel to the door",
+    },
+    {
+      id: "falcon",
+      description: "the orange falcon",
+      promise: "keeps watch: security comes first",
+      intention: "never lets the pigeon out of its sight",
+    },
   ],
   music: {
     prompt: "intimate score",
@@ -76,11 +89,30 @@ const story = (over: Raw = {}): Raw => ({
     ],
   },
   lines: [
-    { id: "storm", shots: [1], en: "The night the storm came.", fr: "La nuit de l'orage.", direction: { emotion: "hushed", pace: "slow", emphasis: ["storm"] } },
-    { id: "falcon", shots: [3], en: "The falcon keeps watch.", fr: "Le faucon veille.", direction: { emotion: "calm", pace: "measured", emphasis: [] } },
+    {
+      id: "storm",
+      shots: [1],
+      en: "The night the storm came.",
+      fr: "La nuit de l'orage.",
+      direction: { emotion: "hushed", pace: "slow", emphasis: ["storm"] },
+    },
+    {
+      id: "falcon",
+      shots: [3],
+      en: "The falcon keeps watch.",
+      fr: "Le faucon veille.",
+      direction: { emotion: "calm", pace: "measured", emphasis: [] },
+    },
   ],
   shots: [
-    { id: 1, ...bird({ characters: ["pigeon", "falcon"], interactionKind: "meet", interaction: "the falcon lands beside the pigeon" }) },
+    {
+      id: 1,
+      ...bird({
+        characters: ["pigeon", "falcon"],
+        interactionKind: "meet",
+        interaction: "the falcon lands beside the pigeon",
+      }),
+    },
     { id: 2, ...land("journey", { seconds: 2 }) },
     {
       id: 3,
@@ -126,7 +158,9 @@ describe("parseStory", () => {
 
   it("refuses by name what cannot be a story", () => {
     expect(() => parseStory(story({ arc: [{ beat: "climax" }] }))).toThrow(/arc\[0\].beat 'climax'/);
-    expect(() => parseStory(story({ lines: [{ id: "x", shots: [9], en: "hi" }] }))).toThrow(/line x: its shots must exist/);
+    expect(() => parseStory(story({ lines: [{ id: "x", shots: [9], en: "hi" }] }))).toThrow(
+      /line x: its shots must exist/,
+    );
     const bad = story();
     (bad.shots as Raw[])[0].sound = [{ kind: "explosion" }];
     expect(() => parseStory(bad)).toThrow(/sound\[0\].kind 'explosion'/);
@@ -151,7 +185,14 @@ describe("critiqueStory — the rubric", () => {
     const s = story();
     (s.shots as Raw[])[2] = {
       id: 3,
-      ...bird({ characters: ["falcon"], beat: "journey", intent: "", gaze: "", physics: "", action: "the falcon stands on the cliff and turns its head left, then right, scanning the valley" }),
+      ...bird({
+        characters: ["falcon"],
+        beat: "journey",
+        intent: "",
+        gaze: "",
+        physics: "",
+        action: "the falcon stands on the cliff and turns its head left, then right, scanning the valley",
+      }),
     };
     const c = critiqueStory(parseStory(s));
     expect(c.pass).toBe(false);
@@ -162,7 +203,13 @@ describe("critiqueStory — the rubric", () => {
     const s = story();
     (s.shots as Raw[])[2] = {
       id: 3,
-      ...bird({ characters: ["falcon"], beat: "journey", purpose: "A pretty moment.", intent: "it enjoys the view", action: "the falcon lifts a flower, sniffs it, then smiles" }),
+      ...bird({
+        characters: ["falcon"],
+        beat: "journey",
+        purpose: "A pretty moment.",
+        intent: "it enjoys the view",
+        action: "the falcon lifts a flower, sniffs it, then smiles",
+      }),
     };
     const c = critiqueStory(parseStory(s));
     expect(c.findings).toEqual(expect.arrayContaining([expect.objectContaining({ rule: "off-topic", shot: 3 })]));
@@ -172,18 +219,27 @@ describe("critiqueStory — the rubric", () => {
   it("rejects a story without a turn, or whose turn comes in its first third", () => {
     const s = story();
     (s.shots as Raw[])[3] = { id: 4, ...land("payoff") };
-    expect(critiqueStory(parseStory(s)).findings).toEqual(expect.arrayContaining([expect.objectContaining({ rule: "arc", message: "the story has no turn" })]));
+    expect(critiqueStory(parseStory(s)).findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ rule: "arc", message: "the story has no turn" })]),
+    );
     const early = story();
     (early.shots as Raw[])[1] = { id: 2, ...land("turn") };
     (early.shots as Raw[])[2] = { ...(early.shots as Raw[])[2], beat: "turn" };
     const findings = critiqueStory(parseStory(early)).findings.map((f) => f.message);
-    expect(findings).toEqual(expect.arrayContaining([expect.stringMatching(/turn comes before the story has started/)]));
+    expect(findings).toEqual(
+      expect.arrayContaining([expect.stringMatching(/turn comes before the story has started/)]),
+    );
   });
 
   it("refuses a rushed line, a loud score, a peak after the turn and a character whose action is not heard", () => {
     const s = story();
     const words = Math.ceil(MAX_WORDS_PER_SECOND * 3) + 3;
-    (s.lines as Raw[])[0] = { id: "storm", shots: [1], en: Array(words).fill("word").join(" "), direction: { emotion: "hushed", pace: "slow" } };
+    (s.lines as Raw[])[0] = {
+      id: "storm",
+      shots: [1],
+      en: Array(words).fill("word").join(" "),
+      direction: { emotion: "hushed", pace: "slow" },
+    };
     (s.music as Raw).cues = [
       { beat: "hook", intensity: 0.6, prompt: "loud" },
       { beat: "journey", intensity: 0.5, prompt: "warm" },
@@ -206,20 +262,32 @@ describe("critiqueStory — the rubric", () => {
   it("checks continuity: a shot chained from another shares a character with it", () => {
     const s = story();
     (s.shots as Raw[])[4] = { ...(s.shots as Raw[])[4], chainFrom: { shot: 2 } };
-    expect(critiqueStory(parseStory(s)).findings).toEqual(expect.arrayContaining([expect.objectContaining({ rule: "continuity", shot: 5 })]));
+    expect(critiqueStory(parseStory(s)).findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ rule: "continuity", shot: 5 })]),
+    );
   });
 });
 
 describe("the language-model judge", () => {
   it("is asked the rubric's questions about every shot, line and promise", () => {
     const prompt = judgePrompt(parseStory(story()));
-    for (const part of ["transport", "onTopic", "Reject every shot whose action is flat", "promise «delivers, every time»", "1. [hook] pigeon", "(3) The falcon keeps watch."]) {
+    for (const part of [
+      "transport",
+      "onTopic",
+      "Reject every shot whose action is flat",
+      "promise «delivers, every time»",
+      "1. [hook] pigeon",
+      "(3) The falcon keeps watch.",
+    ]) {
       expect(prompt).toContain(part);
     }
   });
 
   it("reads its answer: scores clamped to 1..5, rejects of shots that exist only", () => {
-    const j = parseJudge('Sure! {"scores": {"transport": 9, "arc": 4, "characters": 4, "alive": 0, "onTopic": 4}, "rejects": [{"shot": 3, "why": "flat"}, {"shot": 42, "why": "?"}], "notes": "more stakes"}', 5);
+    const j = parseJudge(
+      'Sure! {"scores": {"transport": 9, "arc": 4, "characters": 4, "alive": 0, "onTopic": 4}, "rejects": [{"shot": 3, "why": "flat"}, {"shot": 42, "why": "?"}], "notes": "more stakes"}',
+      5,
+    );
     expect(j.scores).toEqual({ transport: 5, arc: 4, characters: 4, alive: 1, onTopic: 4, continuity: 1 });
     expect(j.rejects).toEqual([{ shot: 3, why: "flat" }]);
     expect(() => parseJudge("no json here", 5)).toThrow(StoryError);
@@ -227,10 +295,18 @@ describe("the language-model judge", () => {
 
   it("decides with the rubric: both must accept", () => {
     const rubric = critiqueStory(parseStory(story()));
-    const good = { scores: { transport: 4, arc: 4, characters: 4, alive: 4, onTopic: 5, continuity: 4 }, rejects: [], notes: "" };
+    const good = {
+      scores: { transport: 4, arc: 4, characters: 4, alive: 4, onTopic: 5, continuity: 4 },
+      rejects: [],
+      notes: "",
+    };
     expect(verdict(rubric, good).pass).toBe(true);
     expect(verdict(rubric).pass).toBe(true);
-    const flat = verdict(rubric, { ...good, scores: { ...good.scores, transport: 2 }, rejects: [{ shot: 3, why: "generic" }] });
+    const flat = verdict(rubric, {
+      ...good,
+      scores: { ...good.scores, transport: 2 },
+      rejects: [{ shot: 3, why: "generic" }],
+    });
     expect(flat.pass).toBe(false);
     expect(flat.reasons).toEqual(["judge: transport 2/5", "judge rejects shot 3: generic"]);
   });
@@ -239,18 +315,35 @@ describe("the language-model judge", () => {
 describe("timeline — lines, cues and sounds on the cut", () => {
   it("starts a line a beat after its first shot's cut and says whether its measured length fits", () => {
     const t = timeline(parseStory(story()), "en", { storm: 2.5, falcon: 4 });
-    expect(t.shots.map((s) => [s.start, s.end])).toEqual([[0, 3], [3, 5], [5, 7.5], [7.5, 11.5], [11.5, 15]]);
+    expect(t.shots.map((s) => [s.start, s.end])).toEqual([
+      [0, 3],
+      [3, 5],
+      [5, 7.5],
+      [7.5, 11.5],
+      [11.5, 15],
+    ]);
     expect(t.lines).toEqual([
       { id: "storm", start: 0.35, end: 2.85, fits: true, room: 0.55 },
       { id: "falcon", start: 5.35, end: 9.35, fits: false, room: -1.45 },
     ]);
-    expect(t.music.map((m) => [m.id, m.start, m.end, m.intensity])).toEqual([["hook", 0, 3, 0.3], ["journey", 3, 7.5, 0.5], ["turn", 7.5, 11.5, 0.75], ["payoff", 11.5, 15, 0.6]]);
+    expect(t.music.map((m) => [m.id, m.start, m.end, m.intensity])).toEqual([
+      ["hook", 0, 3, 0.3],
+      ["journey", 3, 7.5, 0.5],
+      ["turn", 7.5, 11.5, 0.75],
+      ["payoff", 11.5, 15, 0.6],
+    ]);
     expect(t.sound.filter((x) => x.kind === "steps").map((x) => x.start)).toEqual([2.2, 7.2, 13.7]);
     expect(t.sound.find((x) => x.kind === "rain")).toMatchObject({ start: 0, end: 3 });
   });
 
   it("follows the edit's own spans when they are known (cuts snapped to the music)", () => {
-    const spans = [[0, 3.2], [3.2, 6], [6, 9.4], [9.4, 12], [12, 15.5]] as const;
+    const spans = [
+      [0, 3.2],
+      [3.2, 6],
+      [6, 9.4],
+      [9.4, 12],
+      [12, 15.5],
+    ] as const;
     expect(timeline(parseStory(story()), "fr", {}, spans).lines[1].start).toBe(6.35);
   });
 });
@@ -268,24 +361,55 @@ describe("directedMotion", () => {
 });
 
 describe("writeTreatment — written, judged, sent back with the reasons", () => {
-  const ok = (id: string, value: string): FinishedRun => ({ id, status: "SUCCEEDED", outputs: [{ key: "out", value }] });
+  const ok = (id: string, value: string): FinishedRun => ({
+    id,
+    status: "SUCCEEDED",
+    outputs: [{ key: "out", value }],
+  });
 
   it("rejects a flat draft, sends the reasons back to the writer, accepts the revised one", async () => {
     const flat = story();
-    (flat.shots as Raw[])[2] = { id: 3, ...bird({ characters: ["falcon"], beat: "journey", intent: "", gaze: "", physics: "", action: "the falcon stands and looks around" }) };
+    (flat.shots as Raw[])[2] = {
+      id: 3,
+      ...bird({
+        characters: ["falcon"],
+        beat: "journey",
+        intent: "",
+        gaze: "",
+        physics: "",
+        action: "the falcon stands and looks around",
+      }),
+    };
     const calls: Array<{ key: string; inputs: Record<string, unknown> }> = [];
     const drafts = [JSON.stringify(flat), JSON.stringify(story())];
     const port: StudioPort = {
       run: async (key, inputs) => {
         calls.push({ key, inputs });
         if (key === "cinematic-treatment") return ok(`t${calls.length}`, drafts.shift() ?? "");
-        return ok(`j${calls.length}`, JSON.stringify({ scores: { transport: 4, arc: 4, characters: 4, alive: 4, onTopic: 4, continuity: 4 }, rejects: [] }));
+        return ok(
+          `j${calls.length}`,
+          JSON.stringify({
+            scores: { transport: 4, arc: 4, characters: 4, alive: 4, onTopic: 4, continuity: 4 },
+            rejects: [],
+          }),
+        );
       },
       reupload: async () => "x",
     };
-    const draft = await writeTreatment(port, { brief: "a pigeon in a storm", language: "en", durationSeconds: 60, aspect: "16:9", log: () => undefined });
+    const draft = await writeTreatment(port, {
+      brief: "a pigeon in a storm",
+      language: "en",
+      durationSeconds: 60,
+      aspect: "16:9",
+      log: () => undefined,
+    });
     expect(draft.verdict.pass).toBe(true);
-    expect(calls.map((c) => c.key)).toEqual(["cinematic-treatment", "cinematic-critique", "cinematic-treatment", "cinematic-critique"]);
+    expect(calls.map((c) => c.key)).toEqual([
+      "cinematic-treatment",
+      "cinematic-critique",
+      "cinematic-treatment",
+      "cinematic-critique",
+    ]);
     expect(String(calls[2].inputs.notes)).toMatch(/alive \(shot 3\)/);
     expect(draft.runs).toHaveLength(4);
   });
@@ -294,7 +418,15 @@ describe("writeTreatment — written, judged, sent back with the reasons", () =>
     const flat = story({ theme: "" });
     const answers = ["not json", JSON.stringify(flat), JSON.stringify(flat)];
     const port: StudioPort = { run: async (key) => ok(key, answers.shift() ?? ""), reupload: async () => "x" };
-    const draft = await writeTreatment(port, { brief: "b", language: "en", durationSeconds: 60, aspect: "16:9", noJudge: true, revisions: 2, log: () => undefined });
+    const draft = await writeTreatment(port, {
+      brief: "b",
+      language: "en",
+      durationSeconds: 60,
+      aspect: "16:9",
+      noJudge: true,
+      revisions: 2,
+      log: () => undefined,
+    });
     expect(draft.verdict.pass).toBe(false);
     expect(draft.verdict.reasons).toContain("arc: the story names no theme");
   });
@@ -343,36 +475,63 @@ describe("orazaka#289, second review: interaction, no lineup, rhythm, the legal 
     const s = story();
     for (const shot of s.shots as Raw[]) delete shot.interactionKind;
     const c = critiqueStory(parseStory(s));
-    expect(c.findings.filter((f) => f.rule === "interaction").map((f) => f.shot ?? 0)).toEqual(expect.arrayContaining([0, 1, 3, 5]));
+    expect(c.findings.filter((f) => f.rule === "interaction").map((f) => f.shot ?? 0)).toEqual(
+      expect.arrayContaining([0, 1, 3, 5]),
+    );
     expect(c.scores.interaction).toBe(0);
     expect(c.pass).toBe(false);
   });
 
   it("rejects a lineup: characters presented to the camera instead of acting", () => {
     const s = story();
-    s.characters = [...(s.characters as Raw[]), { id: "owl", description: "the owl", promise: "reads every page", intention: "checks the parcel" }];
+    s.characters = [
+      ...(s.characters as Raw[]),
+      { id: "owl", description: "the owl", promise: "reads every page", intention: "checks the parcel" },
+    ];
     (s.shots as Raw[])[3] = {
       id: 4,
-      ...bird({ beat: "turn", seconds: 4, characters: ["pigeon", "falcon", "owl"], action: "the three birds stand in a row, then turn their heads to the camera" }),
+      ...bird({
+        beat: "turn",
+        seconds: 4,
+        characters: ["pigeon", "falcon", "owl"],
+        action: "the three birds stand in a row, then turn their heads to the camera",
+      }),
     };
-    expect(critiqueStory(parseStory(s)).findings).toEqual(expect.arrayContaining([expect.objectContaining({ rule: "lineup", shot: 4 })]));
+    expect(critiqueStory(parseStory(s)).findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ rule: "lineup", shot: 4 })]),
+    );
   });
 
   it("asks for rhythm: lengths that vary and a run of quick cuts", () => {
     const s = story();
     for (const shot of s.shots as Raw[]) shot.seconds = 4;
-    const rules = critiqueStory(parseStory(s)).findings.filter((f) => f.rule === "rhythm").map((f) => f.message);
+    const rules = critiqueStory(parseStory(s))
+      .findings.filter((f) => f.rule === "rhythm")
+      .map((f) => f.message);
     expect(rules).toEqual([expect.stringMatching(/about the same/)]);
   });
 
   it("refuses a real person, song, game or show named anywhere, and a reference without its legal means", () => {
     const s = story({
-      references: [{ evokes: "West Coast G-funk", how: "original music in the genre, lowriders and palm trees" }, { evokes: "an open-world game", how: "" }],
+      references: [
+        { evokes: "West Coast G-funk", how: "original music in the genre, lowriders and palm trees" },
+        { evokes: "an open-world game", how: "" },
+      ],
       legal: { never: ["Mile End Mafia"] },
     });
-    (s.lines as Raw[])[0] = { id: "storm", shots: [1], en: "Drake would never.", direction: { emotion: "light", pace: "slow" } };
-    (s.shots as Raw[])[1] = { id: 2, ...land("journey", { seconds: 2, action: "a car like in GTA drives past the Mile End Mafia café" }) };
-    const legal = critiqueStory(parseStory(s)).findings.filter((f) => f.rule === "legal").map((f) => f.message);
+    (s.lines as Raw[])[0] = {
+      id: "storm",
+      shots: [1],
+      en: "Drake would never.",
+      direction: { emotion: "light", pace: "slow" },
+    };
+    (s.shots as Raw[])[1] = {
+      id: 2,
+      ...land("journey", { seconds: 2, action: "a car like in GTA drives past the Mile End Mafia café" }),
+    };
+    const legal = critiqueStory(parseStory(s))
+      .findings.filter((f) => f.rule === "legal")
+      .map((f) => f.message);
     expect(legal).toEqual(
       expect.arrayContaining([
         expect.stringMatching(/line storm en names « drake »/),
@@ -394,8 +553,15 @@ describe("orazaka#289, second review: interaction, no lineup, rhythm, the legal 
     ];
     const story2 = parseStory(s);
     expect(story2.music.cues[1]).toMatchObject({ beat: "journey", shots: [3, 4], genre: "hip-hop" });
-    expect(timeline(story2).music.map((m) => [m.id, m.start, m.end])).toEqual([["1-soft", 0, 5], ["2-hip-hop", 5, 11.5], ["3-dj", 11.5, 15], ["4-outro", 11.5, 15]]);
+    expect(timeline(story2).music.map((m) => [m.id, m.start, m.end])).toEqual([
+      ["1-soft", 0, 5],
+      ["2-hip-hop", 5, 11.5],
+      ["3-dj", 11.5, 15],
+      ["4-outro", 11.5, 15],
+    ]);
     expect(critiqueStory(story2).findings.filter((f) => f.rule === "music")).toEqual([]);
-    expect(() => parseStory({ ...s, music: { cues: [{ shots: [4, 2], intensity: 0.3, prompt: "x" }] } })).toThrow(/shots is \[first, last\]/);
+    expect(() => parseStory({ ...s, music: { cues: [{ shots: [4, 2], intensity: 0.3, prompt: "x" }] } })).toThrow(
+      /shots is \[first, last\]/,
+    );
   });
 });

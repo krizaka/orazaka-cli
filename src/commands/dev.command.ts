@@ -110,9 +110,7 @@ function discoverWorkers(root: string, enabled: boolean): ProcessConfig[] {
  * `python` string and an `args` inline list. A worker that declares no `run:` is not started and
  * says nothing — the same fail-closed direction as every other declaration in this repository.
  */
-function readWorkerRun(
-  file: string,
-): { label: string; python: string; args: string[] } | null {
+function readWorkerRun(file: string): { label: string; python: string; args: string[] } | null {
   let text: string;
   try {
     text = fs.readFileSync(file, "utf8");
@@ -168,7 +166,10 @@ interface ProcessConfig {
 function parseOnly(raw: string | undefined): Set<ServiceKey> {
   const selected = new Set<ServiceKey>();
   if (!raw) return selected;
-  for (const token of raw.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)) {
+  for (const token of raw
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean)) {
     const canonical = SERVICE_ALIASES[token] ?? token;
     if ((SERVICE_KEYS as readonly string[]).includes(canonical)) {
       selected.add(canonical as ServiceKey);
@@ -288,7 +289,8 @@ export const devCommand = new Command("dev")
         command: "./mvnw",
         args: [
           "spring-boot:run",
-          "-pl", "orazaka-apps/services/orazaka-conversation-service",
+          "-pl",
+          "orazaka-apps/services/orazaka-conversation-service",
           "-Dspring-boot.run.profiles=e2e",
         ],
         cwd: root,
@@ -367,11 +369,7 @@ export const devCommand = new Command("dev")
         label: "NOTIFICATIONS",
         color: chalk.blue,
         command: "./mvnw",
-        args: [
-          "spring-boot:run",
-          "-pl",
-          "krizaka/krizaka-notifications/krizaka-notifications-service",
-        ],
+        args: ["spring-boot:run", "-pl", "krizaka/krizaka-notifications/krizaka-notifications-service"],
         cwd: root,
         enabled: isEnabled("notifications"),
         port: PORTS.notifications,
@@ -414,14 +412,18 @@ export const devCommand = new Command("dev")
     // The label column and the box grow to the longest row: a worker named by its worker.yaml
     // (`ORAZAKA-WORKER-VALIDATION`) is longer than a service, and has no HTTP port to show.
     const labelW = bannerLabelWidth([...activeConfigs, ...skippedConfigs]);
-    const BOX_W = Math.max(54, ...activeConfigs.map((cfg) => `  ● ${cfg.label.padEnd(labelW)}${bannerAddress(cfg.port)}`.length + 2));
+    const BOX_W = Math.max(
+      54,
+      ...activeConfigs.map((cfg) => `  ● ${cfg.label.padEnd(labelW)}${bannerAddress(cfg.port)}`.length + 2),
+    );
 
-    const pad = (text: string, width: number): string =>
-      text + " ".repeat(Math.max(0, width - text.length));
+    const pad = (text: string, width: number): string => text + " ".repeat(Math.max(0, width - text.length));
 
     console.log("");
     console.log(chalk.cyan.bold("  ┌" + "─".repeat(BOX_W) + "┐"));
-    console.log(chalk.cyan.bold("  │") + chalk.white.bold(pad("  🥷  Orazaka Dev Stack", BOX_W)) + chalk.cyan.bold("│"));
+    console.log(
+      chalk.cyan.bold("  │") + chalk.white.bold(pad("  🥷  Orazaka Dev Stack", BOX_W)) + chalk.cyan.bold("│"),
+    );
     console.log(chalk.cyan.bold("  ├" + "─".repeat(BOX_W) + "┤"));
 
     for (const cfg of activeConfigs) {
@@ -429,26 +431,30 @@ export const devCommand = new Command("dev")
       const row = `  ● ${cfg.label.padEnd(labelW)}${address}`;
       console.log(
         chalk.cyan("  │") +
-        `  ${cfg.color("●")} ${cfg.color(cfg.label.padEnd(labelW))}` +
-        (cfg.port === undefined
-          ? chalk.dim(address)
-          : chalk.white(`:${cfg.port}`) + chalk.dim(`  http://localhost:${cfg.port}`)) +
-        " ".repeat(Math.max(0, BOX_W - row.length)) +
-        chalk.cyan("│"),
+          `  ${cfg.color("●")} ${cfg.color(cfg.label.padEnd(labelW))}` +
+          (cfg.port === undefined
+            ? chalk.dim(address)
+            : chalk.white(`:${cfg.port}`) + chalk.dim(`  http://localhost:${cfg.port}`)) +
+          " ".repeat(Math.max(0, BOX_W - row.length)) +
+          chalk.cyan("│"),
       );
     }
 
     if (skippedConfigs.length > 0) {
-      const dashContent = "  " + Array.from({ length: Math.floor((BOX_W - 4) / 2) }, () => "─ ").join("").trimEnd();
+      const dashContent =
+        "  " +
+        Array.from({ length: Math.floor((BOX_W - 4) / 2) }, () => "─ ")
+          .join("")
+          .trimEnd();
       console.log(chalk.cyan("  │") + chalk.dim(pad(dashContent, BOX_W)) + chalk.cyan("│"));
       for (const cfg of skippedConfigs) {
         const row = `  ○ ${cfg.label.padEnd(labelW)}skipped`;
         console.log(
           chalk.cyan("  │") +
-          `  ${chalk.dim("○")} ${chalk.dim(cfg.label.padEnd(labelW))}` +
-          chalk.dim("skipped") +
-          " ".repeat(Math.max(0, BOX_W - row.length)) +
-          chalk.cyan("│"),
+            `  ${chalk.dim("○")} ${chalk.dim(cfg.label.padEnd(labelW))}` +
+            chalk.dim("skipped") +
+            " ".repeat(Math.max(0, BOX_W - row.length)) +
+            chalk.cyan("│"),
         );
       }
     }

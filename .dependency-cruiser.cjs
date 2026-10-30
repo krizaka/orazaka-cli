@@ -4,7 +4,8 @@ module.exports = {
     {
       name: "no-circular",
       severity: "error", // 🔥 CRITICAL: Protects terminal loop stability
-      comment: "Circular dependencies are strictly banned across Orazaka CLI. They break execution flow and lead to memory leaks.",
+      comment:
+        "Circular dependencies are strictly banned across Orazaka CLI. They break execution flow and lead to memory leaks.",
       from: {},
       to: {
         circular: true,
@@ -18,12 +19,12 @@ module.exports = {
         orphan: true,
         pathNot: [
           "(^|/)\\.[^/]+", // Hidden dot files
-          "\\.d\\.ts$",    // Type declaration files
+          "\\.d\\.ts$", // Type declaration files
           "(^|/)tsconfig\\.json$",
           "src/index\\.ts$", // CLI Entrypoint
-          "__tests__/",     // Test folder
-          "\\.test\\.ts$",  // Unit test files
-          "\\.spec\\.ts$"   // Integration spec files
+          "__tests__/", // Test folder
+          "\\.test\\.ts$", // Unit test files
+          "\\.spec\\.ts$", // Integration spec files
         ],
       },
       to: {},
@@ -31,7 +32,8 @@ module.exports = {
     {
       name: "no-ui-import-commands",
       severity: "error", // 🔥 TOTAL ENFORCEMENT: Guarantees raw presentation abstraction
-      comment: "Pure UI layout templates and terminal elements must remain domain-agnostic and must not import command routers directly.",
+      comment:
+        "Pure UI layout templates and terminal elements must remain domain-agnostic and must not import command routers directly.",
       from: {
         path: "^src/ui/",
       },

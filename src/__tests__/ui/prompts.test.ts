@@ -27,10 +27,7 @@ const mockSpinner = jest.fn(() => ({
   message: jest.fn(),
 }));
 
-type ClackPrompts = typeof import(
-  "@clack/prompts",
-  { with: { "resolution-mode": "import" } }
-);
+type ClackPrompts = typeof import("@clack/prompts", { with: { "resolution-mode": "import" } });
 
 const mockModule = {
   intro: mockIntro,

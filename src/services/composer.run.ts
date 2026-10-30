@@ -94,9 +94,7 @@ export async function runComposerStudio({
     if (run.status === "AWAITING_INPUT") {
       // A one-step Studio has no approval step and cannot reach this. If one ever does,
       // the CLI says where the answer is given rather than polling a parked run forever.
-      throw new Error(
-        `${studio.label} is waiting for an answer: orazaka studio run ${started.id}`,
-      );
+      throw new Error(`${studio.label} is waiting for an answer: orazaka studio run ${started.id}`);
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
   }

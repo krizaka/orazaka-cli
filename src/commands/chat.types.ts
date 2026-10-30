@@ -59,9 +59,6 @@ export function resolveActiveFlag(options: {
 /**
  * Resolves the flag value for media flags (path-based).
  */
-export function resolveFlagValue(options: {
-  readonly image?: string;
-  readonly audio?: string;
-}): string | undefined {
+export function resolveFlagValue(options: { readonly image?: string; readonly audio?: string }): string | undefined {
   return options.image || options.audio;
 }

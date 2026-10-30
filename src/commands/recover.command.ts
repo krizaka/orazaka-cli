@@ -10,17 +10,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { execSync } from "node:child_process";
 import chalk from "chalk";
-import {
-  intro,
-  outro,
-  select,
-  confirm,
-  logSuccess,
-  logWarning,
-  logError,
-  logInfo,
-  createSpinner,
-} from "../ui/prompts";
+import { intro, outro, select, confirm, logSuccess, logWarning, logError, logInfo, createSpinner } from "../ui/prompts";
 import {
   resolveWorkspaceRoot,
   resolveEnvFile,
@@ -123,7 +113,11 @@ export const recoverCommand = new Command("recover")
         const service = await select({
           message: "Which service to restart?",
           options: [
-            { value: "docker", label: "Docker Middleware (Postgres, Redis, RabbitMQ)", hint: "Restart all Docker containers" },
+            {
+              value: "docker",
+              label: "Docker Middleware (Postgres, Redis, RabbitMQ)",
+              hint: "Restart all Docker containers",
+            },
             { value: "ollama", label: "Ollama (LLM Engine)", hint: "Restart Ollama serve" },
             { value: "localai", label: "LocalAI (Image Worker)", hint: "Restart LocalAI process" },
             { value: "media", label: "Media Worker", hint: "Restart the Python media worker" },
@@ -203,12 +197,15 @@ export const recoverCommand = new Command("recover")
           try {
             if (process.platform !== "win32") {
               const pids = execSync(`lsof -i :${String(service.port)} -t 2>/dev/null || true`)
-                .toString().trim();
+                .toString()
+                .trim();
               if (pids) {
                 conflicts.push({ ...service, pid: pids.split("\n")[0]! });
               }
             }
-          } catch { /* no conflict */ }
+          } catch {
+            /* no conflict */
+          }
         }
 
         spinner.stop();
@@ -250,11 +247,23 @@ export const recoverCommand = new Command("recover")
 
         spinner.start("Validating .env...");
         const requiredKeys = [
-          "PORT", "SPRING_DATASOURCE_URL", "SPRING_DATASOURCE_USERNAME",
-          "SPRING_DATASOURCE_PASSWORD", "REDIS_URL", "RABBITMQ_HOST",
-          "RABBITMQ_PORT", "DEFAULT_PROVIDER", "OLLAMA_BASE_URL",
-          "OLLAMA_MODEL", "CRYPTO_KEY", "CRYPTO_SALT", "VIDEO_WORKER_PORT",
-          "IMAGE_WORKER_PORT", "LOCALAI_PORT", "LOG_DIR", "UPLOAD_DIR",
+          "PORT",
+          "SPRING_DATASOURCE_URL",
+          "SPRING_DATASOURCE_USERNAME",
+          "SPRING_DATASOURCE_PASSWORD",
+          "REDIS_URL",
+          "RABBITMQ_HOST",
+          "RABBITMQ_PORT",
+          "DEFAULT_PROVIDER",
+          "OLLAMA_BASE_URL",
+          "OLLAMA_MODEL",
+          "CRYPTO_KEY",
+          "CRYPTO_SALT",
+          "VIDEO_WORKER_PORT",
+          "IMAGE_WORKER_PORT",
+          "LOCALAI_PORT",
+          "LOG_DIR",
+          "UPLOAD_DIR",
         ];
 
         const defaults: Record<string, string> = {};
@@ -394,7 +403,9 @@ export const recoverCommand = new Command("recover")
             try {
               process.kill(parseInt(pidNum), "SIGTERM");
               killed++;
-            } catch { /* already dead */ }
+            } catch {
+              /* already dead */
+            }
           }
 
           fs.unlinkSync(pidFile);

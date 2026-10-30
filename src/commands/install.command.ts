@@ -103,13 +103,13 @@ export const installCommand = new Command("install")
       await logSuccess("All critical tools are available ✔");
     } else {
       await logError(
-        `${String(report.missingCritical.length)} critical tool(s) missing — these must be installed before running Orazaka.`
+        `${String(report.missingCritical.length)} critical tool(s) missing — these must be installed before running Orazaka.`,
       );
     }
 
     if (report.missingOptional.length > 0) {
       await logWarning(
-        `${String(report.missingOptional.length)} optional tool(s) missing — some features may be unavailable.`
+        `${String(report.missingOptional.length)} optional tool(s) missing — some features may be unavailable.`,
       );
     }
 
@@ -125,7 +125,7 @@ export const installCommand = new Command("install")
           chalk.gray("Read-only check — no files were modified."),
           `Run ${chalk.cyan("npx orazaka install")} to install tools & configure .env.`,
         ].join("\n"),
-        "Check Summary"
+        "Check Summary",
       );
       await outro(chalk.cyan("Tool check complete (read-only)."));
       return;
@@ -158,7 +158,9 @@ export const installCommand = new Command("install")
             await logSuccess(`✔ ${missing.tool.name} installed`);
           } else {
             spinner.stop(`${missing.tool.name} installation failed.`, 1);
-            await logError(`Failed to install ${missing.tool.name}. Install manually: ${chalk.cyan(missing.installHint)}`);
+            await logError(
+              `Failed to install ${missing.tool.name}. Install manually: ${chalk.cyan(missing.installHint)}`,
+            );
           }
         }
       }
@@ -201,7 +203,13 @@ export const installCommand = new Command("install")
     }
 
     // ─── Phase 3: Media Worker Python Environment ───────────────
-    const mediaReqFile = path.join(workspaceRoot, "orazaka-apps", "workers", "orazaka-worker-media", "requirements.txt");
+    const mediaReqFile = path.join(
+      workspaceRoot,
+      "orazaka-apps",
+      "workers",
+      "orazaka-worker-media",
+      "requirements.txt",
+    );
     if (fs.existsSync(mediaReqFile) && hasTool("python3")) {
       await logStep("Phase 3 — Media Worker Python Environment");
 
@@ -239,40 +247,46 @@ export const installCommand = new Command("install")
     await logStep("Phase 4 — Deployment Topology Configuration");
 
     // Non-interactive: the topology follows the host (Apple Silicon → local_dev, otherwise production).
-    const targetEnv = !interactive ? (isAppleSilicon() ? "local_dev" : "production") : await select({
-      message: "Select target environment profile:",
-      options: [
-        {
-          value: "local_dev",
-          label: "Local Dev (Apple Silicon ARM64)",
-          hint: "Bypasses in-Docker Ollama to leverage macOS Metal acceleration",
-        },
-        {
-          value: "production",
-          label: "Production (Linux x86_64)",
-          hint: "Hardened, containerized standard setup",
-        },
-      ],
-      initialValue: "local_dev",
-    });
+    const targetEnv = !interactive
+      ? isAppleSilicon()
+        ? "local_dev"
+        : "production"
+      : await select({
+          message: "Select target environment profile:",
+          options: [
+            {
+              value: "local_dev",
+              label: "Local Dev (Apple Silicon ARM64)",
+              hint: "Bypasses in-Docker Ollama to leverage macOS Metal acceleration",
+            },
+            {
+              value: "production",
+              label: "Production (Linux x86_64)",
+              hint: "Hardened, containerized standard setup",
+            },
+          ],
+          initialValue: "local_dev",
+        });
     handleCancel(targetEnv);
 
-    const infraMode = !interactive ? "bundled" : await select({
-      message: "Select infrastructure topology:",
-      options: [
-        {
-          value: "bundled",
-          label: "Bundled (provisioned via Docker)",
-          hint: "Postgres, Redis, and RabbitMQ spin up as local containers",
-        },
-        {
-          value: "external",
-          label: "External (connecting to enterprise clusters)",
-          hint: "Bypasses local middleware container provisioning (BYO-Infra)",
-        },
-      ],
-      initialValue: "bundled",
-    });
+    const infraMode = !interactive
+      ? "bundled"
+      : await select({
+          message: "Select infrastructure topology:",
+          options: [
+            {
+              value: "bundled",
+              label: "Bundled (provisioned via Docker)",
+              hint: "Postgres, Redis, and RabbitMQ spin up as local containers",
+            },
+            {
+              value: "external",
+              label: "External (connecting to enterprise clusters)",
+              hint: "Bypasses local middleware container provisioning (BYO-Infra)",
+            },
+          ],
+          initialValue: "bundled",
+        });
     handleCancel(infraMode);
 
     // Collect external endpoints if needed
@@ -327,10 +341,7 @@ export const installCommand = new Command("install")
     const envPath = resolveEnvFile();
     if (!fs.existsSync(envPath)) {
       // Use template or generate defaults
-      const templatePaths = [
-        path.join(workspaceRoot, "exemple.env.txt"),
-        path.join(workspaceRoot, ".env.example"),
-      ];
+      const templatePaths = [path.join(workspaceRoot, "exemple.env.txt"), path.join(workspaceRoot, ".env.example")];
       let templateContent = "";
       for (const tp of templatePaths) {
         if (fs.existsSync(tp)) {
@@ -440,7 +451,7 @@ export const installCommand = new Command("install")
         "",
         "  rabbitmq:",
         "    scale: 0",
-        ""
+        "",
       );
     } else {
       // Bundled infra: the base compose is already complete — no override needed.
@@ -467,10 +478,13 @@ export const installCommand = new Command("install")
     if (conflicts.length > 0) {
       await logWarning(
         "Kept your existing .env values (not overwritten). These differ from the selected topology:\n" +
-        conflicts
-          .map(([k, v]) => `  ${chalk.yellow(k)} = ${chalk.gray(existingEnv[k])} ${chalk.dim(`(topology suggests ${v})`)}`)
-          .join("\n") +
-        `\n  Edit ${chalk.cyan(".env")} manually if you want the suggested values.`
+          conflicts
+            .map(
+              ([k, v]) =>
+                `  ${chalk.yellow(k)} = ${chalk.gray(existingEnv[k])} ${chalk.dim(`(topology suggests ${v})`)}`,
+            )
+            .join("\n") +
+          `\n  Edit ${chalk.cyan(".env")} manually if you want the suggested values.`,
       );
     }
 

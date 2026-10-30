@@ -55,14 +55,14 @@ import * as path from "node:path";
  */
 function formatFileManifest(file: GeneratedFile): string {
   const icon =
-    file.action === "created" ? chalk.green("✚") :
-    file.action === "updated" ? chalk.yellow("✎") :
-    chalk.gray("○");
+    file.action === "created" ? chalk.green("✚") : file.action === "updated" ? chalk.yellow("✎") : chalk.gray("○");
 
   const actionLabel =
-    file.action === "created" ? chalk.green("NEW") :
-    file.action === "updated" ? chalk.yellow("UPD") :
-    chalk.gray("SKIP");
+    file.action === "created"
+      ? chalk.green("NEW")
+      : file.action === "updated"
+        ? chalk.yellow("UPD")
+        : chalk.gray("SKIP");
 
   return `  ${icon} [${actionLabel}] ${chalk.white(file.relativePath)}\n    ${chalk.gray(file.description)}`;
 }
@@ -70,11 +70,7 @@ function formatFileManifest(file: GeneratedFile): string {
 /**
  * Writes a single-file template (legacy templates) to the correct workspace location.
  */
-function writeSingleTemplate(
-  type: TemplateType,
-  ctx: TemplateContext,
-  workspaceRoot: string,
-): GenerationResult {
+function writeSingleTemplate(type: TemplateType, ctx: TemplateContext, workspaceRoot: string): GenerationResult {
   const struct = scanWorkspaceStructure(workspaceRoot);
   const files: GeneratedFile[] = [];
   const nextSteps: string[] = [];
@@ -84,7 +80,14 @@ function writeSingleTemplate(
       const result = generateJavaService(ctx);
       const coreSrc = path.join(
         struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
-        "src", "main", "java", "com", "orazaka", "core", "application", "service",
+        "src",
+        "main",
+        "java",
+        "com",
+        "orazaka",
+        "core",
+        "application",
+        "service",
       );
       const interfacePath = path.join(coreSrc, `${pascalCase(ctx.moduleName)}Service.java`);
       const implPath = path.join(coreSrc, `${pascalCase(ctx.moduleName)}ServiceImpl.java`);
@@ -93,11 +96,21 @@ function writeSingleTemplate(
 
       if (!fs.existsSync(interfacePath)) {
         fs.writeFileSync(interfacePath, result.interface, "utf-8");
-        files.push({ path: interfacePath, relativePath: path.relative(workspaceRoot, interfacePath), action: "created", description: "Service interface" });
+        files.push({
+          path: interfacePath,
+          relativePath: path.relative(workspaceRoot, interfacePath),
+          action: "created",
+          description: "Service interface",
+        });
       }
       if (!fs.existsSync(implPath)) {
         fs.writeFileSync(implPath, result.implementation, "utf-8");
-        files.push({ path: implPath, relativePath: path.relative(workspaceRoot, implPath), action: "created", description: "Service implementation (package-private)" });
+        files.push({
+          path: implPath,
+          relativePath: path.relative(workspaceRoot, implPath),
+          action: "created",
+          description: "Service implementation (package-private)",
+        });
       }
 
       nextSteps.push(
@@ -110,42 +123,66 @@ function writeSingleTemplate(
       const content = generateJavaController(ctx);
       const conversationSrc = path.join(
         struct.conversationDir ?? path.join(workspaceRoot, "orazaka-apps", "services", "orazaka-conversation-service"),
-        "src", "main", "java", "com", "orazaka", "conversationservice", "infrastructure", "adapter", "rest",
+        "src",
+        "main",
+        "java",
+        "com",
+        "orazaka",
+        "conversationservice",
+        "infrastructure",
+        "adapter",
+        "rest",
       );
       const controllerPath = path.join(conversationSrc, `${pascalCase(ctx.moduleName)}Controller.java`);
       fs.mkdirSync(conversationSrc, { recursive: true });
       if (!fs.existsSync(controllerPath)) {
         fs.writeFileSync(controllerPath, content, "utf-8");
-        files.push({ path: controllerPath, relativePath: path.relative(workspaceRoot, controllerPath), action: "created", description: "REST controller" });
+        files.push({
+          path: controllerPath,
+          relativePath: path.relative(workspaceRoot, controllerPath),
+          action: "created",
+          description: "REST controller",
+        });
       }
       nextSteps.push(`Test: curl -X POST http://localhost:8080/${kebabCase(ctx.moduleName)}/execute`);
       break;
     }
     case "typescript-hook": {
       const content = generateTypeScriptHook(ctx);
-      const hooksDir = path.join(
-        struct.uiDir ?? path.join(workspaceRoot, "orazaka-apps", "ui"),
-        "src", "hooks",
-      );
+      const hooksDir = path.join(struct.uiDir ?? path.join(workspaceRoot, "orazaka-apps", "ui"), "src", "hooks");
       const hookPath = path.join(hooksDir, `use${pascalCase(ctx.moduleName)}.ts`);
       fs.mkdirSync(hooksDir, { recursive: true });
       if (!fs.existsSync(hookPath)) {
         fs.writeFileSync(hookPath, content, "utf-8");
-        files.push({ path: hookPath, relativePath: path.relative(workspaceRoot, hookPath), action: "created", description: "React hook" });
+        files.push({
+          path: hookPath,
+          relativePath: path.relative(workspaceRoot, hookPath),
+          action: "created",
+          description: "React hook",
+        });
       }
-      nextSteps.push(`Import: import { use${pascalCase(ctx.moduleName)} } from "@/hooks/use${pascalCase(ctx.moduleName)}"`);
+      nextSteps.push(
+        `Import: import { use${pascalCase(ctx.moduleName)} } from "@/hooks/use${pascalCase(ctx.moduleName)}"`,
+      );
       break;
     }
     case "sql-migration": {
       const content = generateSqlMigration(ctx);
       const infraDir = struct.infraDir ?? path.join(workspaceRoot, "infra");
       const migrationDir = path.join(infraDir, "local-db");
-      const existingFiles = fs.existsSync(migrationDir) ? fs.readdirSync(migrationDir).filter((f) => f.endsWith(".sql")) : [];
+      const existingFiles = fs.existsSync(migrationDir)
+        ? fs.readdirSync(migrationDir).filter((f) => f.endsWith(".sql"))
+        : [];
       const nextNum = String(existingFiles.length + 1).padStart(2, "0");
       const migrationPath = path.join(migrationDir, `${nextNum}-create-${kebabCase(ctx.moduleName)}.sql`);
       fs.mkdirSync(migrationDir, { recursive: true });
       fs.writeFileSync(migrationPath, content, "utf-8");
-      files.push({ path: migrationPath, relativePath: path.relative(workspaceRoot, migrationPath), action: "created", description: "SQL migration" });
+      files.push({
+        path: migrationPath,
+        relativePath: path.relative(workspaceRoot, migrationPath),
+        action: "created",
+        description: "SQL migration",
+      });
       nextSteps.push("Reload DB: npx orazaka start --reinit-db");
       break;
     }
@@ -156,7 +193,12 @@ function writeSingleTemplate(
         let existing = fs.readFileSync(composePath, "utf-8");
         existing += "\n" + content;
         fs.writeFileSync(composePath, existing, "utf-8");
-        files.push({ path: composePath, relativePath: path.relative(workspaceRoot, composePath), action: "updated", description: "Added service to docker-compose.yml" });
+        files.push({
+          path: composePath,
+          relativePath: path.relative(workspaceRoot, composePath),
+          action: "updated",
+          description: "Added service to docker-compose.yml",
+        });
       }
       break;
     }
@@ -376,9 +418,7 @@ export const generateCommand = new Command("generate")
 
     // Step 8: Show next steps
     if (result.nextSteps.length > 0) {
-      const stepsLines = result.nextSteps.map((step, i) =>
-        `  ${chalk.cyan(String(i + 1) + ".")} ${step}`
-      );
+      const stepsLines = result.nextSteps.map((step, i) => `  ${chalk.cyan(String(i + 1) + ".")} ${step}`);
       await note(stepsLines.join("\n"), "🚀 Next Steps");
     }
 

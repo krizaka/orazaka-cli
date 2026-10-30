@@ -75,10 +75,23 @@ export const PORTS = {
 
 /** Every host port the CLI touches — used by teardown/port-sweeps. */
 export const ALL_PORTS: readonly number[] = [
-  PORTS.web, PORTS.router, PORTS.edge, PORTS.identity, PORTS.knowledge,
-  PORTS.jobService, PORTS.billing, PORTS.studio, PORTS.automationWorker, PORTS.localai,
-  PORTS.imageGen, PORTS.mediaWorker, PORTS.ollama, PORTS.postgres, PORTS.redis,
-  PORTS.rabbitmq, PORTS.rabbitmqMgmt,
+  PORTS.web,
+  PORTS.router,
+  PORTS.edge,
+  PORTS.identity,
+  PORTS.knowledge,
+  PORTS.jobService,
+  PORTS.billing,
+  PORTS.studio,
+  PORTS.automationWorker,
+  PORTS.localai,
+  PORTS.imageGen,
+  PORTS.mediaWorker,
+  PORTS.ollama,
+  PORTS.postgres,
+  PORTS.redis,
+  PORTS.rabbitmq,
+  PORTS.rabbitmqMgmt,
 ];
 
 /**

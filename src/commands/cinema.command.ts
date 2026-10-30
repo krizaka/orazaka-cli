@@ -38,13 +38,22 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import chalk from "chalk";
+import { toolPath } from "../services/tool-path";
 import { requireAuth } from "../threads";
 import { Logger } from "../ui/logger";
 import { ApiClient } from "../services/api-client";
 import { StudioApi } from "../services/studio.api";
 import { type FinishedRun, type StudioPort, direct, writeTreatment } from "../services/cinema.director";
 import { FRAME_QUESTIONS, StagingError, critiqueCut, parseStaging, questionsFor } from "../services/cinema.staging";
-import { StoryError, critiqueStory, judgePrompt, parseJudge, parseStory, timeline, verdict } from "../services/cinema.story";
+import {
+  StoryError,
+  critiqueStory,
+  judgePrompt,
+  parseJudge,
+  parseStory,
+  timeline,
+  verdict,
+} from "../services/cinema.story";
 import {
   ASPECTS,
   type Aspect,
@@ -59,7 +68,17 @@ import {
   nextStep,
 } from "../services/cinema.production";
 import measured from "../services/cinema-estimate.json";
-import { TreatmentError, ffmpegOperand, planProduction, podJobs, recordTake, replan, reviewArgs, sheetArgs } from "../services/cinema.treatment";
+import {
+  TreatmentError,
+  firstFrameArgs,
+  writeTreatmentFiles,
+  planProduction,
+  podJobs,
+  recordTake,
+  replan,
+  reviewArgs,
+  sheetArgs,
+} from "../services/cinema.treatment";
 
 const FILE = "production.json";
 const TERMINAL = new Set(["SUCCEEDED", "FAILED", "CANCELLED", "REJECTED", "TIMED_OUT"]);
@@ -83,7 +102,8 @@ function save(dir: string, production: Production): void {
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** An uploaded asset's id (a UUID), as `POST /api/v1/media/upload` answers it — not a URL to download. */
-export const isAssetId = (value: string): boolean => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+export const isAssetId = (value: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 /** How long a run waits for a free slot of the account's concurrent-run cap before the director gives up. */
 const SLOT_WAIT_MS = 60 * 60_000;
@@ -92,14 +112,23 @@ const SLOT_WAIT_MS = 60 * 60_000;
  * Starts a run, waiting while the account is at its concurrent-run cap ("too many concurrent runs"): a refusal that only
  * says "not now" is not a failed production. Any other refusal is thrown at once.
  */
-export async function startWhenFree<T>(start: () => Promise<T>, wait = sleep, limitMs = SLOT_WAIT_MS, pollMs = 30_000): Promise<T> {
+export async function startWhenFree<T>(
+  start: () => Promise<T>,
+  wait = sleep,
+  limitMs = SLOT_WAIT_MS,
+  pollMs = 30_000,
+): Promise<T> {
   const deadline = Date.now() + limitMs;
   for (;;) {
     try {
       return await start();
     } catch (error: unknown) {
       // "Not now": the account is at its cap, or the platform is restarting (a 5xx while a deploy rolls out).
-      const busy = error instanceof Error && /too many concurrent runs|internal server error|status 50\d|bad gateway|service unavailable/i.test(error.message);
+      const busy =
+        error instanceof Error &&
+        /too many concurrent runs|internal server error|status 50\d|bad gateway|service unavailable/i.test(
+          error.message,
+        );
       if (!busy || Date.now() + pollMs > deadline) throw error;
       await wait(pollMs);
     }
@@ -134,7 +163,19 @@ const restPort: StudioPort = {
         file = path.join(scratch, "last-frame.png");
         // The chained frame: a chosen second of the previous take (`chainAt`), else its last frame.
         const seek = at !== undefined ? ["-ss", at.toFixed(3)] : ["-sseof", "-0.15"];
-        execFileSync("ffmpeg", ["-v", "error", "-y", ...seek, "-i", downloaded, "-update", "1", "-frames:v", "1", file]);
+        execFileSync(toolPath("ffmpeg"), [
+          "-v",
+          "error",
+          "-y",
+          ...seek,
+          "-i",
+          downloaded,
+          "-update",
+          "1",
+          "-frames:v",
+          "1",
+          file,
+        ]);
       }
       return (await ApiClient.uploadFile(file)).assetId;
     } finally {
@@ -157,7 +198,12 @@ async function creditsPerStudio(): Promise<Record<string, number>> {
 }
 
 async function printEstimate(production: Production): Promise<void> {
-  const result = estimate(production, production.brief.shots, await creditsPerStudio(), measured.steps as Record<string, StepMeasure>);
+  const result = estimate(
+    production,
+    production.brief.shots,
+    await creditsPerStudio(),
+    measured.steps as Record<string, StepMeasure>,
+  );
   const rows = result.lines
     .filter((line) => line.count > 0)
     .map(
@@ -172,7 +218,11 @@ async function printEstimate(production: Production): Promise<void> {
     `  ${"total".padEnd(10)}           ${String(result.credits).padStart(7)} credits  ~${Math.ceil(result.seconds / 60)} min` +
       (result.gpuUsd > 0 ? `  ~$${result.gpuUsd.toFixed(2)} GPU` : ""),
   );
-  console.log(chalk.gray(`  times and GPU cost measured: ${measured.measured} (${measured.gpu}); credits: each Studio's own estimate`));
+  console.log(
+    chalk.gray(
+      `  times and GPU cost measured: ${measured.measured} (${measured.gpu}); credits: each Studio's own estimate`,
+    ),
+  );
 }
 
 const newCommand = new Command("new")
@@ -251,7 +301,7 @@ const runCommand = new Command("run")
           if (!character?.reference) throw new TreatmentError(`character ${id} has no reference render`);
           const file = path.join(dir, "sheets", `${id}.png`);
           fs.mkdirSync(path.dirname(file), { recursive: true });
-          execFileSync("ffmpeg", sheetArgs([character.reference], file));
+          execFileSync(toolPath("ffmpeg"), sheetArgs([character.reference], file));
           const { assetId } = await ApiClient.uploadFile(file);
           return { runId: `sheet:${id}`, studioKey: "reference-sheet", status: "SUCCEEDED", output: assetId, assetId };
         },
@@ -271,7 +321,10 @@ const fetchCommand = new Command("fetch")
     requireAuth();
     const production = load(dir);
     const wanted: Array<[string | undefined, string]> = [
-      ...Object.entries(production.characters).map(([id, r]): [string | undefined, string] => [r.output, `characters/${id}.png`]),
+      ...Object.entries(production.characters).map(([id, r]): [string | undefined, string] => [
+        r.output,
+        `characters/${id}.png`,
+      ]),
       ...production.shots.flatMap((s): Array<[string | undefined, string]> => [
         [s.keyframe?.output, `keyframes/shot-${String(s.id).padStart(2, "0")}.png`],
         [s.video?.output, `shots/shot-${String(s.id).padStart(2, "0")}.mp4`],
@@ -293,7 +346,10 @@ const reshootCommand = new Command("reshoot")
   .argument("<shots>", "Shot numbers, comma-separated")
   .option("--new-keyframe", "Make the keyframe again too")
   .action((dir: string, shots: string, o: { newKeyframe?: boolean }) => {
-    const ids = shots.split(",").map((s) => Number(s.trim())).filter(Number.isInteger);
+    const ids = shots
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter(Number.isInteger);
     save(dir, markReshoot(load(dir), ids, Boolean(o.newKeyframe)));
     Logger.success(`shots ${ids.join(", ")} will be made again — orazaka cinema run ${dir}`);
   });
@@ -309,7 +365,9 @@ const statusCommand = new Command("status")
     console.log(`${mark(p.script?.status)} script`);
     for (const [id, r] of Object.entries(p.characters)) console.log(`${mark(r.status)} character ${id}`);
     for (const s of p.shots) {
-      console.log(`${mark(s.keyframe?.status)}${mark(s.video?.status)} shot ${s.id}${s.review === "reshoot" ? chalk.yellow(" (reshoot)") : ""}`);
+      console.log(
+        `${mark(s.keyframe?.status)}${mark(s.video?.status)} shot ${s.id}${s.review === "reshoot" ? chalk.yellow(" (reshoot)") : ""}`,
+      );
     }
     console.log(`${mark(p.cut?.status)} cut  ${mark(p.voice?.status)} voice  ${mark(p.sound?.status)} sound`);
     console.log(chalk.gray(`next: ${nextStep(p).kind} · ${p.history.length} run(s) so far`));
@@ -317,7 +375,10 @@ const statusCommand = new Command("status")
 
 /** The render a character's `reference` names: a file as given, or `<name>-alpha.png` / `<name>.png` in the renders folder. */
 function resolveReference(reference: string, renders?: string): string {
-  const candidates = [reference, ...(renders ? [path.join(renders, `${reference}-alpha.png`), path.join(renders, `${reference}.png`)] : [])];
+  const candidates = [
+    reference,
+    ...(renders ? [path.join(renders, `${reference}-alpha.png`), path.join(renders, `${reference}.png`)] : []),
+  ];
   const found = candidates.find((c) => fs.existsSync(c));
   if (!found) throw new TreatmentError(`no render for reference '${reference}' (looked for ${candidates.join(", ")})`);
   return path.resolve(found);
@@ -331,28 +392,41 @@ const planCommand = new Command("plan")
   .option("-l, --language <lang>", "en or fr (the captions)", "en")
   .option("--seed <seed>", "Overrides the treatment's seedBase")
   .option("--update", "The treatment changed: keep every shot already made, add the new ones")
-  .action((dir: string, o: { treatment: string; references?: string; language: string; seed?: string; update?: boolean }) => {
-    const exists = fs.existsSync(path.join(dir, FILE));
-    if (exists !== Boolean(o.update)) {
-      Logger.error(exists ? `${dir} already holds a production (--update to apply a changed treatment)` : `${dir} holds no production to update`);
-      process.exit(1);
-    }
-    try {
-      const raw = JSON.parse(fs.readFileSync(o.treatment, "utf-8")) as Record<string, unknown>;
-      const characters = Array.isArray(raw.characters) ? (raw.characters as Array<Record<string, unknown>>) : [];
-      raw.characters = characters.map((c) =>
-        typeof c.reference === "string" && c.reference ? { ...c, reference: resolveReference(c.reference, o.references) } : c,
-      );
-      const options = { language: (o.language === "fr" ? "fr" : "en") as "en" | "fr", ...(o.seed ? { seed: Number(o.seed) } : {}) };
-      const production = o.update ? replan(load(dir), raw, options) : planProduction(raw, options);
-      save(dir, production);
-      const script = production.script?.parsed;
-      Logger.success(`${script?.title}: ${script?.shots.length} shots planned in ${dir} — next: orazaka cinema sheet ${dir}`);
-    } catch (error: unknown) {
-      Logger.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
+  .action(
+    (dir: string, o: { treatment: string; references?: string; language: string; seed?: string; update?: boolean }) => {
+      const exists = fs.existsSync(path.join(dir, FILE));
+      if (exists !== Boolean(o.update)) {
+        Logger.error(
+          exists
+            ? `${dir} already holds a production (--update to apply a changed treatment)`
+            : `${dir} holds no production to update`,
+        );
+        process.exit(1);
+      }
+      try {
+        const raw = JSON.parse(fs.readFileSync(o.treatment, "utf-8")) as Record<string, unknown>;
+        const characters = Array.isArray(raw.characters) ? (raw.characters as Array<Record<string, unknown>>) : [];
+        raw.characters = characters.map((c) =>
+          typeof c.reference === "string" && c.reference
+            ? { ...c, reference: resolveReference(c.reference, o.references) }
+            : c,
+        );
+        const options = {
+          language: (o.language === "fr" ? "fr" : "en") as "en" | "fr",
+          ...(o.seed ? { seed: Number(o.seed) } : {}),
+        };
+        const production = o.update ? replan(load(dir), raw, options) : planProduction(raw, options);
+        save(dir, production);
+        const script = production.script?.parsed;
+        Logger.success(
+          `${script?.title}: ${script?.shots.length} shots planned in ${dir} — next: orazaka cinema sheet ${dir}`,
+        );
+      } catch (error: unknown) {
+        Logger.error(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    },
+  );
 
 const sheetCommand = new Command("sheet")
   .description("Make the reference sheet of each character that has a reference render (kept as drawn, never redrawn)")
@@ -364,8 +438,13 @@ const sheetCommand = new Command("sheet")
     for (const character of production.script?.parsed?.characters ?? []) {
       if (!character.reference) continue;
       const file = path.join(out, `${character.id}.png`);
-      execFileSync("ffmpeg", sheetArgs([character.reference], file));
-      production.characters[character.id] = { runId: `sheet:${character.id}`, studioKey: "reference-sheet", status: "SUCCEEDED", output: file };
+      execFileSync(toolPath("ffmpeg"), sheetArgs([character.reference], file));
+      production.characters[character.id] = {
+        runId: `sheet:${character.id}`,
+        studioKey: "reference-sheet",
+        status: "SUCCEEDED",
+        output: file,
+      };
       console.log(`${character.id.padEnd(12)} ${file}`);
     }
     save(dir, production);
@@ -416,16 +495,17 @@ const reviewCommand = new Command("review")
       .slice(0, 5);
     const cast = path.join(out, `${path.basename(file, path.extname(file))}-cast.png`);
     // A shot without a cast (a landscape) is compared with its own first frame.
-    if (renders.length > 0) execFileSync("ffmpeg", sheetArgs(renders, cast));
-    else execFileSync("ffmpeg", ["-v", "error", "-y", "-i", ffmpegOperand(file), "-frames:v", "1", ffmpegOperand(cast)]);
+    if (renders.length > 0) execFileSync(toolPath("ffmpeg"), sheetArgs(renders, cast));
+    else execFileSync(toolPath("ffmpeg"), firstFrameArgs(file, cast));
     const sheet = path.join(out, `${path.basename(file, path.extname(file))}.jpg`);
-    execFileSync("ffmpeg", reviewArgs(file, cast, sheet));
+    execFileSync(toolPath("ffmpeg"), reviewArgs(file, cast, sheet));
     Logger.success(`review sheet: ${sheet}`);
   });
 
-
 const treatCommand = new Command("treat")
-  .description("Write the story of a brief (arc, intentions, purposeful shots, directed lines, music cues, sound list) and judge it")
+  .description(
+    "Write the story of a brief (arc, intentions, purposeful shots, directed lines, music cues, sound list) and judge it",
+  )
   .argument("<dir>", "Where the treatment and its critique are written")
   .requiredOption("-b, --brief <text>", "The short brief (a sentence or two is enough)")
   .option("-l, --language <lang>", "en or fr", "en")
@@ -434,32 +514,46 @@ const treatCommand = new Command("treat")
   .option("--revisions <n>", "How many times a rejected draft goes back to the writer", "2")
   .option("--no-judge", "The rubric alone decides (no language-model judge)")
   .option("--model <name>", "The chat model of the writer and the judge")
-  .action(async (dir: string, o: { brief: string; language: string; duration: string; aspect: string; revisions: string; judge: boolean; model?: string }) => {
-    requireAuth();
-    try {
-      const draft = await writeTreatment(restPort, {
-        brief: o.brief,
-        language: o.language === "fr" ? "fr" : "en",
-        durationSeconds: Number(o.duration),
-        aspect: o.aspect,
-        revisions: Number(o.revisions),
-        noJudge: !o.judge,
-        model: o.model,
-        log: (line) => console.log(`${chalk.cyan("▸")} ${line}`),
-      });
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, "treatment.json"), `${JSON.stringify(draft.treatment, null, 1)}\n`);
-      fs.writeFileSync(path.join(dir, "critique.json"), `${JSON.stringify({ rubric: draft.rubric, judge: draft.judge, verdict: draft.verdict, runs: draft.runs }, null, 1)}\n`);
-      if (draft.verdict.pass) Logger.success(`accepted: ${path.join(dir, "treatment.json")} — next: orazaka cinema plan <prod> --treatment it`);
-      else {
-        Logger.warn(`not accepted after the revisions — read ${path.join(dir, "critique.json")}, edit the treatment, then: orazaka cinema critique`);
-        process.exitCode = 2;
+  .action(
+    async (
+      dir: string,
+      o: {
+        brief: string;
+        language: string;
+        duration: string;
+        aspect: string;
+        revisions: string;
+        judge: boolean;
+        model?: string;
+      },
+    ) => {
+      requireAuth();
+      try {
+        const draft = await writeTreatment(restPort, {
+          brief: o.brief,
+          language: o.language === "fr" ? "fr" : "en",
+          durationSeconds: Number(o.duration),
+          aspect: o.aspect,
+          revisions: Number(o.revisions),
+          noJudge: !o.judge,
+          model: o.model,
+          log: (line) => console.log(`${chalk.cyan("▸")} ${line}`),
+        });
+        const written = writeTreatmentFiles(dir, draft);
+        if (draft.verdict.pass)
+          Logger.success(`accepted: ${written.treatment} — next: orazaka cinema plan <prod> --treatment it`);
+        else {
+          Logger.warn(
+            `not accepted after the revisions — read ${written.critique}, edit the treatment, then: orazaka cinema critique`,
+          );
+          process.exitCode = 2;
+        }
+      } catch (error: unknown) {
+        Logger.error(error instanceof Error ? error.message : String(error));
+        process.exit(1);
       }
-    } catch (error: unknown) {
-      Logger.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
+    },
+  );
 
 const critiqueCommand = new Command("critique")
   .description("Judge a treatment against the rubric (arc, purpose, alive, on-topic, continuity, voice, music, sound)")
@@ -475,11 +569,15 @@ const critiqueCommand = new Command("critique")
       let judge;
       if (o.judge) {
         requireAuth();
-        const run = await restPort.run("cinematic-critique", { treatment: judgePrompt(story, o.language), ...(o.model ? { model: o.model } : {}) });
+        const run = await restPort.run("cinematic-critique", {
+          treatment: judgePrompt(story, o.language),
+          ...(o.model ? { model: o.model } : {}),
+        });
         judge = parseJudge(run.outputs[0]?.value ?? "", story.shots.length);
       }
       const decided = verdict(rubric, judge);
-      for (const [k, v] of Object.entries(rubric.scores)) console.log(`${k.padEnd(11)} ${v >= 0.85 ? chalk.green(v.toFixed(2)) : chalk.red(v.toFixed(2))}`);
+      for (const [k, v] of Object.entries(rubric.scores))
+        console.log(`${k.padEnd(11)} ${v >= 0.85 ? chalk.green(v.toFixed(2)) : chalk.red(v.toFixed(2))}`);
       if (judge) for (const [k, v] of Object.entries(judge.scores)) console.log(`judge ${k.padEnd(11)} ${v}/5`);
       for (const r of decided.reasons) console.log(chalk.yellow(`  ${r}`));
       if (o.out) fs.writeFileSync(o.out, `${JSON.stringify({ rubric, judge, verdict: decided }, null, 1)}\n`);
@@ -492,17 +590,27 @@ const critiqueCommand = new Command("critique")
   });
 
 const timelineCommand = new Command("timeline")
-  .description("Place every line, music cue and sound of a treatment on the cut, and say which lines do not fit their shots")
+  .description(
+    "Place every line, music cue and sound of a treatment on the cut, and say which lines do not fit their shots",
+  )
   .argument("<treatment>", "The treatment (JSON)")
   .option("-l, --language <lang>", "en or fr", "en")
   .option("--voice <report>", "The voice step's report: [{id, seconds}] measured per line")
-  .option("--spans <file>", "The cut's own shot spans ([[start, end], …], e.g. the worker's cut.timeline) instead of back to back")
+  .option(
+    "--spans <file>",
+    "The cut's own shot spans ([[start, end], …], e.g. the worker's cut.timeline) instead of back to back",
+  )
   .action((file: string, o: { language: string; voice?: string; spans?: string }) => {
     const story = parseStory(JSON.parse(fs.readFileSync(file, "utf-8")));
     const measured: Record<string, number> = {};
-    if (o.voice) for (const r of JSON.parse(fs.readFileSync(o.voice, "utf-8")) as Array<{ id: string; language?: string; seconds: number }>) {
-      if (!r.language || r.language === o.language) measured[r.id] = r.seconds;
-    }
+    if (o.voice)
+      for (const r of JSON.parse(fs.readFileSync(o.voice, "utf-8")) as Array<{
+        id: string;
+        language?: string;
+        seconds: number;
+      }>) {
+        if (!r.language || r.language === o.language) measured[r.id] = r.seconds;
+      }
     const spans = o.spans ? (JSON.parse(fs.readFileSync(o.spans, "utf-8")) as Array<[number, number]>) : undefined;
     const placed = timeline(story, o.language, measured, spans);
     process.stdout.write(`${JSON.stringify(placed, null, 1)}\n`);
@@ -510,7 +618,9 @@ const timelineCommand = new Command("timeline")
   });
 
 const stageCommand = new Command("stage")
-  .description("Check a v3 treatment's staging, camera and cut, and write the questions every keyframe and take must answer")
+  .description(
+    "Check a v3 treatment's staging, camera and cut, and write the questions every keyframe and take must answer",
+  )
   .argument("<treatment>", "The treatment (JSON, with score.bpm, beats, camera, angle, light and staging per shot)")
   .option("-o, --out <file>", "Write the frame questions (JSON: per shot, then the take questions) there")
   .action((file: string, o: { out?: string }) => {
@@ -518,13 +628,27 @@ const stageCommand = new Command("stage")
       const raw = JSON.parse(fs.readFileSync(file, "utf-8")) as Record<string, unknown>;
       const film = parseStaging(raw);
       const cut = critiqueCut(film);
-      for (const f of cut.findings) console.log(chalk.yellow(`  ${f.rule}${f.shot ? ` (shot ${f.shot})` : ""}: ${f.message}`));
+      for (const f of cut.findings)
+        console.log(chalk.yellow(`  ${f.rule}${f.shot ? ` (shot ${f.shot})` : ""}: ${f.message}`));
       const described = Object.fromEntries(
-        ((raw.characters as Array<{ id: string; description: string }> | undefined) ?? []).map((c) => [c.id, `the ${c.description.split(",")[0]}`]),
+        ((raw.characters as Array<{ id: string; description: string }> | undefined) ?? []).map((c) => [
+          c.id,
+          `the ${c.description.split(",")[0]}`,
+        ]),
       );
       const questions = {
-        shots: film.shots.map((s) => ({ id: s.id, slug: s.slug, camera: s.camera, staging: s.staging, questions: questionsFor(s, described) })),
-        take: { sliding: FRAME_QUESTIONS.sliding, onModel: FRAME_QUESTIONS.onModel, continuity: FRAME_QUESTIONS.continuity },
+        shots: film.shots.map((s) => ({
+          id: s.id,
+          slug: s.slug,
+          camera: s.camera,
+          staging: s.staging,
+          questions: questionsFor(s, described),
+        })),
+        take: {
+          sliding: FRAME_QUESTIONS.sliding,
+          onModel: FRAME_QUESTIONS.onModel,
+          continuity: FRAME_QUESTIONS.continuity,
+        },
       };
       if (o.out) fs.writeFileSync(o.out, `${JSON.stringify(questions, null, 1)}\n`);
       if (cut.pass) Logger.success(`the cut passes: ${film.shots.length} shots at ${film.bpm} BPM`);
@@ -536,7 +660,9 @@ const stageCommand = new Command("stage")
   });
 
 export const cinemaCommand = new Command("cinema")
-  .description("A cinematic short (30–60 s) from a brief: script, keyframes, shots, cut, sound — each an ordinary Studio run")
+  .description(
+    "A cinematic short (30–60 s) from a brief: script, keyframes, shots, cut, sound — each an ordinary Studio run",
+  )
   .addCommand(newCommand)
   .addCommand(estimateCommand)
   .addCommand(runCommand)

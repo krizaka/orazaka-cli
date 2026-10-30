@@ -12,9 +12,9 @@ export interface ChatThread {
 }
 
 export interface StoredMessage {
-  readonly role: 'user' | 'assistant';
+  readonly role: "user" | "assistant";
   readonly content: string;
-  readonly kind: TimelineMessage['kind'];
+  readonly kind: TimelineMessage["kind"];
   readonly timestamp: number;
 }
 

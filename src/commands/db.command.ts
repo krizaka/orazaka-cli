@@ -82,9 +82,7 @@ async function reseed(opts: { yes?: boolean }): Promise<void> {
   }
 
   s.stop("Database reseeded");
-  await outro(
-    chalk.green("✓ Schema + seed re-applied. Reload the playground — the prompt fields will appear."),
-  );
+  await outro(chalk.green("✓ Schema + seed re-applied. Reload the playground — the prompt fields will appear."));
 }
 
 export const dbCommand = new Command("db").description("Database maintenance operations");
