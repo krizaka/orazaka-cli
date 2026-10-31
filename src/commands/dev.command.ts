@@ -369,7 +369,7 @@ export const devCommand = new Command("dev")
         label: "NOTIFICATIONS",
         color: chalk.blue,
         command: "./mvnw",
-        args: ["spring-boot:run", "-pl", "krizaka/krizaka-notifications/krizaka-notifications-service"],
+        args: ["spring-boot:run", "-pl", "krizaka/krizaka-platform-kit/krizaka-notifications-service"],
         cwd: root,
         enabled: isEnabled("notifications"),
         port: PORTS.notifications,
