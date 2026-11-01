@@ -36,29 +36,29 @@ function runGenerator(root: string, check: boolean): number {
 const buildCommand = new Command("build")
   .description("Regenerate docs/_generated/ from the code")
   .option("--check", "Fail if any generated doc is stale (build gate), without writing")
-  .action((opts: { check?: boolean }) => {
+  .action(async (opts: { check?: boolean }) => {
     const root = resolveMonorepoRoot();
-    intro(chalk.cyan(`orazaka docs build${opts.check ? " --check" : ""}`));
+    await intro(chalk.cyan(`orazaka docs build${opts.check ? " --check" : ""}`));
     const code = runGenerator(root, Boolean(opts.check));
     if (code === 0) {
-      outro(chalk.green(opts.check ? "✔ docs up to date" : "✔ docs generated"));
+      await outro(chalk.green(opts.check ? "✔ docs up to date" : "✔ docs generated"));
       return;
     }
-    logWarning("docs build failed — generated docs are stale or the generator errored.");
+    await logWarning("docs build failed — generated docs are stale or the generator errored.");
     process.exitCode = code;
   });
 
 const syncCommand = new Command("sync")
   .description("Copy docs/ (+ generated) into the Krizaka site content tree")
-  .action(() => {
+  .action(async () => {
     const root = resolveMonorepoRoot();
     const krizaka = resolveKrizakaRoot(root);
 
-    intro(chalk.cyan("orazaka docs sync"));
+    await intro(chalk.cyan("orazaka docs sync"));
 
     // Always regenerate first so the synced docs reflect the current code.
     if (runGenerator(root, false) !== 0) {
-      logWarning("generator failed — aborting sync.");
+      await logWarning("generator failed — aborting sync.");
       process.exitCode = 1;
       return;
     }
@@ -97,9 +97,9 @@ const syncCommand = new Command("sync")
       fs.copyFileSync(archSrc, archDest);
     }
 
-    logSuccess(`Published ${published} docs → ${path.relative(krizaka, contentDest)}`);
-    note(`architecture.json → ${path.relative(krizaka, archDest)}`, "Site data");
-    outro(chalk.green("✔ docs synced"));
+    await logSuccess(`Published ${published} docs → ${path.relative(krizaka, contentDest)}`);
+    await note(`architecture.json → ${path.relative(krizaka, archDest)}`, "Site data");
+    await outro(chalk.green("✔ docs synced"));
   });
 
 export const docsCommand = new Command("docs")

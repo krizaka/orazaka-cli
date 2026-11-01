@@ -77,16 +77,16 @@ export const REFUSAL =
 /**
  * Records and reports the refusal of a payload: nothing is executed, whatever it carries.
  */
-function refuseRemoteExecution(jobId: string, userId: string, token: string): void {
+async function refuseRemoteExecution(jobId: string, userId: string, token: string): Promise<void> {
   console.warn(chalk.yellow(`⛔ Job ${jobId}: ${REFUSAL}`));
   updateJobStatus(jobId, "FAILED", REFUSAL);
-  postJobReport(jobId, "FAILED", REFUSAL, -1, userId, token);
+  await postJobReport(jobId, "FAILED", REFUSAL, -1, userId, token);
 }
 
 /**
  * Parses and processes a text/event-stream event.
  */
-function handleSseEvent(eventStr: string, userId: string, token: string): void {
+async function handleSseEvent(eventStr: string, userId: string, token: string): Promise<void> {
   const lines = eventStr.split("\n");
   let eventName = "";
   let dataStr = "";
@@ -113,7 +113,7 @@ function handleSseEvent(eventStr: string, userId: string, token: string): void {
 
       // Recorded in the local SQLite queue (so the refusal is reported even after a disconnection), never executed.
       insertJob(data.jobId, data.payload, "REFUSED");
-      refuseRemoteExecution(data.jobId, userId, token);
+      await refuseRemoteExecution(data.jobId, userId, token);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(chalk.red(`Failed to parse automation payload: ${msg}`));
@@ -169,7 +169,9 @@ function listenToAgentStream(userId: string, token: string): void {
       for (const job of unsynced) {
         if (job.status === "COMPLETED" || job.status === "FAILED") {
           const exitCode = job.status === "COMPLETED" ? 0 : 1;
-          postJobReport(job.jobId, job.status, job.executionLogs, exitCode, userId, token);
+          postJobReport(job.jobId, job.status, job.executionLogs, exitCode, userId, token).catch((err: unknown) =>
+            console.error(chalk.red(String(err))),
+          );
         }
       }
     }
@@ -182,7 +184,7 @@ function listenToAgentStream(userId: string, token: string): void {
       buffer = parts.pop() || "";
 
       for (const part of parts) {
-        handleSseEvent(part, userId, token);
+        handleSseEvent(part, userId, token).catch((err: unknown) => console.error(chalk.red(String(err))));
       }
     });
 
@@ -216,7 +218,9 @@ function startHeartbeatSync(userId: string, token: string): void {
       for (const job of unsynced) {
         if (job.status === "COMPLETED" || job.status === "FAILED") {
           const exitCode = job.status === "COMPLETED" ? 0 : 1;
-          await postJobReport(job.jobId, job.status, job.executionLogs, exitCode, userId, token);
+          postJobReport(job.jobId, job.status, job.executionLogs, exitCode, userId, token).catch((err: unknown) =>
+            console.error(chalk.red(String(err))),
+          );
         }
       }
     }
