@@ -102,6 +102,12 @@ function save(dir: string, production: Production): void {
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** An uploaded asset's id (a UUID), as `POST /api/v1/media/upload` answers it — not a URL to download. */
+/** A character id comes from the script (model-written): it names a file, never a path. */
+export const sheetFile = (dir: string, id: string): string => {
+  if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new TreatmentError(`character id "${id}" is not a safe file name`);
+  return path.join(dir, "sheets", `${id}.png`);
+};
+
 export const isAssetId = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
@@ -299,7 +305,7 @@ const runCommand = new Command("run")
         reference: async (id) => {
           const character = production.script?.parsed?.characters.find((c) => c.id === id);
           if (!character?.reference) throw new TreatmentError(`character ${id} has no reference render`);
-          const file = path.join(dir, "sheets", `${id}.png`);
+          const file = sheetFile(dir, id);
           fs.mkdirSync(path.dirname(file), { recursive: true });
           execFileSync(toolPath("ffmpeg"), sheetArgs([character.reference], file));
           const { assetId } = await ApiClient.uploadFile(file);
@@ -437,7 +443,7 @@ const sheetCommand = new Command("sheet")
     fs.mkdirSync(out, { recursive: true });
     for (const character of production.script?.parsed?.characters ?? []) {
       if (!character.reference) continue;
-      const file = path.join(out, `${character.id}.png`);
+      const file = sheetFile(dir, character.id);
       execFileSync(toolPath("ffmpeg"), sheetArgs([character.reference], file));
       production.characters[character.id] = {
         runId: `sheet:${character.id}`,

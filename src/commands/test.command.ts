@@ -47,10 +47,10 @@ function isTestMode(value: string): value is TestMode {
 export const testCommand = new Command("test")
   .description("Run the test pyramid: unit | it (Testcontainers) | e2e (hermetic)")
   .argument("[mode]", `test tier to run (${MODES.join(" | ")})`, "unit")
-  .action((mode: string) => {
+  .action(async (mode: string) => {
     const tier = mode.toLowerCase();
     if (!isTestMode(tier)) {
-      logWarning(`Unknown test mode "${mode}". Use one of: ${MODES.join(", ")}.`);
+      await logWarning(`Unknown test mode "${mode}". Use one of: ${MODES.join(", ")}.`);
       process.exitCode = 1;
       return;
     }
@@ -58,23 +58,23 @@ export const testCommand = new Command("test")
     const root = resolveMonorepoRoot();
 
     if (tier === "worker") {
-      runWorkerGate(root);
+      await runWorkerGate(root);
       return;
     }
 
     const args = [...MAVEN_ARGS[tier]];
     const mvnw = process.platform === "win32" ? "mvnw.cmd" : "./mvnw";
 
-    intro(chalk.cyan(`orazaka test ${tier}`));
-    note(`${DESCRIPTIONS[tier]}\n\n${chalk.gray("$")} ${mvnw} ${args.join(" ")}`, "Maven");
+    await intro(chalk.cyan(`orazaka test ${tier}`));
+    await note(`${DESCRIPTIONS[tier]}\n\n${chalk.gray("$")} ${mvnw} ${args.join(" ")}`, "Maven");
 
     const result = spawnSync(mvnw, args, { cwd: root, stdio: "inherit", shell: false });
 
     if (result.status === 0) {
-      outro(chalk.green(`✔ test ${tier} — green`));
+      await outro(chalk.green(`✔ test ${tier} — green`));
       return;
     }
-    logWarning(`test ${tier} failed (exit ${result.status ?? result.signal ?? "unknown"})`);
+    await logWarning(`test ${tier} failed (exit ${result.status ?? result.signal ?? "unknown"})`);
     process.exitCode = result.status ?? 1;
   });
 
@@ -88,12 +88,12 @@ export const testCommand = new Command("test")
  * Uses the module's own virtualenv rather than a system Python, so the gate runs against the
  * interpreter the worker actually executes under.
  */
-function runWorkerGate(root: string): void {
+async function runWorkerGate(root: string): Promise<void> {
   const worker = path.join(root, "orazaka-apps", "workers", "orazaka-worker-media");
   const bin = path.join(worker, ".venv", "bin");
 
   if (!fs.existsSync(path.join(bin, "ruff"))) {
-    logWarning(
+    await logWarning(
       "The worker virtualenv has no ruff/pytest. Run:\n" + `  ${path.join(bin, "python")} -m pip install ruff pytest`,
     );
     process.exitCode = 1;
@@ -104,13 +104,13 @@ function runWorkerGate(root: string): void {
     ["ruff", path.join(bin, "ruff"), ["check", "."]],
     ["pytest", path.join(bin, "pytest"), []],
   ] as const) {
-    note(`${chalk.gray("$")} ${label} ${args.join(" ")}`, "Python worker");
+    await note(`${chalk.gray("$")} ${label} ${args.join(" ")}`, "Python worker");
     const result = spawnSync(cmd, [...args], { cwd: worker, stdio: "inherit", shell: false });
     if (result.status !== 0) {
-      logWarning(`worker ${label} failed`);
+      await logWarning(`worker ${label} failed`);
       process.exitCode = result.status ?? 1;
       return;
     }
   }
-  outro(chalk.green("✔ worker — green"));
+  await outro(chalk.green("✔ worker — green"));
 }

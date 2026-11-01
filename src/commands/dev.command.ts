@@ -174,7 +174,9 @@ function parseOnly(raw: string | undefined): Set<ServiceKey> {
     if ((SERVICE_KEYS as readonly string[]).includes(canonical)) {
       selected.add(canonical as ServiceKey);
     } else {
-      logWarning(`Unknown --only service "${token}" (expected: ${SERVICE_KEYS.join(", ")}).`);
+      logWarning(`Unknown --only service "${token}" (expected: ${SERVICE_KEYS.join(", ")}).`).catch((err: unknown) =>
+        console.error(String(err)),
+      );
     }
   }
   return selected;
@@ -263,7 +265,7 @@ export const devCommand = new Command("dev")
   .option("--skip-mobile", "Skip Expo mobile server")
   .option("--skip-web", "Skip Web client")
   .option("--skip-workers", "Skip the Python workers declared by worker.yaml")
-  .action((opts: DevOptions) => {
+  .action(async (opts: DevOptions) => {
     const root = requireWorkspace("dev");
     const uiRoot = path.join(root, "orazaka-apps", "ui");
     process.env.UPLOAD_DIR = absoluteUploadDir(root, process.env.UPLOAD_DIR);
@@ -404,7 +406,7 @@ export const devCommand = new Command("dev")
     const skippedConfigs = processes.filter((p) => !p.enabled);
 
     if (activeConfigs.length === 0) {
-      logWarning("All processes skipped — nothing to launch.");
+      await logWarning("All processes skipped — nothing to launch.");
       return;
     }
 
