@@ -352,7 +352,7 @@ export interface FrameGate {
 
 /** The gate: a file with one failed check is rejected; the film passes only when nothing is rejected and a person reviewed. */
 export function frameGate(results: readonly FrameResult[], review?: { by: string; at: string }): FrameGate {
-  const rejected = [...new Set(results.filter((r) => !r.pass).map((r) => r.file))].sort();
+  const rejected = [...new Set(results.filter((r) => !r.pass).map((r) => r.file))].sort((a, b) => a.localeCompare(b));
   const reviewed = Boolean(review?.by && review?.at);
   return { pass: results.length > 0 && rejected.length === 0 && reviewed, rejected, reviewed };
 }
