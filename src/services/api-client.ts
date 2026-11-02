@@ -48,9 +48,8 @@ export class ApiClient {
    * Downloads what the Gateway serves at `pathOrUrl` (a run's output, `/api/v1/assets/<job>/<file>`) into `file`.
    */
   public static async downloadTo(pathOrUrl: string, file: string): Promise<number> {
-    const url = /^https?:\/\//.test(pathOrUrl)
-      ? pathOrUrl
-      : `${this.getBaseUrl()}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+    const separator = pathOrUrl.startsWith("/") ? "" : "/";
+    const url = /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${this.getBaseUrl()}${separator}${pathOrUrl}`;
     const config = loadConfig();
     const response = await fetch(url, {
       headers: config?.token && url.startsWith(this.getBaseUrl()) ? { Authorization: `Bearer ${config.token}` } : {},

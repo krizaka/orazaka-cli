@@ -20,7 +20,7 @@ export function readPidFile(pidFile: string): Map<string, number> {
     const eq = trimmed.indexOf("=");
     if (eq === -1) continue;
     const name = trimmed.slice(0, eq).trim();
-    const pid = parseInt(trimmed.slice(eq + 1).trim(), 10);
+    const pid = Number.parseInt(trimmed.slice(eq + 1).trim(), 10);
     if (name && !Number.isNaN(pid)) pids.set(name, pid);
   }
   return pids;

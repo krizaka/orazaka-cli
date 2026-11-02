@@ -165,7 +165,7 @@ export function getRequiredTools(): ToolRequirement[] {
  * Handles formats like "v20.1.0", "Docker version 20.10.7", "openjdk 21.0.1", etc.
  */
 function extractVersion(versionStr: string): string | null {
-  const match = versionStr.match(/(\d+)\.(\d+)\.?(\d*)/);
+  const match = /(\d{1,9})\.(\d{1,9})\.?(\d{0,9})/.exec(versionStr);
   if (!match) return null;
   return `${match[1]}.${match[2]}.${match[3] || "0"}`;
 }
@@ -360,7 +360,7 @@ export function formatToolResult(result: ToolCheckResult): string {
     return `${chalk.green("✔")} ${result.tool.name.padEnd(18)} ${chalk.gray(result.version ?? "installed")}`;
   }
   if (result.available && !result.versionOk) {
-    return `${chalk.yellow("⚠")} ${result.tool.name.padEnd(18)} ${chalk.yellow(result.version ?? "?")} ${chalk.gray(`(need ${result.tool.minVersion}+)`)}`;
+    return `${chalk.yellow("⚠")} ${result.tool.name.padEnd(18)} ${chalk.yellow(result.version ?? "?")} ${chalk.gray("(need " + result.tool.minVersion + "+)")}`;
   }
   const icon = result.tool.critical ? chalk.red("✖") : chalk.yellow("○");
   return `${icon} ${result.tool.name.padEnd(18)} ${chalk.gray("not found")} → ${chalk.cyan(result.installHint)}`;

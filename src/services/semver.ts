@@ -4,8 +4,7 @@
  * Build metadata (`+…`) is accepted and ignored by the comparison, as the specification says.
  */
 
-export const SEMVER_PATTERN =
-  "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$";
+export const SEMVER_PATTERN = String.raw`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`;
 
 const SEMVER = new RegExp(SEMVER_PATTERN);
 
@@ -28,7 +27,8 @@ function compareIdentifiers(a: string, b: string): number {
   if (numeric.test(a) && numeric.test(b)) return Math.sign(Number(a) - Number(b));
   if (numeric.test(a)) return -1; // numeric identifiers sort before alphanumeric ones
   if (numeric.test(b)) return 1;
-  return a < b ? -1 : a > b ? 1 : 0;
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
 }
 
 /** -1, 0 or 1. Throws on a version that is not SemVer: callers validate first. */

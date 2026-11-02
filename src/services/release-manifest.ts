@@ -193,6 +193,12 @@ function invariants(m: ReleaseManifest): string[] {
       "pack",
     ),
   ];
+  problems.push(...versionProblems(m), ...imageProblems(m), ...artefactProblems(m));
+  return problems;
+}
+
+function versionProblems(m: ReleaseManifest): string[] {
+  const problems: string[] = [];
   const prerelease = parseSemver(m.version)?.prerelease ?? "";
   if (m.channel === "stable" && prerelease !== "") {
     problems.push(`a stable release has no pre-release tag (got ${m.version})`);
@@ -203,17 +209,25 @@ function invariants(m: ReleaseManifest): string[] {
   if (compareSemver(m.upgradeFrom, m.version) > 0) {
     problems.push(`upgradeFrom ${m.upgradeFrom} is newer than the release itself (${m.version})`);
   }
+  return problems;
+}
+
+function imageProblems(m: ReleaseManifest): string[] {
+  const problems: string[] = [];
   // Containers run on Linux everywhere; on a Mac they run in an arm64 VM, so every image a Mac
   // runs must exist for linux/arm64. The CUDA image only runs on an NVIDIA Linux box.
   const linuxPlatforms = new Set<string>(m.targets.map((t) => (t === "linux-amd64" ? "linux/amd64" : "linux/arm64")));
   for (const image of m.images) {
     const needed = image.gpu === "cuda" ? ["linux/amd64"] : [...linuxPlatforms];
-    for (const platform of needed) {
-      if (!image.platforms.includes(platform)) {
-        problems.push(`image ${image.name} has no ${platform} variant, which target(s) ${m.targets.join(", ")} need`);
-      }
+    for (const platform of needed.filter((p) => !image.platforms.includes(p))) {
+      problems.push(`image ${image.name} has no ${platform} variant, which target(s) ${m.targets.join(", ")} need`);
     }
   }
+  return problems;
+}
+
+function artefactProblems(m: ReleaseManifest): string[] {
+  const problems: string[] = [];
   for (const artefact of m.artefacts) {
     if (!m.targets.includes(artefact.target)) {
       problems.push(`artefact ${artefact.name} is for ${artefact.target}, which the release does not target`);

@@ -13,6 +13,50 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { loadBundle } from "../services/pack.bundle";
 
+/**
+ * The slice of the platform's `orazaka-packs/pack.schema.json` these tests exercise (kind, the two
+ * TOOLKIT rules, the catalog-needs-pricing rule). The CLI validates against the schema of the platform
+ * it installs into, found by walking up from its own location or from the current directory; a clone
+ * outside the workspace has neither, so the tests stand a small workspace up around the current
+ * directory instead of depending on a sibling checkout. Inside the workspace the real schema wins.
+ */
+const SCHEMA = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  type: "object",
+  required: ["apiVersion", "key", "version", "studios"],
+  properties: {
+    apiVersion: { const: "orazaka.dev/v1" },
+    key: { type: "string" },
+    version: { type: "string" },
+    regulatoryClass: { enum: ["STANDARD", "SENSITIVE", "REGULATED"] },
+    kind: { enum: ["VERTICAL", "TOOLKIT"] },
+    studios: { type: "array", minItems: 1 },
+  },
+  allOf: [
+    { if: { required: ["catalog"] }, then: { required: ["pricing"] } },
+    {
+      if: { properties: { kind: { const: "TOOLKIT" } }, required: ["kind"] },
+      then: { properties: { regulatoryClass: { not: { const: "REGULATED" } } }, required: ["catalog"] },
+    },
+  ],
+};
+
+let workspace: string;
+let cwd: jest.SpyInstance;
+
+beforeAll(() => {
+  workspace = fs.mkdtempSync(path.join(os.tmpdir(), "orazaka-workspace-"));
+  fs.writeFileSync(path.join(workspace, "orazaka.workspace.json"), "{}", "utf-8");
+  fs.mkdirSync(path.join(workspace, "orazaka-packs"));
+  fs.writeFileSync(path.join(workspace, "orazaka-packs", "pack.schema.json"), JSON.stringify(SCHEMA), "utf-8");
+  cwd = jest.spyOn(process, "cwd").mockReturnValue(workspace);
+});
+
+afterAll(() => {
+  cwd.mockRestore();
+  fs.rmSync(workspace, { recursive: true, force: true });
+});
+
 const BLUEPRINT = {
   version: "1.0.0",
   status: "PUBLISHED",

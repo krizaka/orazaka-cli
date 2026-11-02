@@ -10,10 +10,12 @@ import type { Database as DatabaseType } from "better-sqlite3";
 import * as path from "node:path";
 import * as os from "node:os";
 
+export type JobStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+
 export interface LocalJob {
   readonly jobId: string;
   readonly commandPayload: string;
-  readonly status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+  readonly status: JobStatus;
   readonly retryCount: number;
   readonly userApprovalState: string;
   readonly executionLogs: string;

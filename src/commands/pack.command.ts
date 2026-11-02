@@ -184,6 +184,16 @@ const publishCommand = new Command("publish")
     }
   });
 
+/** The bundles one explicit directory holds (one sub-folder with a `pack.yaml` each); none when it does not exist. */
+function bundlesIn(directory: string): { directory: string; source: string }[] {
+  if (!fs.existsSync(directory)) return [];
+  return fs
+    .readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .filter((entry) => fs.existsSync(path.join(directory, entry.name, "pack.yaml")))
+    .map((entry) => ({ directory: path.join(directory, entry.name), source: directory }));
+}
+
 const listCommand = new Command("list")
   .description("List the bundles this deployment's pack sources offer")
   .argument("[directory]", "Look in this directory instead of the configured sources")
@@ -191,15 +201,7 @@ const listCommand = new Command("list")
     // No hardcoded default any more: where packs come from is `orazaka.packs.sources`, the one
     // line that separates an OSS deployment from a cloud one (ADR-049). An explicit directory
     // still wins, because installing a bundle you are holding must not require configuration.
-    const bundles = directory
-      ? fs.existsSync(directory)
-        ? fs
-            .readdirSync(directory, { withFileTypes: true })
-            .filter((entry) => entry.isDirectory())
-            .filter((entry) => fs.existsSync(path.join(directory, entry.name, "pack.yaml")))
-            .map((entry) => ({ directory: path.join(directory, entry.name), source: directory }))
-        : []
-      : discoverBundles();
+    const bundles = directory ? bundlesIn(directory) : discoverBundles();
 
     if (!directory) {
       for (const source of packSources()) {

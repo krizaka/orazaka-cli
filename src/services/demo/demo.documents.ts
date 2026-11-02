@@ -78,7 +78,7 @@ export const DEMO_INVOICE_LINES = [
 ];
 
 /** Escapes a line for a PDF literal string. */
-const pdfText = (line: string) => line.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+const pdfText = (line: string) => line.replaceAll(/[\\()]/g, String.raw`\$&`);
 
 /**
  * A minimal, valid single-page PDF (Helvetica, WinAnsi): the lines, a producer, a creation date. Written by hand so

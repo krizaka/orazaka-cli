@@ -83,7 +83,7 @@ const listCommand = new Command("list")
           items.push(`           ${chalk.gray(studio.tagline)}`);
         }
         items.push(
-          `           ${chalk.gray(`${studio.profession} · ${studio.pricing} · ${studio.latestVersion ?? "unpublished"}`)}`,
+          `           ${chalk.gray("" + studio.profession + " · " + studio.pricing + " · " + (studio.latestVersion ?? "unpublished"))}`,
         );
       }
       if (items.length === 0) {
@@ -112,8 +112,8 @@ const installedCommand = new Command("installed")
           installation.status === "UPGRADE_AVAILABLE" ? chalk.yellow(` ⤴ ${installation.latestVersion} available`) : "";
         items.push(
           `${chalk.bold(installation.label)} (${installation.studioKey}) @ ${installation.pinnedVersion}${upgrade}`,
+          `           ${chalk.gray(installation.id)}`,
         );
-        items.push(`           ${chalk.gray(installation.id)}`);
       }
       if (items.length === 0) {
         items.push("Nothing installed yet — try `orazaka studio list`.");
@@ -210,14 +210,16 @@ const logsCommand = new Command("logs")
 
       const items: string[] = [`${chalk.bold(run.studioKey)} @ ${run.blueprintVersion} — ${run.status}`];
       for (const step of run.steps) {
-        const tone = step.status === "SUCCEEDED" ? chalk.green : step.status === "FAILED" ? chalk.red : chalk.gray;
+        let tone = chalk.gray;
+        if (step.status === "SUCCEEDED") tone = chalk.green;
+        else if (step.status === "FAILED") tone = chalk.red;
         const fanOut = step.ordinal > 0 ? ` #${step.ordinal + 1}` : "";
-        items.push(`${tone(`● ${step.status.padEnd(9)}`)} ${step.stepId}${fanOut}`);
+        items.push(`${tone("● " + step.status.padEnd(9))} ${step.stepId}${fanOut}`);
         if (step.error) {
           items.push(`           ${chalk.red(step.error)}`);
         }
         if (step.jobId) {
-          items.push(`           ${chalk.gray(`job ${step.jobId}`)}`);
+          items.push(`           ${chalk.gray("job " + step.jobId)}`);
         }
       }
       for (const artefact of run.outputs ?? []) {

@@ -54,15 +54,15 @@ import * as path from "node:path";
  * Formats a generated file for the manifest display.
  */
 function formatFileManifest(file: GeneratedFile): string {
-  const icon =
-    file.action === "created" ? chalk.green("✚") : file.action === "updated" ? chalk.yellow("✎") : chalk.gray("○");
-
-  const actionLabel =
-    file.action === "created"
-      ? chalk.green("NEW")
-      : file.action === "updated"
-        ? chalk.yellow("UPD")
-        : chalk.gray("SKIP");
+  let icon = chalk.gray("○");
+  let actionLabel = chalk.gray("SKIP");
+  if (file.action === "created") {
+    icon = chalk.green("✚");
+    actionLabel = chalk.green("NEW");
+  } else if (file.action === "updated") {
+    icon = chalk.yellow("✎");
+    actionLabel = chalk.yellow("UPD");
+  }
 
   return `  ${icon} [${actionLabel}] ${chalk.white(file.relativePath)}\n    ${chalk.gray(file.description)}`;
 }

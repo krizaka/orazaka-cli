@@ -56,9 +56,9 @@ export function formatAge(mtimeMs: number, nowMs: number): string {
 
 /** `--since` (`30m`, `1h`, `2d`) in milliseconds; anything else is the default 24 hours. */
 export function parseSinceMs(since: string | undefined): number {
-  const match = since?.match(/^(\d+)(h|m|d)$/);
+  const match = /^(\d+)([hmd])$/.exec(since ?? "");
   if (!match) return 24 * HOUR_MS;
-  return parseInt(match[1]!) * UNIT_MS[match[2]!]!;
+  return Number.parseInt(match[1]!) * UNIT_MS[match[2]!]!;
 }
 
 /** The files whose name contains the service name (case-insensitive); all of them without a service. */

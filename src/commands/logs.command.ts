@@ -51,7 +51,7 @@ function describeLogFile(logDir: string, file: string): { line: string; size: nu
   const colorFn = getServiceColor(file);
   const label = getServiceLabel(file);
   const ageStr = formatAge(stats.mtimeMs, Date.now());
-  const line = `${colorFn(`[${label}]`)} ${chalk.white(file.padEnd(45))} ${chalk.gray(formatFileSize(stats.size).padStart(10))} ${chalk.gray(ageStr)}`;
+  const line = `${colorFn("[" + label + "]")} ${chalk.white(file.padEnd(45))} ${chalk.gray(formatFileSize(stats.size).padStart(10))} ${chalk.gray(ageStr)}`;
   return { line, size: stats.size };
 }
 
@@ -94,7 +94,7 @@ function printRecentLines(logDir: string, file: string, tailLines: number): void
     if (lines.length === 0) return;
     console.log(colorFn(`── ${label} (${file}) ${"─".repeat(Math.max(0, 50 - file.length))}`));
     for (const line of lines) {
-      console.log(`${colorFn(`[${label}]`)} ${line}`);
+      console.log(`${colorFn("[" + label + "]")} ${line}`);
     }
     console.log("");
   } catch {
@@ -128,7 +128,7 @@ function watchLogFile(logDir: string, file: string, positions: Map<string, numbe
     positions.set(filePath, fs.statSync(filePath).size);
     return fs.watch(filePath, (eventType) => {
       if (eventType !== "change") return;
-      printAppended(filePath, positions, (line) => console.log(`${colorFn(`[${label}]`)} ${line}`));
+      printAppended(filePath, positions, (line) => console.log(`${colorFn("[" + label + "]")} ${line}`));
     });
   } catch {
     /* skip files that can't be watched */
@@ -214,5 +214,5 @@ export const logsCommand = new Command("logs")
       return;
     }
 
-    await streamLogs(logDir, targetFiles, parseInt(options.tail ?? "50"));
+    await streamLogs(logDir, targetFiles, Number.parseInt(options.tail ?? "50"));
   });
