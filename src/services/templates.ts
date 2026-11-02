@@ -102,7 +102,7 @@ function writeFile(filePath: string, content: string, workspaceRoot: string, des
 export function generateInterceptor(ctx: TemplateContext, workspaceRoot: string): GenerationResult {
   const name = pascalCase(ctx.moduleName);
   const kebab = kebabCase(ctx.moduleName);
-  const pkg = kebab.replace(/-/g, "");
+  const pkg = kebab.replaceAll("-", "");
   const files: GeneratedFile[] = [];
 
   const struct = scanWorkspaceStructure(workspaceRoot);
@@ -174,14 +174,10 @@ export function generateInterceptor(ctx: TemplateContext, workspaceRoot: string)
 `,
       workspaceRoot,
       "Maven module definition",
-    ),
-  );
-
-  // Interceptor implementation
-  files.push(
+    ), // Interceptor implementation
     writeFile(
       path.join(srcMain, `${name}Interceptor.java`),
-      `package com.krizaka.orazaka.interceptor.${pkg};
+      String.raw`package com.krizaka.orazaka.interceptor.${pkg};
 
 import com.krizaka.orazaka.core.application.interceptor.PromptContextInterceptor;
 import org.slf4j.Logger;
@@ -209,7 +205,7 @@ public final class ${name}Interceptor implements PromptContextInterceptor {
         // TODO: Implement interception logic
         // Example: modify the request before passing to the next interceptor
         // AdvisedRequest enriched = AdvisedRequest.from(request)
-        //     .withSystemText(request.systemText() + "\\n[${name} context]")
+        //     .withSystemText(request.systemText() + "\n[${name} context]")
         //     .build();
 
         return chain.nextAroundCall(request);
@@ -228,11 +224,7 @@ public final class ${name}Interceptor implements PromptContextInterceptor {
 `,
       workspaceRoot,
       "Interceptor implementation (PromptContextInterceptor SPI)",
-    ),
-  );
-
-  // Auto-configuration
-  files.push(
+    ), // Auto-configuration
     writeFile(
       path.join(srcMain, `${name}AutoConfiguration.java`),
       `package com.krizaka.orazaka.interceptor.${pkg};
@@ -270,11 +262,7 @@ public class ${name}AutoConfiguration {
       `com.krizaka.orazaka.interceptor.${pkg}.${name}AutoConfiguration\n`,
       workspaceRoot,
       "Spring Boot auto-configuration SPI import",
-    ),
-  );
-
-  // Test
-  files.push(
+    ), // Test
     writeFile(
       path.join(srcTest, `${name}InterceptorTest.java`),
       `package com.krizaka.orazaka.interceptor.${pkg};
@@ -373,11 +361,7 @@ public interface ${name}Service {
 `,
       workspaceRoot,
       "Service interface (orazaka-core)",
-    ),
-  );
-
-  // Service implementation (core)
-  files.push(
+    ), // Service implementation (core)
     writeFile(
       path.join(coreSrc, "application", "service", `${name}ServiceImpl.java`),
       `package com.krizaka.orazaka.core.application.service;
@@ -407,11 +391,7 @@ final class ${name}ServiceImpl implements ${name}Service {
 `,
       workspaceRoot,
       "Service implementation (package-private, orazaka-core)",
-    ),
-  );
-
-  // REST controller (gateway)
-  files.push(
+    ), // REST controller (gateway)
     writeFile(
       path.join(conversationSrc, "infrastructure", "adapter", "rest", `${name}Controller.java`),
       `package com.krizaka.orazaka.conversationservice.infrastructure.adapter.rest;
@@ -499,11 +479,7 @@ export function ${hookName}() {
 `,
       workspaceRoot,
       `React hook (orazaka-ui/src/hooks/${hookName}.ts)`,
-    ),
-  );
-
-  // Next.js server action (BFF proxy)
-  files.push(
+    ), // Next.js server action (BFF proxy)
     writeFile(
       path.join(uiDir, "src", "app", "api", kebab, "execute", "route.ts"),
       `import { NextRequest, NextResponse } from "next/server";
@@ -613,11 +589,7 @@ public record ${name}Properties(
 `,
       workspaceRoot,
       "Configuration properties record (self-validating)",
-    ),
-  );
-
-  // Configuration class
-  files.push(
+    ), // Configuration class
     writeFile(
       path.join(coreSrc, "infrastructure", "config", `${name}Configuration.java`),
       `package com.krizaka.orazaka.core.infrastructure.config;
@@ -637,11 +609,7 @@ public class ${name}Configuration {
 `,
       workspaceRoot,
       "Spring configuration class",
-    ),
-  );
-
-  // Test
-  files.push(
+    ), // Test
     writeFile(
       path.join(
         struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
@@ -747,11 +715,7 @@ public interface ${name}Client {
 `,
       workspaceRoot,
       "Client interface (outbound port)",
-    ),
-  );
-
-  // RestClient implementation
-  files.push(
+    ), // RestClient implementation
     writeFile(
       path.join(coreSrc, "infrastructure", "adapter", "client", `${name}RestClient.java`),
       `package com.krizaka.orazaka.core.infrastructure.adapter.client;
@@ -809,11 +773,7 @@ final class ${name}RestClient implements ${name}Client {
 `,
       workspaceRoot,
       "RestClient adapter (ERR-120 compliant)",
-    ),
-  );
-
-  // Properties
-  files.push(
+    ), // Properties
     writeFile(
       path.join(coreSrc, "infrastructure", "config", `${name}ConnectorProperties.java`),
       `package com.krizaka.orazaka.core.infrastructure.config;
@@ -841,11 +801,7 @@ public record ${name}ConnectorProperties(
 `,
       workspaceRoot,
       "Connector configuration properties",
-    ),
-  );
-
-  // Test
-  files.push(
+    ), // Test
     writeFile(
       path.join(
         struct.coreDir ?? path.join(workspaceRoot, "orazaka-libs", "orazaka-core"),
@@ -885,7 +841,7 @@ class ${name}RestClientTest {
     files,
     nextSteps: [
       `Add to application.yml: orazaka.connector.${kebab}.base-url=https://api.example.com`,
-      `Add env vars to .env: ${kebab.toUpperCase().replace(/-/g, "_")}_BASE_URL, ${kebab.toUpperCase().replace(/-/g, "_")}_API_KEY`,
+      `Add env vars to .env: ${kebab.toUpperCase().replaceAll("-", "_")}_BASE_URL, ${kebab.toUpperCase().replaceAll("-", "_")}_API_KEY`,
       `Wire ${name}Client into your service layer`,
       `Run: npx orazaka config to add the new env vars interactively`,
     ],
@@ -899,7 +855,7 @@ class ${name}RestClientTest {
 export function generateConfiguration(ctx: TemplateContext, workspaceRoot: string): GenerationResult {
   const name = pascalCase(ctx.moduleName);
   const kebab = kebabCase(ctx.moduleName);
-  const envPrefix = kebab.toUpperCase().replace(/-/g, "_");
+  const envPrefix = kebab.toUpperCase().replaceAll("-", "_");
   const files: GeneratedFile[] = [];
 
   // Add to .env
@@ -1087,7 +1043,7 @@ export function ${hookName}() {
 }
 
 export function generateSqlMigration(ctx: TemplateContext): string {
-  const tableName = kebabCase(ctx.moduleName).replace(/-/g, "_");
+  const tableName = kebabCase(ctx.moduleName).replaceAll("-", "_");
   return `-- Migration: Create ${tableName} table
 -- Author: Orazaka | Date: ${new Date().toISOString()}
 

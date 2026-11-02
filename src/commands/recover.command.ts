@@ -401,7 +401,7 @@ export const recoverCommand = new Command("recover")
             if (!pidNum) continue;
 
             try {
-              process.kill(parseInt(pidNum), "SIGTERM");
+              process.kill(Number.parseInt(pidNum), "SIGTERM");
               killed++;
             } catch {
               /* already dead */

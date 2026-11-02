@@ -25,8 +25,8 @@ for (const [key, value] of Object.entries(parseEnvFile(path.join(resolveWorkspac
 export function intEnv(keys: string | readonly string[], fallback: number): number {
   for (const key of typeof keys === "string" ? [keys] : keys) {
     const raw = process.env[key];
-    if (raw && raw.trim()) {
-      const n = parseInt(raw.trim(), 10);
+    if (raw?.trim()) {
+      const n = Number.parseInt(raw.trim(), 10);
       if (Number.isFinite(n)) return n;
     }
   }
@@ -37,7 +37,7 @@ export function intEnv(keys: string | readonly string[], fallback: number): numb
 export function strEnv(keys: string | readonly string[], fallback: string): string {
   for (const key of typeof keys === "string" ? [keys] : keys) {
     const raw = process.env[key];
-    if (raw && raw.trim()) return raw.trim();
+    if (raw?.trim()) return raw.trim();
   }
   return fallback;
 }

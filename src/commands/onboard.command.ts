@@ -16,11 +16,11 @@ import { NODE_MIN_MAJOR } from "../utils/config";
 
 /** Minimum required versions for each prerequisite. */
 export const PREREQUISITES = [
-  { name: "Java", command: "java -version", regex: /version "(\d+)/, minMajor: 21 },
-  { name: "Node.js", command: "node --version", regex: /v(\d+)/, minMajor: NODE_MIN_MAJOR },
-  { name: "Python", command: "python3 --version", regex: /(\d+\.\d+)/, minMajor: 3 },
-  { name: "Docker", command: "docker --version", regex: /(\d+\.\d+)/, minMajor: 20 },
-  { name: "Ollama", command: "ollama --version", regex: /(\d+\.\d+)/, minMajor: 0 },
+  { name: "Java", command: "java -version", regex: /version "(\d{1,9})/, minMajor: 21 },
+  { name: "Node.js", command: "node --version", regex: /v(\d{1,9})/, minMajor: NODE_MIN_MAJOR },
+  { name: "Python", command: "python3 --version", regex: /(\d{1,9}\.\d{1,9})/, minMajor: 3 },
+  { name: "Docker", command: "docker --version", regex: /(\d{1,9}\.\d{1,9})/, minMajor: 20 },
+  { name: "Ollama", command: "ollama --version", regex: /(\d{1,9}\.\d{1,9})/, minMajor: 0 },
 ] as const;
 
 /** Local sovereign AI runtimes probed for live connectivity. */
@@ -43,8 +43,8 @@ function checkPrerequisite(prereq: (typeof PREREQUISITES)[number]): Prerequisite
     const output = execSync(prereq.command, { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] });
     const match = output.match(prereq.regex);
     const version = match ? match[1] : "unknown";
-    const major = parseInt(version, 10);
-    const ok = !isNaN(major) && major >= prereq.minMajor;
+    const major = Number.parseInt(version, 10);
+    const ok = !Number.isNaN(major) && major >= prereq.minMajor;
     return { name: prereq.name, ok, version };
   } catch {
     return { name: prereq.name, ok: false, version: "not found", error: `${prereq.name} is not installed` };
@@ -141,10 +141,10 @@ async function runLocalRuntimeChecks(): Promise<void> {
 
   const ollama = await probeEndpoint(OLLAMA_TAGS_URL);
   if (ollama.ok) {
-    console.log(`  ${chalk.green("✔")} Ollama daemon responsive ${chalk.gray(`(${ollama.detail})`)}`);
+    console.log(`  ${chalk.green("✔")} Ollama daemon responsive ${chalk.gray("(" + ollama.detail + ")")}`);
   } else {
     console.log(
-      `  ${chalk.yellow("⚠")} Ollama not reachable at ${chalk.gray(OLLAMA_TAGS_URL)} ${chalk.gray(`— ${ollama.detail}`)}`,
+      `  ${chalk.yellow("⚠")} Ollama not reachable at ${chalk.gray(OLLAMA_TAGS_URL)} ${chalk.gray("— " + ollama.detail)}`,
     );
     console.log(chalk.gray("    Start it with: ollama serve"));
   }
@@ -152,10 +152,10 @@ async function runLocalRuntimeChecks(): Promise<void> {
   if (LOCALAI_MODELS_URL) {
     const localai = await probeEndpoint(LOCALAI_MODELS_URL);
     if (localai.ok) {
-      console.log(`  ${chalk.green("✔")} LocalAI endpoint responsive ${chalk.gray(`(${localai.detail})`)}`);
+      console.log(`  ${chalk.green("✔")} LocalAI endpoint responsive ${chalk.gray("(" + localai.detail + ")")}`);
     } else {
       console.log(
-        `  ${chalk.yellow("⚠")} LocalAI not reachable at ${chalk.gray(LOCALAI_MODELS_URL)} ${chalk.gray(`— ${localai.detail}`)}`,
+        `  ${chalk.yellow("⚠")} LocalAI not reachable at ${chalk.gray(LOCALAI_MODELS_URL)} ${chalk.gray("— " + localai.detail)}`,
       );
     }
   } else {
@@ -182,7 +182,7 @@ function runAcceleratorDetection(): void {
   if (nvidia) {
     const gpu = nvidia.split("\n")[0].trim();
     detected.push(`NVIDIA CUDA (${gpu})`);
-    console.log(`  ${chalk.green("✔")} NVIDIA CUDA detected ${chalk.gray(`(${gpu})`)}`);
+    console.log(`  ${chalk.green("✔")} NVIDIA CUDA detected ${chalk.gray("(" + gpu + ")")}`);
   }
 
   // Apple Silicon Metal — macOS system_profiler parsing.
@@ -190,10 +190,10 @@ function runAcceleratorDetection(): void {
     const chip = tryCommand("system_profiler SPHardwareDataType");
     const isAppleSilicon = chip != null && /Chip:\s*Apple/i.test(chip);
     if (isAppleSilicon) {
-      const match = chip.match(/Chip:\s*(.+)/);
+      const match = /Chip:\s*(.+)/.exec(chip);
       const chipName = match ? match[1].trim() : "Apple Silicon";
       detected.push(`Apple Metal (${chipName})`);
-      console.log(`  ${chalk.green("✔")} Apple Silicon Metal detected ${chalk.gray(`(${chipName})`)}`);
+      console.log(`  ${chalk.green("✔")} Apple Silicon Metal detected ${chalk.gray("(" + chipName + ")")}`);
     }
   }
 

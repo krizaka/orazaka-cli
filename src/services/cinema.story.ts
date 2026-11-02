@@ -470,7 +470,8 @@ export function legalFindings(story: Story): Finding[] {
   for (const [where, text] of textsOf(story)) {
     const lower = ` ${text.toLowerCase()} `;
     for (const name of banned) {
-      const at = lower.search(new RegExp(`[^a-z0-9]${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^a-z0-9]`));
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+      const at = lower.search(new RegExp(`[^a-z0-9]${escaped}[^a-z0-9]`));
       if (at >= 0)
         findings.push({
           rule: "legal",
@@ -594,7 +595,7 @@ export function critiqueStory(story: Story, language = "en"): Critique {
       problems.push(`${words} words over ${seconds.toFixed(1)} s is rushed`);
     if (l.shots.some((id, k) => k > 0 && id !== l.shots[k - 1] + 1)) problems.push("its shots are not consecutive");
     if (l.shots[0] <= lastShot) problems.push("it overlaps the line before it");
-    lastShot = l.shots[l.shots.length - 1];
+    lastShot = l.shots.at(-1)!;
     if (problems.length === 0) voiceOk += 1;
     else findings.push({ rule: "voice", line: l.id, message: problems.join(", ") });
   }
@@ -619,14 +620,12 @@ export function critiqueStory(story: Story, language = "en"): Critique {
       rule: "music",
       message: `a cue is louder than ${MAX_MUSIC_INTENSITY} (the score sits under the story)`,
     });
-  const [hook, turn, payoff] = [cue("hook"), cue("turn"), cue("payoff")];
+  const hook = cue("hook");
   if (!hook || story.music.cues.every((c) => c.intensity >= hook.intensity)) musicOk += 1;
   else findings.push({ rule: "music", message: "the hook's cue is not the quietest (an intro starts low)" });
   // A score resolves: its last cue sits under its peak (a finale may peak — a DJ moment — then an outro brings it down).
   const peak = Math.max(...story.music.cues.map((c) => c.intensity), 0);
-  const last = story.music.cues[story.music.cues.length - 1];
-  void turn;
-  void payoff;
+  const last = story.music.cues.at(-1);
   if (!last || story.music.cues.length < 2 || last.intensity <= peak - 0.1) musicOk += 1;
   else findings.push({ rule: "music", message: "the score ends at its peak (a score resolves after its peak)" });
 
@@ -740,7 +739,7 @@ export function judgePrompt(story: Story, language = "en"): string {
   const shots = story.shots
     .map(
       (s) =>
-        `${s.id}. [${s.beat}] ${s.characters.join("+") || "landscape"} — purpose: ${s.purpose} — action: ${s.action}${s.gaze ? ` — gaze: ${s.gaze}` : ""}${s.physics ? ` — body: ${s.physics}` : ""}${s.interactionKind ? ` — they ${s.interactionKind}` : ""}`,
+        `${s.id}. [${s.beat}] ${s.characters.join("+") || "landscape"} — purpose: ${s.purpose} — action: ${s.action}${s.gaze ? " — gaze: " + s.gaze : ""}${s.physics ? " — body: " + s.physics : ""}${s.interactionKind ? " — they " + s.interactionKind : ""}`,
     )
     .join("\n");
   const cast = story.characters.map((c) => `${c.id}: promise «${c.promise}», intention «${c.intention}»`).join("\n");
@@ -797,11 +796,14 @@ export interface Verdict {
   readonly notes: string;
 }
 
+function findingLocation(f: Pick<Finding, "shot" | "line">): string {
+  if (f.shot) return " (shot " + f.shot + ")";
+  return f.line ? " (line " + f.line + ")" : "";
+}
+
 /** The rubric and the judge together: a story is filmed only when both accept it (pure). */
 export function verdict(rubric: Critique, judge?: Judgement): Verdict {
-  const reasons = rubric.findings.map(
-    (f) => `${f.rule}${f.shot ? ` (shot ${f.shot})` : f.line ? ` (line ${f.line})` : ""}: ${f.message}`,
-  );
+  const reasons = rubric.findings.map((f) => `${f.rule}${findingLocation(f)}: ${f.message}`);
   if (judge) {
     for (const axis of JUDGE_AXES)
       if (judge.scores[axis] < JUDGE_THRESHOLD) reasons.push(`judge: ${axis} ${judge.scores[axis]}/5`);
@@ -864,11 +866,11 @@ export function timeline(
     t = end;
     return { id: s.id, start: round(start), end: round(end), beat: s.beat };
   });
-  const seconds = shots.length ? shots[shots.length - 1].end : 0;
+  const seconds = shots.length ? shots.at(-1)!.end : 0;
   const wps: Record<Pace, number> = { slow: 1.9, measured: 2.3, rhythmic: 2.4, lively: 2.7 };
   const lines = story.lines.map((l) => {
     const first = shots[l.shots[0] - 1];
-    const last = shots[l.shots[l.shots.length - 1] - 1];
+    const last = shots[l.shots.at(-1)! - 1];
     const words = (l.text[language] ?? "").split(/\s+/).filter(Boolean).length;
     const length = voice[l.id] ?? words / wps[l.direction.pace];
     const start = first.start + LINE_LEAD;
@@ -890,7 +892,7 @@ export function timeline(
         const inBeat = shots.filter((s) => s.beat === b);
         const cue = story.music.cues.find((c) => c.beat === b);
         if (!inBeat.length || !cue) return [];
-        return [{ id: b, start: inBeat[0].start, end: inBeat[inBeat.length - 1].end, intensity: cue.intensity }];
+        return [{ id: b, start: inBeat[0].start, end: inBeat.at(-1)!.end, intensity: cue.intensity }];
       });
   const sound = story.shots.flatMap((s, i) =>
     s.sound.map((c) => {

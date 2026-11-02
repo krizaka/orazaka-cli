@@ -100,8 +100,8 @@ export const stopCommand = new Command("stop")
             .trim();
           if (pidsStr) {
             for (const pidStr of pidsStr.split("\n")) {
-              const pid = parseInt(pidStr.trim(), 10);
-              if (isNaN(pid) || pid === process.pid) continue;
+              const pid = Number.parseInt(pidStr.trim(), 10);
+              if (Number.isNaN(pid) || pid === process.pid) continue;
 
               let procName = "";
               try {
@@ -195,8 +195,8 @@ export const stopCommand = new Command("stop")
           const pidsStr = execSync(`pgrep -f "${pattern}" || true`).toString().trim();
           if (pidsStr) {
             for (const pidStr of pidsStr.split("\n")) {
-              const pid = parseInt(pidStr.trim(), 10);
-              if (!isNaN(pid) && pid !== process.pid) {
+              const pid = Number.parseInt(pidStr.trim(), 10);
+              if (!Number.isNaN(pid) && pid !== process.pid) {
                 try {
                   process.kill(pid, 9);
                 } catch {
@@ -278,8 +278,10 @@ export const stopCommand = new Command("stop")
       `${chalk.red("⏹")} Docker containers stopped`,
     ];
     if (options.purge) {
-      summaryLines.push(`${chalk.red("⏹")} Database data purged`);
-      summaryLines.push(`${chalk.red("⏹")} Upload and temp directories cleaned`);
+      summaryLines.push(
+        `${chalk.red("⏹")} Database data purged`,
+        `${chalk.red("⏹")} Upload and temp directories cleaned`,
+      );
     }
     summaryLines.push("", `To restart: ${chalk.cyan("npx orazaka start")}`);
 

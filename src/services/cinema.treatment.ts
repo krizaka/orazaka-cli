@@ -272,6 +272,16 @@ export function framesFor(shape: { frames: number; fps: number }, seconds: numbe
   return Math.min(shape.frames, Math.max(step * 4 + 1, wanted));
 }
 
+function shotStart(script: Script, shot: Script["shots"][number], i: number): PodJob["start"] {
+  if (shot.chainFrom) {
+    return { lastFrameOf: shot.chainFrom.shot, ...(shot.chainFrom.at !== undefined ? { at: shot.chainFrom.at } : {}) };
+  }
+  if (shot.continuous && i > 0) {
+    return { lastFrameOf: script.shots[i - 1].id, ...(shot.chainAt !== undefined ? { at: shot.chainAt } : {}) };
+  }
+  return { keyframe: shot.id };
+}
+
 /** The shots still to make (never made, or marked for a reshoot), in order: what a GPU host runs next (pure). */
 export function podJobs(production: Production): PodJob[] {
   const script = production.script?.parsed;
@@ -287,7 +297,7 @@ export function podJobs(production: Production): PodJob[] {
     const [width, height] = shape.sizes[aspect];
     return [
       {
-        name: `${String(shot.id).padStart(2, "0")}-${shot.slug ?? `shot-${shot.id}`}-t${attempt}`,
+        name: `${String(shot.id).padStart(2, "0")}-${shot.slug ?? "shot-" + shot.id}-t${attempt}`,
         shot: shot.id,
         attempt,
         model,
@@ -297,11 +307,7 @@ export function podJobs(production: Production): PodJob[] {
         height,
         frames: framesFor(shape, shot.seconds),
         fps: shape.fps,
-        start: shot.chainFrom
-          ? { lastFrameOf: shot.chainFrom.shot, ...(shot.chainFrom.at !== undefined ? { at: shot.chainFrom.at } : {}) }
-          : shot.continuous && i > 0
-            ? { lastFrameOf: script.shots[i - 1].id, ...(shot.chainAt !== undefined ? { at: shot.chainAt } : {}) }
-            : { keyframe: shot.id },
+        start: shotStart(script, shot, i),
       },
     ];
   });
@@ -345,7 +351,7 @@ export function sheetArgs(renders: readonly string[], output: string): string[] 
     )
     .join(";");
   const join =
-    renders.length > 1 ? `;${renders.map((_, i) => `[c${i}]`).join("")}hstack=inputs=${renders.length}[out]` : "";
+    renders.length > 1 ? `;${renders.map((_, i) => "[c" + i + "]").join("")}hstack=inputs=${renders.length}[out]` : "";
   const last = renders.length > 1 ? "[out]" : "[c0]";
   return [
     "-v",
@@ -368,7 +374,7 @@ export function sheetArgs(renders: readonly string[], output: string): string[] 
  */
 export function reviewArgs(take: string, sheet: string, output: string, every = 8): string[] {
   const graph =
-    `[0:v]select='not(mod(n\\,${every}))',scale=320:-2,tile=6x2:padding=4[frames];` +
+    String.raw`[0:v]select='not(mod(n\,${every}))',scale=320:-2,tile=6x2:padding=4[frames];` +
     // Six 320-wide frames and five 4-px gaps make a 1940-wide strip: the reference sheet sits above it, 360 high, centred.
     `[1:v]scale=-2:360,pad=1940:376:(ow-iw)/2:8:color=0x202020[ref];[ref][frames]vstack[out]`;
   return [

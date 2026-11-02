@@ -57,7 +57,7 @@ export function constantCase(str: string): string {
  * Validates if a string is a valid identifier (variable/class name).
  */
 export function isValidIdentifier(str: string): boolean {
-  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(str);
+  return /^[a-zA-Z_]\w*$/.test(str);
 }
 
 /**

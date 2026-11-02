@@ -14,9 +14,9 @@ module.exports = {
     "/__tests__/",
     "/commands/",
     "/types/",
-    "chat-stream\\.ws\\.ts$",
-    "src/index\\.ts$",
-    "src/env\\.ts$",
+    String.raw`chat-stream\.ws\.ts$`,
+    String.raw`src/index\.ts$`,
+    String.raw`src/env\.ts$`,
   ],
   transform: {
     "^.+\\.ts$": [

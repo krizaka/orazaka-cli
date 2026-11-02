@@ -48,7 +48,7 @@ export function bootstrapWorkspace(
     }
     const clone = run("git", ["clone", ...depth, opts.repository ?? WORKSPACE_REPOSITORY, root], path.dirname(root));
     if (clone.status !== 0) {
-      return { ok: false, root, error: `git clone failed${clone.error ? `: ${clone.error.message}` : ""}.` };
+      return { ok: false, root, error: `git clone failed${clone.error ? ": " + clone.error.message : ""}.` };
     }
   }
 

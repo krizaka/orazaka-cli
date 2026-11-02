@@ -96,6 +96,12 @@ function shotState(production: Production, id: number): ShotState {
   return state;
 }
 
+/** " <shot>" or " <id>" when the step has one: what the log line says the step is about. */
+function stepTarget(step: object): string {
+  if ("shot" in step) return " " + String(step.shot);
+  return "id" in step ? " " + String(step.id) : "";
+}
+
 /**
  * Runs the production until it is done, a run fails, or `maxRuns` is reached. Returns the production as saved.
  *
@@ -120,8 +126,8 @@ export async function direct(production: Production, port: StudioPort, options: 
     production.history.push(record);
     options.save(production);
     options.log(
-      `${step.kind}${"shot" in step ? ` ${step.shot}` : "id" in step ? ` ${step.id}` : ""}: ${record.status}` +
-        `${record.seconds !== undefined ? ` in ${record.seconds}s` : ""} (run ${record.runId})${record.error ? ` — ${record.error}` : ""}`,
+      `${step.kind}${stepTarget(step)}: ${record.status}` +
+        `${record.seconds !== undefined ? " in " + record.seconds + "s" : ""} (run ${record.runId})${record.error ? " — " + record.error : ""}`,
     );
     if (record.status !== RunState.Succeeded) return production;
   }
@@ -210,7 +216,9 @@ async function runStep(
       const state = shotState(production, shot.id);
       // A continuous shot starts where the one before it ends (last-frame chaining); every other shot from its keyframe.
       // A shot chained from an earlier take (`chainFrom`) starts from a frame of that take.
-      const fromId = shot.chainFrom ? shot.chainFrom.shot : index > 0 ? script.shots[index - 1].id : undefined;
+      let fromId: number | undefined = undefined;
+      if (shot.chainFrom) fromId = shot.chainFrom.shot;
+      else if (index > 0) fromId = script.shots[index - 1].id;
       const previous = fromId !== undefined ? production.shots.find((s) => s.id === fromId) : undefined;
       const chained = shot.continuous || Boolean(shot.chainFrom);
       const source = chained ? previous?.video?.output : state.keyframe?.output;
@@ -348,7 +356,7 @@ export async function writeTreatment(port: StudioPort, options: TreatmentOptions
     const decided = verdict(rubric, judge);
     last = { treatment, story, rubric, judge, verdict: decided, runs };
     options.log(
-      `treatment pass ${pass + 1}: ${decided.pass ? "accepted" : `rejected (${decided.reasons.length} reason(s))`}`,
+      `treatment pass ${pass + 1}: ${decided.pass ? "accepted" : "rejected (" + decided.reasons.length + " reason(s))"}`,
     );
     if (decided.pass) return last;
     notes = decided.notes;

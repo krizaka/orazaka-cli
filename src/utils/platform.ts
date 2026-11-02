@@ -11,7 +11,7 @@ import * as fs from "node:fs";
 import { execSync } from "node:child_process";
 
 /** Supported shell platforms for tool detection. */
-type Platform = "darwin" | "win32" | "linux" | string;
+type Platform = string;
 
 /**
  * Detects whether a CLI tool exists on the host PATH.

@@ -122,8 +122,8 @@ function readWorkerRun(file: string): { label: string; python: string; args: str
     .filter((line) => !line.trimStart().startsWith("#"))
     .join("\n");
   const name = /^name:\s*(\S+)/m.exec(body);
-  const python = /^\s+python:\s*"([^"]+)"/m.exec(body);
-  const args = /^\s+args:\s*\[([^\]]*)\]/m.exec(body);
+  const python = /^[ \t]+python:[ \t]*"([^"]+)"/m.exec(body);
+  const args = /^[ \t]+args:[ \t]*\[([^\]]*)\]/m.exec(body);
   if (!python || !args) return null;
   const parsed = args[1]
     .split(",")
