@@ -210,7 +210,9 @@ const logsCommand = new Command("logs")
 
       const items: string[] = [`${chalk.bold(run.studioKey)} @ ${run.blueprintVersion} — ${run.status}`];
       for (const step of run.steps) {
-        const tone = step.status === "SUCCEEDED" ? chalk.green : step.status === "FAILED" ? chalk.red : chalk.gray;
+        let tone = chalk.gray;
+        if (step.status === "SUCCEEDED") tone = chalk.green;
+        else if (step.status === "FAILED") tone = chalk.red;
         const fanOut = step.ordinal > 0 ? ` #${step.ordinal + 1}` : "";
         items.push(`${tone(`● ${step.status.padEnd(9)}`)} ${step.stepId}${fanOut}`);
         if (step.error) {

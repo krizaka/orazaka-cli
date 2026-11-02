@@ -247,10 +247,9 @@ export const installCommand = new Command("install")
     await logStep("Phase 4 — Deployment Topology Configuration");
 
     // Non-interactive: the topology follows the host (Apple Silicon → local_dev, otherwise production).
+    const hostEnv = isAppleSilicon() ? "local_dev" : "production";
     const targetEnv = !interactive
-      ? isAppleSilicon()
-        ? "local_dev"
-        : "production"
+      ? hostEnv
       : await select({
           message: "Select target environment profile:",
           options: [
@@ -481,7 +480,7 @@ export const installCommand = new Command("install")
           conflicts
             .map(
               ([k, v]) =>
-                `  ${chalk.yellow(k)} = ${chalk.gray(existingEnv[k])} ${chalk.dim(`(topology suggests ${v})`)}`,
+                `  ${chalk.yellow(k)} = ${chalk.gray(existingEnv[k])} ${chalk.dim("(topology suggests " + v + ")")}`,
             )
             .join("\n") +
           `\n  Edit ${chalk.cyan(".env")} manually if you want the suggested values.`,

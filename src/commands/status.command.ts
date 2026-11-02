@@ -157,7 +157,7 @@ export const statusCommand = new Command("status")
         const logFiles = fs.readdirSync(logDir).filter((f) => f.endsWith(".log"));
         if (logFiles.length > 0) {
           console.log(
-            `\n  ${chalk.gray("Logs:")} ${chalk.cyan(`npx orazaka logs`)} (${String(logFiles.length)} file(s) in ${path.relative(workspaceRoot, logDir)})`,
+            `\n  ${chalk.gray("Logs:")} ${chalk.cyan("npx orazaka logs")} (${String(logFiles.length)} file(s) in ${path.relative(workspaceRoot, logDir)})`,
           );
         }
       }

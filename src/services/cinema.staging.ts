@@ -233,7 +233,7 @@ export function critiqueCut(film: StagedFilm): { findings: CutFinding[]; pass: b
       findings.push({
         rule: "light",
         shot: s.id,
-        message: `the plate does not say its hard key comes ${s.light.key === "top" ? "from above" : `from the ${s.light.key}`}: the composite's shadows would not know where to fall`,
+        message: `the plate does not say its hard key comes ${s.light.key === "top" ? "from above" : "from the " + s.light.key}: the composite's shadows would not know where to fall`,
       });
     }
   }

@@ -213,10 +213,10 @@ export function repairJson(body: string): string {
   const quoted = flat
     .split(/("(?:[^"\\]|\\.)*")/)
     .map((part, i) =>
-      i % 2 === 1 ? part : part.replace(/:\s*(-?\d[^",\n{}[\]]*?[A-Za-z%][^",\n{}[\]]*?)\s*(?=[,\n}\]])/g, ': "$1"'),
+      i % 2 === 1 ? part : part.replace(/:\s*(-?\d[^",\n{}[\]]*)(?=[,\n}\]])/g, quoteUnitValue),
     )
     .join("");
-  return quoted.replace(/("|\}|\]|\d|true|false|null)(\s*\n\s*)(?=["{[])/g, "$1,$2").replace(/,(\s*[}\]])/g, "$1");
+  return quoted.replace(/("|\}|\]|\d|true|false|null)([^\S\n]*\n\s*)(?=["{[])/g, "$1,$2").replace(/,(\s*[}\]])/g, "$1");
 }
 
 /**
@@ -309,16 +309,22 @@ export const KIT_FINISH =
   "Shot on a cinema camera, anamorphic film look, natural skin texture, motivated lighting, filmic contrast, subtle film grain, " +
   "high dynamic range, sharp focus on the subject, photorealistic, highly detailed";
 
+/** `: 35mm` becomes `: "35mm"`; a plain number (no letter after its first digit) stays as it is. */
+function quoteUnitValue(match: string, value: string): string {
+  return /[A-Za-z%]/.test(value.replace(/^-?\d/, "")) ? `: "${value.trimEnd()}"` : match;
+}
+
+function cameraLine(camera: string | undefined, forMotion: boolean): string {
+  if (!camera) return "";
+  return forMotion ? "the view: " + camera.replace(/\bcamera\b/gi, "view") : "camera: " + camera;
+}
+
 /** A shot's direction in one sentence: the lens, the camera, the light and the air (only what the script gave). */
 export function direction(shot: ScriptShot, forMotion = false): string {
   return [
     shot.lens ? `${/mm/i.test(shot.lens) ? shot.lens : `${shot.lens}mm`} lens` : "",
     // In a motion prompt the word "camera" summoned a camera into the frame (gate, 2026-10-17): the view moves instead.
-    shot.camera
-      ? forMotion
-        ? `the view: ${shot.camera.replace(/\bcamera\b/gi, "view")}`
-        : `camera: ${shot.camera}`
-      : "",
+    cameraLine(shot.camera, forMotion),
     shot.lighting ? `lighting: ${shot.lighting}` : "",
     shot.atmosphere ? `atmosphere: ${shot.atmosphere}` : "",
   ]
@@ -347,7 +353,7 @@ export function keyframePrompt(script: Script, shot: ScriptShot, aspect: Aspect)
       .filter(Boolean)
       .join("; ");
     return text(
-      `${shot.keyframe} ${described ? `Characters: ${described}. ` : ""}${script.style} ${script.keyframeKeep} ${NO_CHILDREN}`,
+      `${shot.keyframe} ${described ? "Characters: " + described + ". " : ""}${script.style} ${script.keyframeKeep} ${NO_CHILDREN}`,
       1900,
     );
   }

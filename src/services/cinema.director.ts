@@ -348,7 +348,7 @@ export async function writeTreatment(port: StudioPort, options: TreatmentOptions
     const decided = verdict(rubric, judge);
     last = { treatment, story, rubric, judge, verdict: decided, runs };
     options.log(
-      `treatment pass ${pass + 1}: ${decided.pass ? "accepted" : `rejected (${decided.reasons.length} reason(s))`}`,
+      `treatment pass ${pass + 1}: ${decided.pass ? "accepted" : "rejected (" + decided.reasons.length + " reason(s))"}`,
     );
     if (decided.pass) return last;
     notes = decided.notes;

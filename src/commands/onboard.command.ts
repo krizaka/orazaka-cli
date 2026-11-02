@@ -144,7 +144,7 @@ async function runLocalRuntimeChecks(): Promise<void> {
     console.log(`  ${chalk.green("✔")} Ollama daemon responsive ${chalk.gray(`(${ollama.detail})`)}`);
   } else {
     console.log(
-      `  ${chalk.yellow("⚠")} Ollama not reachable at ${chalk.gray(OLLAMA_TAGS_URL)} ${chalk.gray(`— ${ollama.detail}`)}`,
+      `  ${chalk.yellow("⚠")} Ollama not reachable at ${chalk.gray(OLLAMA_TAGS_URL)} ${chalk.gray("— " + ollama.detail)}`,
     );
     console.log(chalk.gray("    Start it with: ollama serve"));
   }
@@ -155,7 +155,7 @@ async function runLocalRuntimeChecks(): Promise<void> {
       console.log(`  ${chalk.green("✔")} LocalAI endpoint responsive ${chalk.gray(`(${localai.detail})`)}`);
     } else {
       console.log(
-        `  ${chalk.yellow("⚠")} LocalAI not reachable at ${chalk.gray(LOCALAI_MODELS_URL)} ${chalk.gray(`— ${localai.detail}`)}`,
+        `  ${chalk.yellow("⚠")} LocalAI not reachable at ${chalk.gray(LOCALAI_MODELS_URL)} ${chalk.gray("— " + localai.detail)}`,
       );
     }
   } else {

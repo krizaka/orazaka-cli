@@ -56,10 +56,16 @@ const qst = cents(subtotal * DEMO_INVOICE.qstRate);
 export const DEMO_INVOICE_TOTALS = { subtotal, gst, qst, total: subtotal + gst + qst } as const;
 
 /** "1 295,00 $" — Québec French, as the supplier prints it (spaces, not U+202F: the PDF font is WinAnsi). */
+const groupThousands = (digits: string): string => {
+  let out = "";
+  for (let i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 === 0) out += " ";
+    out += digits[i];
+  }
+  return out;
+};
 const money = (amount: number) =>
-  `${Math.floor(amount / 100)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, " ")},${String(amount % 100).padStart(2, "0")} $`;
+  `${groupThousands(Math.floor(amount / 100).toString())},${String(amount % 100).padStart(2, "0")} $`;
 const row = (label: string, amount: number) =>
   `${label} ${".".repeat(Math.max(3, 38 - label.length))} ${money(amount).padStart(12)}`;
 

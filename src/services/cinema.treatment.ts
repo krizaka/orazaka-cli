@@ -345,7 +345,7 @@ export function sheetArgs(renders: readonly string[], output: string): string[] 
     )
     .join(";");
   const join =
-    renders.length > 1 ? `;${renders.map((_, i) => `[c${i}]`).join("")}hstack=inputs=${renders.length}[out]` : "";
+    renders.length > 1 ? ";" + renders.map((_, i) => "[c" + i + "]").join("") + `hstack=inputs=${renders.length}[out]` : "";
   const last = renders.length > 1 ? "[out]" : "[c0]";
   return [
     "-v",

@@ -50,7 +50,7 @@ export class ApiClient {
   public static async downloadTo(pathOrUrl: string, file: string): Promise<number> {
     const url = /^https?:\/\//.test(pathOrUrl)
       ? pathOrUrl
-      : `${this.getBaseUrl()}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+      : this.getBaseUrl() + (pathOrUrl.startsWith("/") ? "" : "/") + pathOrUrl;
     const config = loadConfig();
     const response = await fetch(url, {
       headers: config?.token && url.startsWith(this.getBaseUrl()) ? { Authorization: `Bearer ${config.token}` } : {},

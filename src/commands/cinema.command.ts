@@ -635,7 +635,7 @@ const stageCommand = new Command("stage")
       const film = parseStaging(raw);
       const cut = critiqueCut(film);
       for (const f of cut.findings)
-        console.log(chalk.yellow(`  ${f.rule}${f.shot ? ` (shot ${f.shot})` : ""}: ${f.message}`));
+        console.log(chalk.yellow(`  ${f.rule}${shotSuffix(f.shot)}: ${f.message}`));
       const described = Object.fromEntries(
         ((raw.characters as Array<{ id: string; description: string }> | undefined) ?? []).map((c) => [
           c.id,
@@ -684,3 +684,7 @@ export const cinemaCommand = new Command("cinema")
   .addCommand(critiqueCommand)
   .addCommand(timelineCommand)
   .addCommand(stageCommand);
+
+function shotSuffix(shot: unknown): string {
+  return shot ? ` (shot ${String(shot)})` : "";
+}

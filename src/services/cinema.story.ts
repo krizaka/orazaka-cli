@@ -314,11 +314,84 @@ export function parseStory(raw: unknown): Story {
 // ── The rubric ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Verbs that say nothing about a character (the v1 film's failure): an action made only of these is flat. */
-const GENERIC =
-  /\b(moves?|moving|stands?|standing|looks? around|turns? (its|his|her) head (left|right)|flies around|is shown|appears?|idles?|poses?|walks? around|scanning)\b/gi;
+const GENERIC_WORDS = [
+  "moves?",
+  "moving",
+  "stands?",
+  "standing",
+  "looks? around",
+  "turns? (its|his|her) head (left|right)",
+  "flies around",
+  "is shown",
+  "appears?",
+  "idles?",
+  "poses?",
+  "walks? around",
+  "scanning",
+];
+const GENERIC = new RegExp("\\b(" + GENERIC_WORDS.join("|") + ")\\b", "gi");
 /** Physical verbs of a living body: a character shot names at least one. */
-const LIVING =
-  /\b(breath\w*|lean\w*|crouch\w*|leap\w*|launch\w*|beat\w*|flap\w*|land\w*|fold\w*|grip\w*|tighten\w*|shuffl\w*|step\w*|nod\w*|bow\w*|nudg\w*|shak\w*|lift\w*|rais\w*|set\w*|tap\w*|push\w*|brac\w*|tumbl\w*|climb\w*|glanc\w*|snap\w*|puff\w*|smooth\w*|carr\w*|hold\w*|answer\w*|read\w*|recogn\w*|spread\w*|ruffl\w*|blink\w*|widen\w*|bump\w*|twirl\w*|hop\w*|spin\w*|wav(e|es|ing)|slid\w*|danc\w*|jump\w*|cheer\w*|scoop\w*|wrap\w*|flick\w*|sink\w*|shiver\w*|curl\w*|dive\w*|snatch\w*|catch\w*|bob\w*|bank\w*)\b/i;
+const LIVING_WORDS = [
+  "breath\\w*",
+  "lean\\w*",
+  "crouch\\w*",
+  "leap\\w*",
+  "launch\\w*",
+  "beat\\w*",
+  "flap\\w*",
+  "land\\w*",
+  "fold\\w*",
+  "grip\\w*",
+  "tighten\\w*",
+  "shuffl\\w*",
+  "step\\w*",
+  "nod\\w*",
+  "bow\\w*",
+  "nudg\\w*",
+  "shak\\w*",
+  "lift\\w*",
+  "rais\\w*",
+  "set\\w*",
+  "tap\\w*",
+  "push\\w*",
+  "brac\\w*",
+  "tumbl\\w*",
+  "climb\\w*",
+  "glanc\\w*",
+  "snap\\w*",
+  "puff\\w*",
+  "smooth\\w*",
+  "carr\\w*",
+  "hold\\w*",
+  "answer\\w*",
+  "read\\w*",
+  "recogn\\w*",
+  "spread\\w*",
+  "ruffl\\w*",
+  "blink\\w*",
+  "widen\\w*",
+  "bump\\w*",
+  "twirl\\w*",
+  "hop\\w*",
+  "spin\\w*",
+  "wav(e|es|ing)",
+  "slid\\w*",
+  "danc\\w*",
+  "jump\\w*",
+  "cheer\\w*",
+  "scoop\\w*",
+  "wrap\\w*",
+  "flick\\w*",
+  "sink\\w*",
+  "shiver\\w*",
+  "curl\\w*",
+  "dive\\w*",
+  "snatch\\w*",
+  "catch\\w*",
+  "bob\\w*",
+  "bank\\w*",
+];
+const LIVING = new RegExp("\\b(" + LIVING_WORDS.join("|") + ")\\b", "i");
 /** Words too common to tie an action to a promise. */
 const STOP = new Set([
   "the",
@@ -405,8 +478,15 @@ export const MIN_INTERACTION_SHARE = 1 / 3;
 /** Rhythm: the spread of shot lengths (coefficient of variation), and what a quick shot is. */
 export const MIN_LENGTH_SPREAD = 0.15;
 export const QUICK_SHOT = 3;
-const LINEUP =
-  /\b(in a row|line[sd]? up|lineup|turns? (their|its) heads? (to|toward) the (camera|lens)|looks? (in)?to the (camera|lens)|pose[sd]? for)\b/i;
+const LINEUP_WORDS = [
+  "in a row",
+  "line[sd]? up",
+  "lineup",
+  "turns? (their|its) heads? (to|toward) the (camera|lens)",
+  "looks? (in)?to the (camera|lens)",
+  "pose[sd]? for",
+];
+const LINEUP = new RegExp("\\b(" + LINEUP_WORDS.join("|") + ")\\b", "i");
 
 /**
  * Names a film must never say or show (the hard legal rule of orazaka#289): real people, songs, games, shows and brands
@@ -740,7 +820,7 @@ export function judgePrompt(story: Story, language = "en"): string {
   const shots = story.shots
     .map(
       (s) =>
-        `${s.id}. [${s.beat}] ${s.characters.join("+") || "landscape"} — purpose: ${s.purpose} — action: ${s.action}${s.gaze ? ` — gaze: ${s.gaze}` : ""}${s.physics ? ` — body: ${s.physics}` : ""}${s.interactionKind ? ` — they ${s.interactionKind}` : ""}`,
+        `${s.id}. [${s.beat}] ${s.characters.join("+") || "landscape"} — purpose: ${s.purpose} — action: ${s.action}${suffixed(" — gaze: ", s.gaze)}${suffixed(" — body: ", s.physics)}${suffixed(" — they ", s.interactionKind)}`,
     )
     .join("\n");
   const cast = story.characters.map((c) => `${c.id}: promise «${c.promise}», intention «${c.intention}»`).join("\n");
@@ -800,7 +880,7 @@ export interface Verdict {
 /** The rubric and the judge together: a story is filmed only when both accept it (pure). */
 export function verdict(rubric: Critique, judge?: Judgement): Verdict {
   const reasons = rubric.findings.map(
-    (f) => `${f.rule}${f.shot ? ` (shot ${f.shot})` : f.line ? ` (line ${f.line})` : ""}: ${f.message}`,
+    (f) => `${f.rule}${findingWhere(f)}: ${f.message}`,
   );
   if (judge) {
     for (const axis of JUDGE_AXES)
@@ -937,3 +1017,13 @@ export function directedMotion(story: Story, shot: StoryShot): string {
 }
 
 const capital = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
+/** A phrase and its value, or nothing when the value is empty. */
+function suffixed(prefix: string, value: string | null | undefined): string {
+  return value ? prefix + value : "";
+}
+
+function findingWhere(f: { shot?: unknown; line?: unknown }): string {
+  if (f.shot) return " (shot " + String(f.shot) + ")";
+  return f.line ? " (line " + String(f.line) + ")" : "";
+}
