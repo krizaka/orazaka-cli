@@ -62,13 +62,13 @@ export interface PackBundle {
   readonly kind: string;
   readonly capabilities: readonly unknown[];
   /** The domain the pack refuses; required by the platform for a SENSITIVE pack. */
-  readonly scopeGuard: unknown | null;
+  readonly scopeGuard: unknown;
   /** REGULATED only: the versioned consent that blocks installation (ADR-055). */
-  readonly consent: unknown | null;
+  readonly consent: unknown;
   /** REGULATED only: the crisis terms, the reviewed response, and the sourced resources. */
-  readonly safety: unknown | null;
-  readonly catalog: unknown | null;
-  readonly pricing: unknown | null;
+  readonly safety: unknown;
+  readonly catalog: unknown;
+  readonly pricing: unknown;
   readonly studios: readonly PackStudio[];
   readonly translations: Record<string, unknown>;
 }
@@ -155,7 +155,7 @@ function readBlueprint(bundleDir: string, relativePath: string): PackBlueprint {
   }
   return {
     version: String(raw.version),
-    status: String(raw.status ?? "DRAFT"),
+    status: textOr(raw.status, "DRAFT"),
     // Re-serialised, not passed through: the table's columns are jsonb and the service sends
     // them as text. Stringifying here keeps the CLI from inventing a second JSON dialect.
     definition: JSON.stringify(raw.definition),
@@ -163,8 +163,13 @@ function readBlueprint(bundleDir: string, relativePath: string): PackBlueprint {
     configSchema: JSON.stringify(raw.configSchema ?? {}),
     estimatedCredits: Number(raw.estimatedCredits ?? 0),
     changelog: (raw.changelog as string | undefined) ?? null,
-    createdBy: String(raw.createdBy ?? "system"),
+    createdBy: textOr(raw.createdBy, "system"),
   };
+}
+
+/** A scalar field as text, or its declared default when the manifest omits it. */
+function textOr(value: unknown, fallback: string): string {
+  return value == null ? fallback : String(value as string);
 }
 
 /** Reads every i18n/<locale>.yaml into the translation map the bundle carries. */
@@ -233,8 +238,8 @@ export function loadBundle(bundleDir: string): { bundle: PackBundle; problems: s
     iconKey: String(studio.iconKey),
     pricing: String(studio.pricing),
     entitlementKey: String(studio.entitlementKey),
-    status: String(studio.status ?? "DRAFT"),
-    publisherId: String(studio.publisherId ?? "orazaka"),
+    status: textOr(studio.status, "DRAFT"),
+    publisherId: textOr(studio.publisherId, "orazaka"),
     sortWeight: Number(studio.sortWeight ?? 0),
     blueprint: readBlueprint(resolved, String(studio.blueprint)),
   }));
@@ -244,12 +249,12 @@ export function loadBundle(bundleDir: string): { bundle: PackBundle; problems: s
       apiVersion: String(manifest.apiVersion),
       key: String(manifest.key),
       version: String(manifest.version),
-      tier: String(manifest.tier ?? "DATA"),
-      distribution: String(manifest.distribution ?? "OSS"),
-      regulatoryClass: String(manifest.regulatoryClass ?? "STANDARD"),
+      tier: textOr(manifest.tier, "DATA"),
+      distribution: textOr(manifest.distribution, "OSS"),
+      regulatoryClass: textOr(manifest.regulatoryClass, "STANDARD"),
       // The schema's declared default, like tier and regulatoryClass above. VERTICAL is also the
       // kind that grants nothing by itself, so an omitted kind can never hand out a capability.
-      kind: String(manifest.kind ?? "VERTICAL"),
+      kind: textOr(manifest.kind, "VERTICAL"),
       capabilities: readCapabilities(requires.capabilities),
       catalog: manifest.catalog ?? null,
       pricing: manifest.pricing ?? null,

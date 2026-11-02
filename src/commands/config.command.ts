@@ -195,7 +195,7 @@ export const configCommand = new Command("config")
         const currentValue = currentEnv[k.key] ?? k.defaultValue;
 
         const newValue = await text({
-          message: `${k.label}${k.hint ? chalk.gray(` (${k.hint})`) : ""}`,
+          message: `${k.label}${k.hint ? chalk.gray(" (" + k.hint + ")") : ""}`,
           placeholder: k.defaultValue,
           defaultValue: currentValue,
           validate: (val: string) => {
@@ -205,8 +205,8 @@ export const configCommand = new Command("config")
               k.key === "VIDEO_WORKER_PORT" ||
               k.key === "IMAGE_WORKER_PORT"
             ) {
-              const num = parseInt(val, 10);
-              if (isNaN(num) || num < 1 || num > 65535) {
+              const num = Number.parseInt(val, 10);
+              if (Number.isNaN(num) || num < 1 || num > 65535) {
                 return "Port must be a number between 1 and 65535";
               }
             }

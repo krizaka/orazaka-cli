@@ -107,7 +107,7 @@ export async function runDiagnostics(): Promise<DiagnosticReport> {
 
   // 1. Check Node.js version (the minimum is NODE_MIN_MAJOR)
   try {
-    const version = parseInt(process.version.split(".")[0].substring(1));
+    const version = Number.parseInt(process.version.split(".")[0].substring(1));
     if (version < NODE_MIN_MAJOR) {
       issues.push({
         code: "NODE_VERSION_OLD",

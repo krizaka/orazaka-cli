@@ -131,13 +131,13 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[], what: st
 export function parseStaging(raw: Raw): StagedFilm {
   const score = (raw.score ?? {}) as Raw;
   const bpm = Number(score.bpm);
-  if (!(bpm > 0)) throw new StagingError("the film's score names its tempo (score.bpm)");
+  if (Number.isNaN(bpm) || bpm <= 0) throw new StagingError("the film's score names its tempo (score.bpm)");
   const beat = 60 / bpm;
   const shots = list(raw.shots).map((s, i): StagedShot => {
     const id = i + 1;
     const where = `shot ${id}`;
     const beats = Number(s.beats);
-    if (!(beats > 0)) throw new StagingError(`${where}: its length is a number of beats (beats)`);
+    if (Number.isNaN(beats) || beats <= 0) throw new StagingError(`${where}: its length is a number of beats (beats)`);
     const characters = list(s.characters).map(String);
     const staging = list(s.staging).map((g, k): Staging => {
       const character = str(g.character);
@@ -145,7 +145,7 @@ export function parseStaging(raw: Raw): StagedFilm {
       if (support === "ground") {
         if (!str(g.surface)) throw new StagingError(`${where}: ${character} stands on the ground but names no surface`);
         const sc = g.scale as Raw | undefined;
-        if (!sc || !str(sc.ref) || !(Number(sc.ratio) > 0))
+        if (!sc || !str(sc.ref) || Number.isNaN(Number(sc.ratio)) || Number(sc.ratio) <= 0)
           throw new StagingError(
             `${where}: ${character} stands on the ground but has no scale reference (scale.ref, scale.ratio)`,
           );
@@ -233,7 +233,7 @@ export function critiqueCut(film: StagedFilm): { findings: CutFinding[]; pass: b
       findings.push({
         rule: "light",
         shot: s.id,
-        message: `the plate does not say its hard key comes ${s.light.key === "top" ? "from above" : `from the ${s.light.key}`}: the composite's shadows would not know where to fall`,
+        message: `the plate does not say its hard key comes ${s.light.key === "top" ? "from above" : "from the " + s.light.key}: the composite's shadows would not know where to fall`,
       });
     }
   }

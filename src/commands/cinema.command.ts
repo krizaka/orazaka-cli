@@ -365,8 +365,10 @@ const statusCommand = new Command("status")
   .argument("<dir>", "The production's folder")
   .action((dir: string) => {
     const p = load(dir);
-    const mark = (status?: string): string =>
-      status === "SUCCEEDED" ? chalk.green("●") : status ? chalk.red("●") : chalk.gray("○");
+    const mark = (status?: string): string => {
+      if (status === "SUCCEEDED") return chalk.green("●");
+      return status ? chalk.red("●") : chalk.gray("○");
+    };
     console.log(`${chalk.bold(p.script?.parsed?.title ?? "(no script yet)")} — ${p.brief.format}, ${p.brief.aspect}`);
     console.log(`${mark(p.script?.status)} script`);
     for (const [id, r] of Object.entries(p.characters)) console.log(`${mark(r.status)} character ${id}`);
@@ -635,7 +637,7 @@ const stageCommand = new Command("stage")
       const film = parseStaging(raw);
       const cut = critiqueCut(film);
       for (const f of cut.findings)
-        console.log(chalk.yellow(`  ${f.rule}${f.shot ? ` (shot ${f.shot})` : ""}: ${f.message}`));
+        console.log(chalk.yellow(`  ${f.rule}${f.shot ? " (shot " + f.shot + ")" : ""}: ${f.message}`));
       const described = Object.fromEntries(
         ((raw.characters as Array<{ id: string; description: string }> | undefined) ?? []).map((c) => [
           c.id,

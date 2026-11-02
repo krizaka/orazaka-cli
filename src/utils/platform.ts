@@ -10,9 +10,6 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import { execSync } from "node:child_process";
 
-/** Supported shell platforms for tool detection. */
-type Platform = "darwin" | "win32" | "linux" | string;
-
 /**
  * Detects whether a CLI tool exists on the host PATH.
  * Uses cross-platform-safe `which` or `where` depending on OS.
@@ -173,7 +170,7 @@ export function resolveModelsDir(): string {
 }
 
 /** Gets current platform identifier. */
-export function getPlatform(): Platform {
+export function getPlatform(): string {
   return process.platform;
 }
 

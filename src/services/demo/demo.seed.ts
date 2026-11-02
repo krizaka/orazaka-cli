@@ -139,15 +139,7 @@ export class DemoSeeder {
       if (list.ok) {
         const { messages = [] } = (await list.json()) as { messages?: { ID: string }[] };
         for (const m of messages) {
-          const msg = await this.o.fetch(`${this.o.mailUrl}/api/v1/message/${m.ID}`);
-          const { Text = "", HTML = "" } = (await msg.json()) as { Text?: string; HTML?: string };
-          const token = verificationTokenIn(Text) ?? verificationTokenIn(HTML);
-          if (!token) continue;
-          const res = await this.raw("POST", "/api/v1/auth/verify", undefined, { token });
-          if (res.ok) {
-            this.o.onStep("E-mail verified through the local mailbox");
-            return;
-          }
+          if (await this.confirmFrom(m.ID)) return;
         }
       }
       if (Date.now() > deadline) {
@@ -157,6 +149,17 @@ export class DemoSeeder {
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
+  }
+
+  /** Confirms the e-mail with the token one mailbox message carries; false when it has none or is refused. */
+  private async confirmFrom(messageId: string): Promise<boolean> {
+    const msg = await this.o.fetch(`${this.o.mailUrl}/api/v1/message/${messageId}`);
+    const { Text = "", HTML = "" } = (await msg.json()) as { Text?: string; HTML?: string };
+    const token = verificationTokenIn(Text) ?? verificationTokenIn(HTML);
+    if (!token) return false;
+    const res = await this.raw("POST", "/api/v1/auth/verify", undefined, { token });
+    if (res.ok) this.o.onStep("E-mail verified through the local mailbox");
+    return res.ok;
   }
 
   /** Removes the conversations Eric holds, through the same endpoint the application's delete uses. */

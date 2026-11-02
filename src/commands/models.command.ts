@@ -149,7 +149,7 @@ imageCommand
           : `✔ ${String(pulled.length)} file(s) downloaded and verified (sha256)`,
       );
       await outro(
-        `Serve it with ${chalk.cyan(`orazaka models image use ${recipe.id}`)}, then restart the image server.`,
+        `Serve it with ${chalk.cyan("orazaka models image use " + recipe.id)}, then restart the image server.`,
       );
     } catch (err) {
       await logError(err instanceof Error ? err.message : String(err));

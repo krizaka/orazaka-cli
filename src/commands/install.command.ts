@@ -119,7 +119,7 @@ export const installCommand = new Command("install")
     if (options.checkOnly) {
       await note(
         [
-          `${report.allCriticalMet ? chalk.green("✔") : chalk.red("✖")} Critical tools: ${report.allCriticalMet ? "all present" : `${String(report.missingCritical.length)} missing`}`,
+          `${report.allCriticalMet ? chalk.green("✔") : chalk.red("✖")} Critical tools: ${report.allCriticalMet ? "all present" : "" + String(report.missingCritical.length) + " missing"}`,
           `${chalk.yellow("ℹ")} Optional missing: ${String(report.missingOptional.length)}`,
           "",
           chalk.gray("Read-only check — no files were modified."),
@@ -143,7 +143,7 @@ export const installCommand = new Command("install")
         let shouldInstall = yes;
         if (interactive) {
           const answer = await confirm({
-            message: `Install ${chalk.cyan(missing.tool.name)} via ${chalk.gray(`brew install ${missing.tool.brewFormula}`)}?`,
+            message: `Install ${chalk.cyan(missing.tool.name)} via ${chalk.gray("brew install " + missing.tool.brewFormula)}?`,
             initialValue: true,
           });
           shouldInstall = answer === true;
@@ -247,10 +247,9 @@ export const installCommand = new Command("install")
     await logStep("Phase 4 — Deployment Topology Configuration");
 
     // Non-interactive: the topology follows the host (Apple Silicon → local_dev, otherwise production).
+    const hostEnv = isAppleSilicon() ? "local_dev" : "production";
     const targetEnv = !interactive
-      ? isAppleSilicon()
-        ? "local_dev"
-        : "production"
+      ? hostEnv
       : await select({
           message: "Select target environment profile:",
           options: [
@@ -382,14 +381,12 @@ export const installCommand = new Command("install")
       // resolves from inside a container and would throw UnresolvedAddressException.
       envUpdates["SPRING_AI_OLLAMA_BASE_URL"] = "http://localhost:11434";
       envUpdates["OLLAMA_BASE_URL"] = "http://localhost:11434";
+    } else if (infraMode === "external" && externalEndpoints.ollamaHost) {
+      envUpdates["SPRING_AI_OLLAMA_BASE_URL"] = `http://${externalEndpoints.ollamaHost}:11434`;
+      envUpdates["OLLAMA_BASE_URL"] = `http://${externalEndpoints.ollamaHost}:11434`;
     } else {
-      if (infraMode === "external" && externalEndpoints.ollamaHost) {
-        envUpdates["SPRING_AI_OLLAMA_BASE_URL"] = `http://${externalEndpoints.ollamaHost}:11434`;
-        envUpdates["OLLAMA_BASE_URL"] = `http://${externalEndpoints.ollamaHost}:11434`;
-      } else {
-        envUpdates["SPRING_AI_OLLAMA_BASE_URL"] = "http://ollama:11434";
-        envUpdates["OLLAMA_BASE_URL"] = "http://ollama:11434";
-      }
+      envUpdates["SPRING_AI_OLLAMA_BASE_URL"] = "http://ollama:11434";
+      envUpdates["OLLAMA_BASE_URL"] = "http://ollama:11434";
     }
 
     if (infraMode === "external") {
@@ -481,7 +478,7 @@ export const installCommand = new Command("install")
           conflicts
             .map(
               ([k, v]) =>
-                `  ${chalk.yellow(k)} = ${chalk.gray(existingEnv[k])} ${chalk.dim(`(topology suggests ${v})`)}`,
+                `  ${chalk.yellow(k)} = ${chalk.gray(existingEnv[k])} ${chalk.dim("(topology suggests " + v + ")")}`,
             )
             .join("\n") +
           `\n  Edit ${chalk.cyan(".env")} manually if you want the suggested values.`,
@@ -493,7 +490,7 @@ export const installCommand = new Command("install")
       `${chalk.green("✔")} Target: ${chalk.cyan(targetEnv === "local_dev" ? "Local Dev (Apple Silicon)" : "Production (Linux)")}`,
       `${chalk.green("✔")} Infra:  ${chalk.cyan(infraMode === "bundled" ? "Bundled (Docker)" : "External Clusters")}`,
       `${chalk.green("✔")} Generated: docker-compose.override.yml`,
-      `${chalk.green("✔")} .env: ${added.length > 0 ? `${String(added.length)} key(s) added` : "unchanged"}${conflicts.length > 0 ? `, ${String(conflicts.length)} existing value(s) kept` : ""}`,
+      `${chalk.green("✔")} .env: ${added.length > 0 ? "" + String(added.length) + " key(s) added" : "unchanged"}${conflicts.length > 0 ? ", " + String(conflicts.length) + " existing value(s) kept" : ""}`,
     ];
 
     if (mediaPython) {
@@ -522,7 +519,7 @@ export const installCommand = new Command("install")
     summary.push(
       "",
       `${chalk.cyan("Next steps:")}`,
-      ...steps.map((step, i) => `  ${chalk.white(`${String(i + 1)}.`)} ${step}`),
+      ...steps.map((step, i) => `  ${chalk.white("" + String(i + 1) + ".")} ${step}`),
     );
 
     await note(summary.join("\n"), "✨ Setup Complete");

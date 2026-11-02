@@ -37,9 +37,9 @@ interface VersionCache {
 }
 
 export class VersionManager {
-  private cacheDir: string;
-  private cachePath: string;
-  private currentVersion: string;
+  private readonly cacheDir: string;
+  private readonly cachePath: string;
+  private readonly currentVersion: string;
   private cacheExpiry: number = 24 * 60 * 60 * 1000; // 24 hours
 
   constructor(currentVersion: string) {
@@ -114,7 +114,7 @@ export class VersionManager {
         return null;
       }
 
-      return result.replace(/"/g, "");
+      return result.replaceAll('"', "");
     } catch {
       return null;
     }
@@ -125,8 +125,8 @@ export class VersionManager {
    * Returns: -1 (v1 < v2), 0 (equal), 1 (v1 > v2)
    */
   private compareVersions(v1: string, v2: string): number {
-    const parts1 = v1.split(".").map((x) => parseInt(x, 10));
-    const parts2 = v2.split(".").map((x) => parseInt(x, 10));
+    const parts1 = v1.split(".").map((x) => Number.parseInt(x, 10));
+    const parts2 = v2.split(".").map((x) => Number.parseInt(x, 10));
 
     for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
       const p1 = parts1[i] || 0;
@@ -143,8 +143,8 @@ export class VersionManager {
    * Determine if update is critical (major version bump).
    */
   private isCriticalUpdate(current: string, latest: string): boolean {
-    const currentMajor = parseInt(current.split(".")[0], 10);
-    const latestMajor = parseInt(latest.split(".")[0], 10);
+    const currentMajor = Number.parseInt(current.split(".")[0], 10);
+    const latestMajor = Number.parseInt(latest.split(".")[0], 10);
     return latestMajor > currentMajor;
   }
 
@@ -208,45 +208,35 @@ export class VersionManager {
 
     if (versionInfo.isCritical) {
       // Critical update: Red box
-      lines.push(chalk.red.bold("╭──────────────────────────────────────────────────────────────╮"));
       lines.push(
+        chalk.red.bold("╭──────────────────────────────────────────────────────────────╮"),
         chalk.red.bold("│") +
           chalk.red("  ⚠️  CRITICAL UPDATE AVAILABLE                              ") +
           chalk.red.bold("│"),
-      );
-      lines.push(
         chalk.red.bold("│") +
           chalk.red(`  Your version: ${versionInfo.current.padEnd(8)} Latest: ${versionInfo.latest} `) +
           chalk.red.bold("│"),
-      );
-      lines.push(
         chalk.red.bold("│") +
           chalk.red("                                                              ") +
           chalk.red.bold("│"),
-      );
-      lines.push(
         chalk.red.bold("│") +
           chalk.red("  Update immediately to get critical fixes and features:    ") +
           chalk.red.bold("│"),
-      );
-      lines.push(
         chalk.red.bold("│") + chalk.red(`  $ npm install -g ${PACKAGE_NAME}@latest`.padEnd(62)) + chalk.red.bold("│"),
+        chalk.red.bold("╰──────────────────────────────────────────────────────────────╯"),
       );
-      lines.push(chalk.red.bold("╰──────────────────────────────────────────────────────────────╯"));
     } else {
       // Regular update: Yellow box
-      lines.push(chalk.yellow("╭──────────────────────────────────────────────────────────────╮"));
       lines.push(
+        chalk.yellow("╭──────────────────────────────────────────────────────────────╮"),
         chalk.yellow("│") +
           chalk.yellow("  📦 New version available: " + versionInfo.latest.padEnd(35) + " ") +
           chalk.yellow("│"),
-      );
-      lines.push(
         chalk.yellow("│") +
           chalk.yellow(`  Run: $ npm install -g ${PACKAGE_NAME}@${versionInfo.latest}`.padEnd(62) + " ") +
           chalk.yellow("│"),
+        chalk.yellow("╰──────────────────────────────────────────────────────────────╯"),
       );
-      lines.push(chalk.yellow("╰──────────────────────────────────────────────────────────────╯"));
     }
 
     lines.push("");

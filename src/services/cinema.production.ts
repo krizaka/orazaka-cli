@@ -34,7 +34,7 @@ export type RunState = (typeof RunState)[keyof typeof RunState];
 export interface RunRecord {
   readonly runId: string;
   readonly studioKey: string;
-  readonly status: RunState | string;
+  readonly status: string;
   readonly output?: string;
   readonly assetId?: string;
   readonly seconds?: number;
@@ -162,12 +162,11 @@ export const CHARACTER_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/;
 export const isCharacterId = (id: string): boolean => CHARACTER_ID.test(id);
 
 /** A value as one line of text: a string as it is, an object or list the model wrote instead as its values joined. */
-const flatten = (value: unknown): string =>
-  value !== null && typeof value === "object"
-    ? Object.values(value as object)
-        .map(flatten)
-        .join(", ")
-    : String(value ?? "");
+const flatten = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object") return Object.values(value).map(flatten).join(", ");
+  return String(value as string);
+};
 /** Markdown emphasis a model adds (`**bold**`, `*italic*`) is not a word of the prompt nor of a title. */
 const text = (value: unknown, max = 1200): string =>
   flatten(value).replace(/\*+/g, "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -309,16 +308,23 @@ export const KIT_FINISH =
   "Shot on a cinema camera, anamorphic film look, natural skin texture, motivated lighting, filmic contrast, subtle film grain, " +
   "high dynamic range, sharp focus on the subject, photorealistic, highly detailed";
 
+function lensLine(shot: ScriptShot): string {
+  if (!shot.lens) return "";
+  const lens = /mm/i.test(shot.lens) ? shot.lens : `${shot.lens}mm`;
+  return `${lens} lens`;
+}
+
+function cameraLine(shot: ScriptShot, forMotion: boolean): string {
+  if (!shot.camera) return "";
+  return forMotion ? `the view: ${shot.camera.replace(/\bcamera\b/gi, "view")}` : `camera: ${shot.camera}`;
+}
+
 /** A shot's direction in one sentence: the lens, the camera, the light and the air (only what the script gave). */
 export function direction(shot: ScriptShot, forMotion = false): string {
   return [
-    shot.lens ? `${/mm/i.test(shot.lens) ? shot.lens : `${shot.lens}mm`} lens` : "",
+    lensLine(shot),
     // In a motion prompt the word "camera" summoned a camera into the frame (gate, 2026-10-17): the view moves instead.
-    shot.camera
-      ? forMotion
-        ? `the view: ${shot.camera.replace(/\bcamera\b/gi, "view")}`
-        : `camera: ${shot.camera}`
-      : "",
+    cameraLine(shot, forMotion),
     shot.lighting ? `lighting: ${shot.lighting}` : "",
     shot.atmosphere ? `atmosphere: ${shot.atmosphere}` : "",
   ]
@@ -347,7 +353,7 @@ export function keyframePrompt(script: Script, shot: ScriptShot, aspect: Aspect)
       .filter(Boolean)
       .join("; ");
     return text(
-      `${shot.keyframe} ${described ? `Characters: ${described}. ` : ""}${script.style} ${script.keyframeKeep} ${NO_CHILDREN}`,
+      `${shot.keyframe} ${described ? "Characters: " + described + ". " : ""}${script.style} ${script.keyframeKeep} ${NO_CHILDREN}`,
       1900,
     );
   }
@@ -357,7 +363,7 @@ export function keyframePrompt(script: Script, shot: ScriptShot, aspect: Aspect)
     .map((c) => `${c.id}: ${c.description}`)
     .join(". ");
   return text(
-    `${shot.keyframe}. ${cast ? `${cast}. ` : ""}${shot.vfx ? `Effects: ${shot.vfx}. ` : ""}` +
+    `${shot.keyframe}. ${cast ? "" + cast + ". " : ""}${shot.vfx ? "Effects: " + shot.vfx + ". " : ""}` +
       `Style: ${script.style} Cinematic film still, ${aspect === "9:16" ? "vertical 9:16" : "widescreen 16:9"} composition, ` +
       `${direction(shot)}. ${KIT_FINISH}. ${NO_TEXT} ${NO_CHILDREN}`,
     1900,
@@ -374,7 +380,7 @@ export function motionPrompt(script: Script, shot: ScriptShot): string {
   // A treatment's motion is written in film language already (subject, action, camera, lens, light, pace): kept as is.
   if (script.keep) return text(`${shot.motion} ${script.keep} ${NO_CHILDREN}`, 1900);
   return text(
-    `${shot.motion.replace(/\bcamera\b/gi, "view")}. ${shot.vfx ? `Visual effects: ${shot.vfx}. ` : ""}${direction(shot, true)}. ` +
+    `${shot.motion.replace(/\bcamera\b/gi, "view")}. ${shot.vfx ? "Visual effects: " + shot.vfx + ". " : ""}${direction(shot, true)}. ` +
       `${script.style} Cinematic, smooth natural motion, stable faces and hands, the same characters throughout, ${NO_TEXT} ${NO_CHILDREN}`,
     1900,
   );
@@ -424,7 +430,10 @@ export function filmSeconds(script: Script): number {
   let total = 0;
   script.shots.forEach((shot, i) => {
     const screen = shot.rampAt !== null ? shot.rampAt + (shot.seconds - shot.rampAt) / 0.4 : shot.seconds / shot.speed;
-    total += screen - (i === 0 ? 0 : shot.transition === "cut" ? 1 / 30 : TRANSITION_SECONDS);
+    let overlap = TRANSITION_SECONDS;
+    if (i === 0) overlap = 0;
+    else if (shot.transition === "cut") overlap = 1 / 30;
+    total += screen - overlap;
   });
   return Number(total.toFixed(2));
 }
@@ -479,7 +488,9 @@ export function markReshoot(production: Production, ids: readonly number[], newK
   // gone, so the chain after it is made again too (and only the chain: a shot from its own keyframe keeps its take).
   const shots = production.script?.parsed?.shots ?? [];
   shots.forEach((shot, i) => {
-    const from = shot.chainFrom ? shot.chainFrom.shot : shot.continuous && i > 0 ? shots[i - 1].id : undefined;
+    let from: number | undefined = undefined;
+    if (shot.chainFrom) from = shot.chainFrom.shot;
+    else if (shot.continuous && i > 0) from = shots[i - 1].id;
     if (from === undefined || marked.has(shot.id) || !marked.has(from)) return;
     const state = production.shots.find((s) => s.id === shot.id);
     if (!state) return;
@@ -535,7 +546,7 @@ export function estimate(
     ["keyframe", pending("keyframe")],
     ["video", pending("video")],
     ["cut", done(production.cut) ? 0 : 1],
-    ["voice", script && !script.voiceover ? 0 : done(production.voice) ? 0 : 1],
+    ["voice", (script && !script.voiceover) || done(production.voice) ? 0 : 1],
     ["sound", done(production.sound) ? 0 : 1],
   ];
   const lines = rows.map(([step, count]) => {

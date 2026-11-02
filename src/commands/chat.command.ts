@@ -58,7 +58,7 @@ function parseInputArgs(args: readonly string[]): ParsedArgs {
         return nextValue ? { ...acc, voice: nextValue, skipVoice: true } : acc;
       }
 
-      const matchingCap = CAPABILITIES.find((c) => c.flag === arg);
+      const matchingCap = CAPABILITIES.some((c) => c.flag === arg);
       if (matchingCap) {
         const nextValue = arr[index + 1];
         return { ...acc, flag: arg, flagValue: nextValue, skipNextValue: true };

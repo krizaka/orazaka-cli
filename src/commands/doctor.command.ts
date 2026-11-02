@@ -45,12 +45,9 @@ export const doctorCommand = new Command("doctor")
       const issueRows: string[][] = [];
 
       for (const issue of report.issues) {
-        const statusIcon =
-          issue.severity === "error"
-            ? chalk.red("✖")
-            : issue.severity === "warning"
-              ? chalk.yellow("⚠")
-              : chalk.blue("ℹ");
+        let statusIcon = chalk.blue("ℹ");
+        if (issue.severity === "error") statusIcon = chalk.red("✖");
+        else if (issue.severity === "warning") statusIcon = chalk.yellow("⚠");
 
         issueRows.push([statusIcon, chalk.gray(issue.code), issue.title, chalk.yellow(issue.severity)]);
       }

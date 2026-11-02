@@ -21,7 +21,7 @@ const isWindows = process.platform === "win32";
 
 let failures = 0;
 function check(label, ok, detail = "") {
-  console.log(`${ok ? "✔" : "✖"} ${label}${ok || !detail ? "" : `\n${detail}`}`);
+  console.log(`${ok ? "✔" : "✖"} ${label}${ok || !detail ? "" : "\n" + detail}`);
   if (!ok) failures += 1;
 }
 

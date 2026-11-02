@@ -119,10 +119,10 @@ export const statusCommand = new Command("status")
       // Summary counts
       const running = results.filter((r) => r.status === "running").length;
       const total = results.length;
-      lines.push("");
-      lines.push(chalk.gray(developmentStatus()));
-      lines.push("");
       lines.push(
+        "",
+        chalk.gray(developmentStatus()),
+        "",
         `${chalk.gray("Summary:")} ${chalk.green(String(running))}/${String(total)} services running` +
           (isAppleSilicon() ? ` ${chalk.gray("| Apple Silicon ✔")}` : ""),
       );
@@ -157,7 +157,7 @@ export const statusCommand = new Command("status")
         const logFiles = fs.readdirSync(logDir).filter((f) => f.endsWith(".log"));
         if (logFiles.length > 0) {
           console.log(
-            `\n  ${chalk.gray("Logs:")} ${chalk.cyan(`npx orazaka logs`)} (${String(logFiles.length)} file(s) in ${path.relative(workspaceRoot, logDir)})`,
+            `\n  ${chalk.gray("Logs:")} ${chalk.cyan("npx orazaka logs")} (${String(logFiles.length)} file(s) in ${path.relative(workspaceRoot, logDir)})`,
           );
         }
       }
