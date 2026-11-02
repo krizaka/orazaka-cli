@@ -162,14 +162,11 @@ export const CHARACTER_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/;
 export const isCharacterId = (id: string): boolean => CHARACTER_ID.test(id);
 
 /** A value as one line of text: a string as it is, an object or list the model wrote instead as its values joined. */
-const flatten = (value: unknown): string =>
-  value !== null && typeof value === "object"
-    ? Object.values(value as object)
-        .map(flatten)
-        .join(", ")
-    : value == null
-      ? ""
-      : String(value as string);
+const flatten = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object") return Object.values(value).map(flatten).join(", ");
+  return String(value as string);
+};
 /** Markdown emphasis a model adds (`**bold**`, `*italic*`) is not a word of the prompt nor of a title. */
 const text = (value: unknown, max = 1200): string =>
   flatten(value).replace(/\*+/g, "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -311,6 +308,12 @@ export const KIT_FINISH =
   "Shot on a cinema camera, anamorphic film look, natural skin texture, motivated lighting, filmic contrast, subtle film grain, " +
   "high dynamic range, sharp focus on the subject, photorealistic, highly detailed";
 
+function lensLine(shot: ScriptShot): string {
+  if (!shot.lens) return "";
+  const lens = /mm/i.test(shot.lens) ? shot.lens : `${shot.lens}mm`;
+  return `${lens} lens`;
+}
+
 function cameraLine(shot: ScriptShot, forMotion: boolean): string {
   if (!shot.camera) return "";
   return forMotion ? `the view: ${shot.camera.replace(/\bcamera\b/gi, "view")}` : `camera: ${shot.camera}`;
@@ -319,7 +322,7 @@ function cameraLine(shot: ScriptShot, forMotion: boolean): string {
 /** A shot's direction in one sentence: the lens, the camera, the light and the air (only what the script gave). */
 export function direction(shot: ScriptShot, forMotion = false): string {
   return [
-    shot.lens ? `${/mm/i.test(shot.lens) ? shot.lens : "" + shot.lens + "mm"} lens` : "",
+    lensLine(shot),
     // In a motion prompt the word "camera" summoned a camera into the frame (gate, 2026-10-17): the view moves instead.
     cameraLine(shot, forMotion),
     shot.lighting ? `lighting: ${shot.lighting}` : "",
