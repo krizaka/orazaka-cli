@@ -19,6 +19,14 @@ import { spawnWithPrefix } from "../utils/process";
 import { PORTS } from "../utils/config";
 import { requireWorkspace } from "./workspace-guard";
 
+/** The services `dev` runs from krizaka-build: modules of the workspace reactor, which lists `krizaka/krizaka-build`
+ *  only (users, billing and the platform kit joined it, ADR-021). */
+export const KRIZAKA_BUILD_MODULES = {
+  identity: "krizaka/krizaka-build/krizaka-users/krizaka-users-service",
+  billing: "krizaka/krizaka-build/krizaka-billing/krizaka-billing-service",
+  notifications: "krizaka/krizaka-build/krizaka-platform-kit/krizaka-notifications-service",
+} as const;
+
 /** Stable service identifiers used by the `--only` filter. */
 export type ServiceKey =
   | "edge"
@@ -306,12 +314,7 @@ export const devCommand = new Command("dev")
         command: "./mvnw",
         // Run from the workspace root, like the e2e harness: Orazaka's onboarding schemas are
         // file:infra/users/… paths in .env (USERS_ONBOARDING_SCHEMA).
-        args: [
-          "spring-boot:run",
-          "-pl",
-          "krizaka/krizaka-users/krizaka-users-service",
-          `-Dspring-boot.run.workingDirectory=${root}`,
-        ],
+        args: ["spring-boot:run", "-pl", KRIZAKA_BUILD_MODULES.identity, `-Dspring-boot.run.workingDirectory=${root}`],
         cwd: root,
         enabled: isEnabled("identity"),
         port: PORTS.identity,
@@ -351,7 +354,7 @@ export const devCommand = new Command("dev")
         label: "BILLING",
         color: chalk.green,
         command: "./mvnw",
-        args: ["spring-boot:run", "-pl", "krizaka/krizaka-billing/krizaka-billing-service"],
+        args: ["spring-boot:run", "-pl", KRIZAKA_BUILD_MODULES.billing],
         cwd: root,
         enabled: isEnabled("billing"),
         port: PORTS.billing,
@@ -371,7 +374,7 @@ export const devCommand = new Command("dev")
         label: "NOTIFICATIONS",
         color: chalk.blue,
         command: "./mvnw",
-        args: ["spring-boot:run", "-pl", "krizaka/krizaka-platform-kit/krizaka-notifications-service"],
+        args: ["spring-boot:run", "-pl", KRIZAKA_BUILD_MODULES.notifications],
         cwd: root,
         enabled: isEnabled("notifications"),
         port: PORTS.notifications,
