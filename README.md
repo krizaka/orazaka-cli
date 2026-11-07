@@ -63,11 +63,11 @@ The single orchestrator of the platform (no shell scripts): `orazaka install`, `
 Images are generated on the Mac by [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) (`sd-server`,
 Metal). `orazaka models image` installs the models it can serve — every one under a licence that allows commercial use:
 
-| Model | Licence | Disk | RAM | Measured on an M1 Max (64 GB) |
-|:---|:---|---:|---:|:---|
-| `flux-2-klein-4b` — FLUX.2 [klein] 4B (default) | Apache-2.0 | 8.7 GB | ~11 GB | 1024×1024 in ~82 s, 1024×1280 in ~105 s |
-| `z-image-turbo` — Z-Image Turbo | Apache-2.0 | 11.2 GB | ~12 GB | 1024×1024 in ~233 s |
-| `v1-5-pruned-emaonly` — Stable Diffusion 1.5 | CreativeML OpenRAIL-M | 4.3 GB | ~5 GB | 512×512 in ~68 s |
+| Model                                           | Licence               |    Disk |    RAM | Measured on an M1 Max (64 GB)           |
+| :---------------------------------------------- | :-------------------- | ------: | -----: | :-------------------------------------- |
+| `flux-2-klein-4b` — FLUX.2 [klein] 4B (default) | Apache-2.0            |  8.7 GB | ~11 GB | 1024×1024 in ~82 s, 1024×1280 in ~105 s |
+| `z-image-turbo` — Z-Image Turbo                 | Apache-2.0            | 11.2 GB | ~12 GB | 1024×1024 in ~233 s                     |
+| `v1-5-pruned-emaonly` — Stable Diffusion 1.5    | CreativeML OpenRAIL-M |  4.3 GB |  ~5 GB | 512×512 in ~68 s                        |
 
 ```bash
 orazaka models image list                    # licence, size, installed, which one is served
@@ -85,11 +85,11 @@ Prose inputs with commas go through a file: `orazaka studio run <installation> -
 
 ## Position in the platform
 
-| | |
-|:---|:---|
-| Depends on | _none — this repository is a root of the dependency graph._ |
-| Used by | _no other Orazaka repository._ |
-| Workspace path | `orazaka-apps/ui/orazaka-cli` |
+|                |                                                             |
+| :------------- | :---------------------------------------------------------- |
+| Depends on     | _none — this repository is a root of the dependency graph._ |
+| Used by        | _no other Orazaka repository._                              |
+| Workspace path | `orazaka-apps/ui/orazaka-cli`                               |
 
 ## Build
 
@@ -112,6 +112,21 @@ project outside any workspace and runs the bin from there — what CI checks on 
 
 This repository follows the Orazaka governance contract — [AGENTS.md](https://github.com/krizaka/orazaka/blob/main/AGENTS.md)
 in the workspace is normative; the local [AGENTS.md](AGENTS.md) only scopes it to this repository.
+
+<!-- krizaka:workflows:start -->
+
+## Workflows
+
+What runs in the Actions tab of this repository.
+
+- **CI** (`ci.yml`): Lint, tests and build of the repository. Runs on push, on every pull request, on demand.
+- **Dependabot auto-merge** (`dependabot-automerge.yml`): Auto-merges safe Dependabot updates. Runs on every pull request.
+- **Merge resolution** (`merge-resolution.yml`): Fails a PR that drops what main added without a deletion-explained line. Runs on every pull request.
+- **Release notes** (`release-notes.yml`): Writes the release notes. Runs on push.
+- **Scorecard** (`scorecard.yml`): OpenSSF Scorecard of the repository. Runs when branch rules change, on a schedule, on demand.
+- **Security scan** (`security.yml`): Secret scan (gitleaks) and workflow scan (zizmor); both are required checks. Runs on every pull request, in the merge queue, on push.
+
+<!-- krizaka:workflows:end -->
 
 ## License
 
